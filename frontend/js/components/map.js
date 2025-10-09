@@ -17,11 +17,15 @@ const MapComponent = {
     async render(params = []) {
         const contentArea = document.getElementById('contentArea');
         
+        const mainHeader = document.querySelector('.main-header');
+        const isHeaderVisible = mainHeader && mainHeader.style.display !== 'none';
+        const mapHeight = isHeaderVisible ? 'calc(100vh - 60px)' : '100vh';
+
         contentArea.innerHTML = `
             <style>
                 .map-container {
                     padding: 0;
-                    height: calc(100vh - 60px);
+                    height: ${mapHeight};
                     display: flex;
                     flex-direction: column;
                 }
@@ -290,7 +294,9 @@ const MapComponent = {
         `;
 
         // マップを初期化
-        await this.initializeMap();
+        setTimeout(async () => {
+            await this.initializeMap();
+        }, 100);
     },
 
     // マップ初期化
@@ -637,6 +643,36 @@ const MapComponent = {
         const errorElement = document.getElementById('mapError');
         errorElement.style.display = 'none';
         this.initializeMap();
+    },
+
+    updateMarkersWithSearchResults(shops) {
+        if (!this.state.map) return;
+
+        // 既存の店舗マーカーをクリア
+        this.clearShopMarkers();
+
+        if (shops.length === 0) {
+            return;
+        }
+
+        // 新しいマーカーを追加
+        shops.forEach(shop => {
+            const shopData = {
+                id: shop.id,
+                name: shop.name,
+                type: 'jiro', // 仮
+                lat: shop.latitude,
+                lng: shop.longitude,
+                address: shop.address,
+                description: shop.address
+            };
+            this.addShopMarker(shopData);
+        });
+
+        // 地図の表示範囲を調整
+        const latLngs = shops.map(s => [s.latitude, s.longitude]);
+        const bounds = L.latLngBounds(latLngs);
+        this.state.map.fitBounds(bounds, { padding: [50, 50] });
     }
 };
 

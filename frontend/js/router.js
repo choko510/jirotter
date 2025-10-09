@@ -106,18 +106,17 @@ class Router {
         
         if (rightSidebar && mainContent && container) {
             if (route === 'map') {
-                // mapページの場合、right-sidebarを非表示にし、main-contentを広げる
-                rightSidebar.style.display = 'none';
+                // mapページの場合、main-contentを広げるが、サイドバーは表示したままにする
                 mainContent.style.maxWidth = 'none';
                 mainContent.style.borderRight = 'none';
-                container.style.gridTemplateColumns = '260px 1fr';
+                container.style.gridTemplateColumns = '260px 1fr 350px';
             } else {
                 // その他のページの場合、元のレイアウトに戻す
-                rightSidebar.style.display = '';
                 mainContent.style.maxWidth = '600px';
                 mainContent.style.borderRight = '1px solid #e0e0e0';
                 container.style.gridTemplateColumns = '260px 1fr 350px';
             }
+            rightSidebar.style.display = ''; // サイドバーは常に表示
         }
     }
 

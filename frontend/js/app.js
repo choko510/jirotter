@@ -55,17 +55,31 @@ const API = {
 
     // 店舗検索
     async getShops(query, filters) {
-        return new Promise(resolve => {
-            setTimeout(() => {
-                resolve([
-                    { id: 1, name: '下荒庄', rating: 5.0, category: '二郎風(詳細)', reviews: 1000 },
-                    { id: 2, name: '店舗2', rating: 1.5, category: '~風(詳細)', reviews: 1000 },
-                    { id: 3, name: '店舗3', rating: 1.5, category: '~風(詳細)', reviews: 1000 },
-                    { id: 4, name: '店舗4', rating: 1.5, category: '~風(詳細)', reviews: 1000 },
-                    { id: 5, name: '店舗5', rating: 1.5, category: '~風(詳細)', reviews: 1000 }
-                ]);
-            }, 300);
-        });
+        try {
+            const url = query ? `/api/v1/ramen?keyword=${encodeURIComponent(query)}` : '/api/v1/ramen';
+            const response = await fetch(url, {
+                headers: this.getAuthHeader()
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            return data.shops.map(shop => ({
+                id: shop.id,
+                name: shop.name,
+                address: shop.address,
+                rating: 5.0, // APIに評価がないためダミー
+                category: 'ラーメン', // APIにカテゴリがないためダミー
+                reviews: 100, // APIにレビュー数がないためダミー
+                latitude: shop.latitude,
+                longitude: shop.longitude
+            }));
+        } catch (error) {
+            console.error('店舗の検索に失敗しました:', error);
+            return [];
+        }
     },
 
     // 投稿作成
@@ -312,6 +326,54 @@ const Utils = {
     // フィルターボタン処理
     handleFilterClick(filterType) {
         alert(`${filterType}フィルター選択`);
+    },
+
+    searchTimeout: null,
+
+    renderShopList(shops, containerElement) {
+        if (!containerElement) return;
+
+        const header = containerElement.id === 'shopList' ? '<div class="results-header">検索結果</div>' : '';
+
+        if (shops.length === 0) {
+            containerElement.innerHTML = header + `
+                <div style="padding: 20px; text-align: center; color: #666;">
+                    <p>店舗が見つかりませんでした。</p>
+                </div>
+            `;
+            return;
+        }
+
+        containerElement.innerHTML = header + shops.map(shop => `
+            <div style="padding: 16px; border-bottom: 1px solid #e0e0e0; cursor: pointer;" onclick="Utils.showShopDetail(${shop.id})">
+                <div style="font-weight: bold;">${shop.name}</div>
+                <div style="font-size: 14px; color: #666;">${shop.address || ''}</div>
+            </div>
+        `).join('');
+    },
+
+    async handleSearch(query) {
+        const shopList = document.getElementById('shopList');
+        const mobileShopList = document.getElementById('mobileShopList');
+
+        const defaultHeader = '<div class="results-header">過去1週間</div>';
+
+        if (!query || query.trim() === '') {
+            if (shopList) shopList.innerHTML = defaultHeader;
+            if (mobileShopList) mobileShopList.innerHTML = '';
+            if (typeof MapComponent !== 'undefined' && MapComponent.state.map) {
+                 MapComponent.updateMarkersWithSearchResults([]);
+            }
+            return;
+        }
+
+        const shops = await API.getShops(query);
+        this.renderShopList(shops, shopList);
+        this.renderShopList(shops, mobileShopList);
+
+        if (typeof MapComponent !== 'undefined' && MapComponent.state.map) {
+            MapComponent.updateMarkersWithSearchResults(shops);
+        }
     }
 };
 
@@ -335,14 +397,18 @@ document.addEventListener('DOMContentLoaded', function() {
 
     // 検索入力
     document.getElementById('searchInput')?.addEventListener('input', function(e) {
-        // 検索処理
-        console.log('検索:', e.target.value);
+        clearTimeout(Utils.searchTimeout);
+        Utils.searchTimeout = setTimeout(() => {
+            Utils.handleSearch(e.target.value);
+        }, 300);
     });
 
     // モバイル検索入力
     document.getElementById('mobileSearchInput')?.addEventListener('input', function(e) {
-        // モバイル検索処理
-        console.log('モバイル検索:', e.target.value);
+        clearTimeout(Utils.searchTimeout);
+        Utils.searchTimeout = setTimeout(() => {
+            Utils.handleSearch(e.target.value);
+        }, 300);
     });
 
     // ユーザープロフィールUIの初期化
