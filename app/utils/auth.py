@@ -43,19 +43,14 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     encoded_jwt = jwt.encode(to_encode, settings.SECRET_KEY, algorithm=settings.ALGORITHM)
     return encoded_jwt
 
-def verify_token(token: str) -> Optional[int]:
+def verify_token(token: str) -> Optional[str]:
     """トークンの検証"""
     try:
         payload = jwt.decode(token, settings.SECRET_KEY, algorithms=[settings.ALGORITHM])
         user_id: str = payload.get("sub")
         if user_id is None:
             return None
-        # 文字列のIDを整数に変換
-        try:
-            user_id = int(user_id)
-            return user_id
-        except ValueError:
-            return None
+        return user_id
     except JWTError:
         return None
 

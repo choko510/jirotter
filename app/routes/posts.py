@@ -1,54 +1,59 @@
-from fastapi import APIRouter, Depends, HTTPException, status, Query
+from fastapi import APIRouter, Depends, HTTPException, status, Query, File, UploadFile, Form
 from sqlalchemy.orm import Session
 from sqlalchemy import desc
 from typing import Dict, Any, List, Optional
+import shutil
+import os
 
 from database import get_db
-from app.models import Post, User
+from app.models import Post, User, Like, Reply
 from app.schemas import PostCreate, PostResponse, PostsResponse
 from app.utils.auth import get_current_user, get_current_active_user, get_current_user_optional
 
 router = APIRouter(tags=["posts"])
 
+UPLOAD_DIR = "uploads"
+os.makedirs(UPLOAD_DIR, exist_ok=True)
+
 @router.post("/posts", response_model=PostResponse, status_code=status.HTTP_201_CREATED)
 async def create_post(
-    post_data: PostCreate,
+    content: str = Form(...),
+    image: Optional[UploadFile] = File(None),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
     """投稿作成エンドポイント"""
-    if not post_data.content or not post_data.content.strip():
+    if not content or not content.strip():
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="投稿内容は必須です"
         )
     
-    if len(post_data.content) > 1000:
+    if len(content) > 1000:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="投稿内容は1000文字以内で入力してください"
         )
     
+    image_url = None
+    if image:
+        file_path = os.path.join(UPLOAD_DIR, image.filename)
+        with open(file_path, "wb") as buffer:
+            shutil.copyfileobj(image.file, buffer)
+        image_url = f"/{file_path}"
+
     try:
         post = Post(
-            content=post_data.content.strip(),
-            user_id=current_user.id
+            content=content.strip(),
+            user_id=current_user.id,
+            image_url=image_url
         )
         
         db.add(post)
         db.commit()
         db.refresh(post)
         
-        # レスポンスを作成してauthor_usernameを含める
-        response_data = {
-            "id": post.id,
-            "content": post.content,
-            "user_id": post.user_id,
-            "author_username": post.author.username,
-            "created_at": post.created_at
-        }
-        
-        return PostResponse(**response_data)
+        return post
         
     except Exception as e:
         db.rollback()
@@ -66,27 +71,23 @@ async def get_posts(
 ):
     """投稿一覧取得エンドポイント"""
     try:
-        # 総投稿数
         total = db.query(Post).count()
-        
-        # 総ページ数
         pages = (total + per_page - 1) // per_page
         
-        # 投稿の取得（作成日時で降順ソート）
         posts = db.query(Post).order_by(desc(Post.created_at)).offset(
             (page - 1) * per_page
         ).limit(per_page).all()
         
-        # レスポンスデータの作成
+        liked_post_ids = set()
+        if current_user:
+            likes = db.query(Like.post_id).filter(Like.user_id == current_user.id).all()
+            liked_post_ids = {like.post_id for like in likes}
+
         post_responses = []
         for post in posts:
-            post_data = {
-                "id": post.id,
-                "content": post.content,
-                "user_id": post.user_id,
-                "author_username": post.author.username,
-                "created_at": post.created_at
-            }
+            post_data = post.to_dict()
+            post_data['is_liked_by_current_user'] = post.id in liked_post_ids
+            post_data['replies'] = [reply.to_dict() for reply in post.replies]
             post_responses.append(PostResponse(**post_data))
         
         return PostsResponse(
@@ -99,7 +100,7 @@ async def get_posts(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="投稿の取得に失敗しました"
+            detail=f"投稿の取得に失敗しました: {e}"
         )
 
 @router.get("/posts/{post_id}", response_model=PostResponse)
@@ -117,16 +118,17 @@ async def get_post(
             detail="投稿が見つかりません"
         )
     
-    # レスポンスを作成してauthor_usernameを含める
-    response_data = {
-        "id": post.id,
-        "content": post.content,
-        "user_id": post.user_id,
-        "author_username": post.author.username,
-        "created_at": post.created_at
-    }
+    liked_post_ids = set()
+    if current_user:
+        likes = db.query(Like.post_id).filter(Like.user_id == current_user.id, Like.post_id == post_id).first()
+        if likes:
+            liked_post_ids.add(likes.post_id)
+
+    post_data = post.to_dict()
+    post_data['is_liked_by_current_user'] = post.id in liked_post_ids
+    post_data['replies'] = [reply.to_dict() for reply in post.replies]
     
-    return PostResponse(**response_data)
+    return PostResponse(**post_data)
 
 @router.delete("/posts/{post_id}", response_model=Dict[str, str])
 async def delete_post(
@@ -143,7 +145,6 @@ async def delete_post(
             detail="投稿が見つかりません"
         )
     
-    # 投稿の所有者のみ削除可能
     if post.user_id != current_user.id:
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
@@ -165,14 +166,13 @@ async def delete_post(
 
 @router.get("/posts/user/{user_id}", response_model=PostsResponse)
 async def get_user_posts(
-    user_id: int,
+    user_id: str,
     page: int = Query(1, ge=1, description="ページ番号"),
     per_page: int = Query(20, ge=1, le=100, description="1ページあたりの投稿数"),
     current_user: Optional[User] = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
     """特定のユーザーの投稿一覧取得エンドポイント"""
-    # ユーザーの存在確認
     user = db.query(User).filter(User.id == user_id).first()
     if not user:
         raise HTTPException(
@@ -181,27 +181,24 @@ async def get_user_posts(
         )
     
     try:
-        # 総投稿数
         total = db.query(Post).filter(Post.user_id == user_id).count()
-        
-        # 総ページ数
         pages = (total + per_page - 1) // per_page
         
-        # 投稿の取得（作成日時で降順ソート）
         posts = db.query(Post).filter(Post.user_id == user_id).order_by(desc(Post.created_at)).offset(
             (page - 1) * per_page
         ).limit(per_page).all()
         
-        # レスポンスデータの作成
+        liked_post_ids = set()
+        if current_user:
+            user_posts_ids = [post.id for post in posts]
+            likes = db.query(Like.post_id).filter(Like.user_id == current_user.id, Like.post_id.in_(user_posts_ids)).all()
+            liked_post_ids = {like.post_id for like in likes}
+
         post_responses = []
         for post in posts:
-            post_data = {
-                "id": post.id,
-                "content": post.content,
-                "user_id": post.user_id,
-                "author_username": post.author.username,
-                "created_at": post.created_at
-            }
+            post_data = post.to_dict()
+            post_data['is_liked_by_current_user'] = post.id in liked_post_ids
+            post_data['replies'] = [reply.to_dict() for reply in post.replies]
             post_responses.append(PostResponse(**post_data))
         
         return PostsResponse(
@@ -214,5 +211,5 @@ async def get_user_posts(
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail="ユーザー投稿の取得に失敗しました"
+            detail=f"ユーザー投稿の取得に失敗しました: {e}"
         )
