@@ -123,10 +123,14 @@ async def get_nearby_ramen_shops_optimized(
 
 
 @router.get("/ramen", response_model=RamenShopsResponse)
-async def get_all_ramen_shops(db: Session = Depends(get_db)):
-    """全てのラーメン店を返すエンドポイント"""
+async def get_all_ramen_shops(keyword: Optional[str] = Query(None, description="店名での検索キーワード"), db: Session = Depends(get_db)):
+    """全てのラーメン店を返す、またはキーワードで店名を検索するエンドポイント"""
     try:
-        all_shops = db.query(RamenShop).all()
+        query = db.query(RamenShop)
+        if keyword:
+            query = query.filter(RamenShop.name.ilike(f"%{keyword}%"))
+
+        all_shops = query.all()
         shop_responses = [RamenShopResponse(**shop.to_dict()) for shop in all_shops]
         return RamenShopsResponse(shops=shop_responses, total=len(shop_responses))
     except Exception as e:
