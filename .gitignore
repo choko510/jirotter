@@ -1,0 +1,32 @@
+# Python
+__pycache__/
+*.py[cod]
+*.sqlite3
+*.db
+*.pyo
+*.pyd
+*.env
+.env
+.venv/
+venv/
+# VSCode
+.vscode/
+# Node
+node_modules/
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+# OS
+.DS_Store
+Thumbs.db
+# Roo Code
+.roomodes
+
+# その他
+*.log
+
+.idx
+
+*.nix
+
+.pytest_cache

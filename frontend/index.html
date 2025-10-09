@@ -1,0 +1,609 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ラーメンSNS</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <!-- Maplibre GL -->
+    <link href="https://unpkg.com/maplibre-gl/dist/maplibre-gl.css" rel="stylesheet" />
+    <script src="https://unpkg.com/maplibre-gl/dist/maplibre-gl.js"></script>
+
+    <!-- Maplibre GL Leaflet  -->
+    <script src="https://unpkg.com/@maplibre/maplibre-gl-leaflet/leaflet-maplibre-gl.js"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: #ffffff;
+            color: #1a1a1a;
+        }
+
+        .container {
+            display: grid;
+            grid-template-columns: 260px 1fr 350px;
+            max-width: 1400px;
+            margin: 0 auto;
+            min-height: 100vh;
+        }
+
+        /* スマホ対応 */
+        @media (max-width: 768px) {
+            .container {
+                grid-template-columns: 1fr;
+                padding-bottom: 60px;
+            }
+
+            .left-sidebar,
+            .right-sidebar {
+                display: none;
+            }
+
+            .main-content {
+                max-width: 100%;
+                border-right: none;
+            }
+        }
+
+        /* 左サイドバー */
+        .left-sidebar {
+            border-right: 1px solid #e0e0e0;
+            padding: 20px;
+            position: sticky;
+            top: 0;
+            height: 100vh;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            padding: 12px 16px;
+            margin-bottom: 8px;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: background 0.2s;
+            font-size: 18px;
+        }
+
+        .nav-item:hover {
+            background: #f5f5f5;
+        }
+
+        .nav-item.active {
+            background: rgba(212, 165, 116, 0.1);
+            color: #d4a574;
+            font-weight: bold;
+        }
+
+        .nav-icon {
+            width: 26px;
+            height: 26px;
+        }
+
+        .user-profile {
+            margin-top: auto;
+            padding-top: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .profile-icon {
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            background: #d4a574;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 24px;
+        }
+
+        /* メインカラム */
+        .main-content {
+            border-right: 1px solid #e0e0e0;
+            max-width: 600px;
+            background: #ffffff;
+        }
+
+        .main-header {
+            position: sticky;
+            top: 0;
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid #e0e0e0;
+            z-index: 10;
+        }
+
+        .tabs {
+            display: flex;
+        }
+
+        .tab {
+            flex: 1;
+            padding: 16px;
+            text-align: center;
+            cursor: pointer;
+            transition: background 0.2s;
+            position: relative;
+            font-weight: 500;
+        }
+
+        .tab:hover {
+            background: #f5f5f5;
+        }
+
+        .tab.active {
+            font-weight: bold;
+        }
+
+        .tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60px;
+            height: 4px;
+            background: #d4a574;
+            border-radius: 2px;
+        }
+
+        /* 右サイドバー */
+        .right-sidebar {
+            padding: 20px;
+            background: #ffffff;
+        }
+
+        .search-box {
+            background: #f5f5f5;
+            border-radius: 30px;
+            padding: 12px 20px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .search-input {
+            background: transparent;
+            border: none;
+            color: #1a1a1a;
+            outline: none;
+            flex: 1;
+            font-size: 15px;
+        }
+
+        .search-input::placeholder {
+            color: #999;
+        }
+
+        .filters {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+            flex-wrap: wrap;
+        }
+
+        .filter-btn {
+            background: #ffffff;
+            border: 1px solid #e0e0e0;
+            color: #1a1a1a;
+            padding: 8px 16px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-size: 14px;
+        }
+
+        .filter-btn:hover {
+            background: #d4a574;
+            border-color: #d4a574;
+            color: #ffffff;
+        }
+
+        .filter-btn.active {
+            background: #d4a574;
+            border-color: #d4a574;
+            color: #ffffff;
+        }
+
+        .search-results {
+            background: #f9f9f9;
+            border-radius: 16px;
+            overflow: hidden;
+            border: 1px solid #e0e0e0;
+        }
+
+        .results-header {
+            padding: 16px;
+            font-weight: bold;
+            font-size: 18px;
+            border-bottom: 1px solid #e0e0e0;
+            background: #ffffff;
+        }
+
+        /* コンテンツエリア */
+        .content-area {
+            min-height: calc(100vh - 60px);
+        }
+
+        /* ボトムナビゲーション（モバイル用） */
+        .bottom-nav {
+            display: none;
+            position: fixed;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            background: #ffffff;
+            border-top: 1px solid #e0e0e0;
+            padding: 8px 0;
+            z-index: 100;
+        }
+
+        .bottom-nav-content {
+            display: flex;
+            justify-content: space-around;
+            align-items: center;
+            max-width: 600px;
+            margin: 0 auto;
+        }
+
+        .bottom-nav-item {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 4px;
+            padding: 8px 16px;
+            cursor: pointer;
+            transition: color 0.2s;
+            color: #666;
+            text-decoration: none;
+            font-size: 12px;
+        }
+
+        .bottom-nav-item.active {
+            color: #d4a574;
+        }
+
+        .bottom-nav-icon {
+            font-size: 24px;
+        }
+
+        /* モバイルメニュー */
+        .mobile-menu {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.5);
+            z-index: 999;
+        }
+
+        .mobile-menu.show {
+            display: block;
+        }
+
+        .mobile-menu-content {
+            position: absolute;
+            top: 0;
+            left: 0;
+            bottom: 0;
+            width: 80%;
+            max-width: 300px;
+            background: #ffffff;
+            padding: 20px;
+            overflow-y: auto;
+            transform: translateX(-100%);
+            transition: transform 0.3s ease;
+        }
+
+        .mobile-menu.show .mobile-menu-content {
+            transform: translateX(0);
+        }
+
+        .mobile-menu-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 30px;
+            padding-bottom: 20px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .mobile-menu-close {
+            background: transparent;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+            color: #1a1a1a;
+            padding: 0;
+        }
+
+        .mobile-menu-profile {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 20px;
+        }
+
+        .mobile-menu-avatar {
+            width: 48px;
+            height: 48px;
+            border-radius: 50%;
+            background: #d4a574;
+        }
+
+        .mobile-menu-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        /* モバイル検索 */
+        .mobile-search {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: #ffffff;
+            z-index: 999;
+            flex-direction: column;
+        }
+
+        .mobile-search.show {
+            display: flex;
+        }
+
+        .mobile-search-header {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .mobile-search-back {
+            background: transparent;
+            border: none;
+            font-size: 24px;
+            cursor: pointer;
+            color: #1a1a1a;
+            padding: 0;
+        }
+
+        .mobile-search-input {
+            flex: 1;
+            background: #f5f5f5;
+            border: 1px solid #e0e0e0;
+            border-radius: 20px;
+            padding: 8px 16px;
+            font-size: 15px;
+            outline: none;
+        }
+
+        .mobile-search-content {
+            flex: 1;
+            overflow-y: auto;
+            padding: 16px;
+        }
+
+        @media (max-width: 768px) {
+            .bottom-nav {
+                display: block;
+            }
+
+            .left-sidebar {
+                display: none;
+            }
+
+            .left-sidebar.show {
+                display: flex;
+                position: fixed;
+                top: 0;
+                left: 0;
+                bottom: 0;
+                width: 80%;
+                max-width: 300px;
+                background: #ffffff;
+                z-index: 1000;
+                transform: translateX(0);
+                box-shadow: 2px 0 10px rgba(0, 0, 0, 0.1);
+            }
+
+            .main-header {
+                position: sticky;
+                display: flex;
+                align-items: center;
+                padding: 0 16px;
+            }
+
+            .mobile-menu-btn {
+                background: transparent;
+                border: none;
+                font-size: 24px;
+                cursor: pointer;
+                color: #1a1a1a;
+                padding: 8px;
+                margin-right: 12px;
+            }
+
+            .tabs {
+                flex: 1;
+            }
+
+            .tab {
+                padding: 16px 8px;
+                font-size: 15px;
+            }
+        }
+
+        /* ローディング表示 */
+        .loading {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+            font-size: 18px;
+            color: #666;
+        }
+
+        /* エラー表示 */
+        .error {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 200px;
+            font-size: 18px;
+            color: #d32f2f;
+            text-align: center;
+            padding: 0 20px;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <!-- 左サイドバー -->
+        <aside class="left-sidebar" id="leftSidebar">
+            <nav>
+                <div class="nav-item active" data-route="timeline">
+                    <div class="nav-icon"><i class="fas fa-home"></i></div>
+                    <span>ホーム</span>
+                </div>
+                <div class="nav-item" data-route="map">
+                    <div class="nav-icon"><i class="fas fa-map-marked-alt"></i></div>
+                    <span>MAP</span>
+                </div>
+                <div class="nav-item" data-route="waittime">
+                    <div class="nav-icon"><i class="fas fa-clock"></i></div>
+                    <span>待ち時間リスト</span>
+                </div>
+                <div class="nav-item" data-route="studio">
+                    <div class="nav-icon"><i class="fas fa-film"></i></div>
+                    <span>スタンプラリー</span>
+                </div>
+                <div class="nav-item" data-route="settings">
+                    <div class="nav-icon"><i class="fas fa-cog"></i></div>
+                    <span>設定</span>
+                </div>
+            </nav>
+
+            <div class="user-profile" id="userProfile">
+                <!-- ユーザープロフィールがここに表示される -->
+            </div>
+        </aside>
+
+        <!-- メインコンテンツ -->
+        <main class="main-content">
+            <header class="main-header">
+                <button class="mobile-menu-btn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+                <div class="tabs">
+                    <div class="tab active" data-tab="recommend">おすすめ</div>
+                    <div class="tab" data-tab="following">フォロー中</div>
+                </div>
+            </header>
+
+            <!-- コンテンツエリア -->
+            <div class="content-area" id="contentArea">
+                <!-- コンポーネントがここに読み込まれる -->
+                <div class="loading">読み込み中...</div>
+            </div>
+        </main>
+
+        <!-- 右サイドバー -->
+        <aside class="right-sidebar">
+            <div class="search-box">
+                <i class="fas fa-search"></i>
+                <input type="text" class="search-input" placeholder="店の名前で検索" id="searchInput">
+            </div>
+
+            <div class="filters">
+                <button class="filter-btn" data-filter="prefecture">都道府県</button>
+                <button class="filter-btn" data-filter="category">種類</button>
+                <button class="filter-btn" data-filter="period">期間</button>
+            </div>
+
+            <div class="search-results">
+                <div class="results-header">過去1週間</div>
+                <div id="shopList">
+                    <!-- 店舗リストがここに表示される -->
+                </div>
+            </div>
+        </aside>
+    </div>
+
+    <!-- ボトムナビゲーション（モバイル） -->
+    <nav class="bottom-nav">
+        <div class="bottom-nav-content">
+            <div class="bottom-nav-item active" data-route="timeline">
+                <div class="bottom-nav-icon"><i class="fas fa-home"></i></div>
+                <span>ホーム</span>
+            </div>
+            <div class="bottom-nav-item" data-route="search">
+                <div class="bottom-nav-icon"><i class="fas fa-search"></i></div>
+                <span>検索</span>
+            </div>
+            <div class="bottom-nav-item" data-route="notification">
+                <div class="bottom-nav-icon"><i class="fas fa-bell"></i></div>
+                <span>通知</span>
+            </div>
+            <div class="bottom-nav-item" data-route="profile">
+                <div class="bottom-nav-icon"><i class="fas fa-user"></i></div>
+                <span>プロフィール</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- サイドバーオーバーレイ（モバイル） -->
+    <div class="mobile-menu" id="sidebarOverlay" onclick="closeSidebarOnOverlay(event)"></div>
+
+    <!-- モバイル検索 -->
+    <div class="mobile-search" id="mobileSearch">
+        <div class="mobile-search-header">
+            <button class="mobile-search-back" onclick="closeMobileSearch()">←</button>
+            <input type="text" class="mobile-search-input" placeholder="店舗を検索..." id="mobileSearchInput">
+        </div>
+        <div class="mobile-search-content">
+            <div class="filters" style="margin-bottom: 20px;">
+                <button class="filter-btn" data-filter="prefecture">都道府県</button>
+                <button class="filter-btn" data-filter="category">種類</button>
+                <button class="filter-btn" data-filter="period">期間</button>
+            </div>
+            <div class="search-results">
+                <div class="results-header">過去1週間</div>
+                <div id="mobileShopList">
+                    <!-- 店舗リストがここに表示される -->
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- コンポーネント用スクリプト -->
+    <script src="js/router.js"></script>
+    <script src="js/components/timeline.js"></script>
+    <script src="js/components/comment.js"></script>
+    <script src="js/components/search.js"></script>
+    <script src="js/components/auth.js"></script>
+    <script src="js/components/map.js"></script>
+    <script src="js/components/waittime.js"></script>
+    <script src="js/components/studio.js"></script>
+    <script src="js/components/settings.js"></script>
+    <script src="js/app.js"></script>
+</body>
+</html>
