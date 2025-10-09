@@ -359,8 +359,8 @@ const Utils = {
         const defaultHeader = '<div class="results-header">過去1週間</div>';
 
         if (!query || query.trim() === '') {
-            if(shopList) shopList.innerHTML = defaultHeader;
-            if(mobileShopList) mobileShopList.innerHTML = '';
+            if (shopList) shopList.innerHTML = defaultHeader;
+            if (mobileShopList) mobileShopList.innerHTML = '';
             if (typeof MapComponent !== 'undefined' && MapComponent.state.map) {
                  MapComponent.updateMarkersWithSearchResults([]);
             }
