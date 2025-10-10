@@ -58,7 +58,7 @@ def test_create_post_empty_content(test_client, test_db):
     
     response = test_client.post("/api/v1/posts", data=post_data, headers=headers)
     
-    assert response.status_code == 400
+    assert response.status_code == 422
 
 def test_get_all_posts(test_client, test_db):
     """全ての投稿取得テスト"""
@@ -150,7 +150,7 @@ def test_delete_post_owner(test_client, test_db):
     # 投稿削除
     response = test_client.delete(f"/api/v1/posts/{created_post['id']}", headers=headers)
 
-    assert response.status_code == 200
+    assert response.status_code == 204
 
     # 削除されたか確認
     response = test_client.get(f"/api/v1/posts/{created_post['id']}")

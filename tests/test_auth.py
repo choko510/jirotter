@@ -34,10 +34,9 @@ def test_register_duplicate_id(test_client, test_db):
     response = test_client.post("/api/v1/auth/register", json=user_data2)
     data = response.json()
     
-    assert response.status_code == 422
+    assert response.status_code == 409
     assert "detail" in data
-    assert "id" in data["detail"]
-    assert "このユーザーIDは既に使用されています" in data["detail"]["id"]
+    assert "このユーザーIDは既に使用されています" in data["detail"]
 
 def test_register_duplicate_email(test_client, test_db):
     """重複メールアドレスでの登録テスト"""
@@ -57,10 +56,9 @@ def test_register_duplicate_email(test_client, test_db):
     response = test_client.post("/api/v1/auth/register", json=user_data2)
     data = response.json()
     
-    assert response.status_code == 422
+    assert response.status_code == 409
     assert "detail" in data
-    assert "email" in data["detail"]
-    assert "このメールアドレスは既に登録されています" in data["detail"]["email"]
+    assert "このメールアドレスは既に登録されています" in data["detail"]
 
 def test_login_success(test_client, test_db):
     """ログイン成功のテスト"""

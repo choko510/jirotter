@@ -14,20 +14,23 @@ async def like_post(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """いいね作成エンドポイント"""
+    """
+    投稿に「いいね」を追加します。
+    既にいいね済みの場合はエラーを返します。
+    """
     post = db.query(Post).filter(Post.id == post_id).first()
     if not post:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="投稿が見つかりません")
 
     like = db.query(Like).filter(Like.post_id == post_id, Like.user_id == current_user.id).first()
     if like:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Post already liked")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="この投稿はすでにいいね済みです")
 
-    like = Like(user_id=current_user.id, post_id=post_id)
-    db.add(like)
+    new_like = Like(user_id=current_user.id, post_id=post_id)
+    db.add(new_like)
     db.commit()
-    db.refresh(like)
-    return like
+    db.refresh(new_like)
+    return new_like
 
 @router.delete("/posts/{post_id}/like", status_code=status.HTTP_204_NO_CONTENT)
 async def unlike_post(
@@ -35,14 +38,18 @@ async def unlike_post(
     db: Session = Depends(get_db),
     current_user: User = Depends(get_current_active_user)
 ):
-    """いいね削除エンドポイント"""
+    """
+    投稿の「いいね」を取り消します。
+    いいねしていない投稿の場合はエラーを返します。
+    """
     post = db.query(Post).filter(Post.id == post_id).first()
     if not post:
-        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="投稿が見つかりません")
 
     like = db.query(Like).filter(Like.post_id == post_id, Like.user_id == current_user.id).first()
     if not like:
-        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Post not liked")
+        raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="この投稿はいいねしていません")
 
     db.delete(like)
     db.commit()
+    return None
