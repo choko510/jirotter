@@ -151,21 +151,16 @@ const AuthComponent = {
                 <div id="authMessage"></div>
                 
                 <form class="auth-form" id="authForm" onsubmit="AuthComponent.handleSubmit(event)">
+                    <div class="form-group">
+                        <label class="form-label">ユーザーID</label>
+                        <input type="text" class="form-input" id="id" placeholder="ユーザーIDを入力" required>
+                    </div>
                     ${view === 'register' ? `
-                        <div class="form-group">
-                            <label class="form-label">ユーザー名</label>
-                            <input type="text" class="form-input" id="username" placeholder="ユーザー名を入力" required>
-                        </div>
                         <div class="form-group">
                             <label class="form-label">メールアドレス</label>
                             <input type="email" class="form-input" id="email" placeholder="メールアドレスを入力" required>
                         </div>
-                    ` : `
-                        <div class="form-group">
-                            <label class="form-label">ユーザー名またはメールアドレス</label>
-                            <input type="text" class="form-input" id="username" placeholder="ユーザー名またはメールアドレスを入力" required>
-                        </div>
-                    `}
+                    ` : ''}
                     <div class="form-group">
                         <label class="form-label">パスワード</label>
                         <input type="password" class="form-input" id="password" placeholder="パスワードを入力" required>
@@ -185,7 +180,7 @@ const AuthComponent = {
         `;
 
         // フォームにフォーカス
-        document.getElementById('username')?.focus();
+        document.getElementById('id')?.focus();
     },
 
     // フォーム送信処理
@@ -194,10 +189,10 @@ const AuthComponent = {
         
         if (this.state.isSubmitting) return;
         
-        const username = document.getElementById('username').value.trim();
+        const userId = document.getElementById('id').value.trim();
         const password = document.getElementById('password').value.trim();
         
-        if (!username || !password) {
+        if (!userId || !password) {
             this.showMessage('すべての項目を入力してください', 'error');
             return;
         }
@@ -208,7 +203,7 @@ const AuthComponent = {
         try {
             let result;
             if (this.state.currentView === 'login') {
-                result = await API.login(username, password);
+                result = await API.login(userId, password);
             } else {
                 const email = document.getElementById('email').value.trim();
                 if (!email) {
@@ -217,11 +212,12 @@ const AuthComponent = {
                     document.getElementById('authSubmitBtn').disabled = false;
                     return;
                 }
-                result = await API.register(username, email, password);
+                result = await API.register(userId, email, password);
             }
             
             if (result.success) {
-                API.setCookie('authToken', result.token);
+                API.setCookie('authToken', result.token.access_token);
+                API.setCookie('user', JSON.stringify(result.token.user));
                 this.showMessage(`${this.state.currentView === 'login' ? 'ログイン' : '登録'}が完了しました！`, 'success');
                 
                 // ユーザープロフィールUIを更新
@@ -259,10 +255,10 @@ const AuthComponent = {
             </div>
         `;
         
-        // 3秒後にメッセージを非表示
+        // 5秒後にメッセージを非表示
         setTimeout(() => {
             messageContainer.innerHTML = '';
-        }, 3000);
+        }, 5000);
     },
 
     // ログインフォーム表示（グローバル関数）

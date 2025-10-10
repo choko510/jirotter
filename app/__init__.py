@@ -10,6 +10,9 @@ import os
 from app.routes.auth import router as auth_router
 from app.routes.posts import router as posts_router
 from app.routes.ramen import router as ramen_router, load_ramen_data_on_startup
+from app.routes.users import router as users_router
+from app.routes.likes import router as likes_router
+from app.routes.replies import router as replies_router
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -43,11 +46,15 @@ def create_app():
     
     # 静的ファイルの提供設定
     app.mount("/js", StaticFiles(directory="frontend/js"), name="js")
+    app.mount("/uploads", StaticFiles(directory="uploads"), name="uploads")
     
     # ルーターの登録
     app.include_router(auth_router, prefix=settings.API_V1_STR)
     app.include_router(posts_router, prefix=settings.API_V1_STR)
     app.include_router(ramen_router, prefix=settings.API_V1_STR)
+    app.include_router(users_router, prefix=settings.API_V1_STR)
+    app.include_router(likes_router, prefix=settings.API_V1_STR)
+    app.include_router(replies_router, prefix=settings.API_V1_STR)
     
     @app.get("/", response_class=HTMLResponse)
     async def read_index():

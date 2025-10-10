@@ -24,7 +24,7 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
     
     # ユーザー作成
     user = User(
-        username=user_data.username,
+        id=user_data.id,
         email=user_data.email
     )
     user.set_password(user_data.password)
@@ -35,7 +35,7 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
         db.refresh(user)
         
         # アクセストークンの発行
-        access_token = create_access_token(data={"sub": str(user.id)})
+        access_token = create_access_token(data={"sub": user.id})
         
         # ユーザーレスポンスの作成
         user_response = UserResponse.model_validate(user)
@@ -65,17 +65,17 @@ async def login(login_data: UserLogin, db: Session = Depends(get_db)):
         )
     
     # ユーザー認証
-    user = db.query(User).filter(User.username == login_data.username).first()
+    user = db.query(User).filter(User.id == login_data.id).first()
     
     if not user or not user.check_password(login_data.password):
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
-            detail="ユーザー名またはパスワードが正しくありません",
+            detail="ユーザーIDまたはパスワードが正しくありません",
             headers={"WWW-Authenticate": "Bearer"},
         )
     
     # アクセストークンの発行
-    access_token = create_access_token(data={"sub": str(user.id)})
+    access_token = create_access_token(data={"sub": user.id})
     
     # ユーザーレスポンスの作成
     user_response = UserResponse.model_validate(user)
