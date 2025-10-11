@@ -435,6 +435,42 @@ const Utils = {
 
 // グローバル関数（HTMLからの呼び出し用）
 window.toggleSidebar = Utils.toggleSidebar;
+
+// --- ダークモード対応 ---
+const Theme = {
+    apply() {
+        try {
+            const settings = JSON.parse(localStorage.getItem('appSettings'));
+            let theme = (settings && settings.theme) ? settings.theme : 'system';
+            let darkModeEnabled = false;
+
+            if (theme === 'system') {
+                darkModeEnabled = window.matchMedia('(prefers-color-scheme: dark)').matches;
+            } else if (theme === 'dark') {
+                darkModeEnabled = true;
+            }
+
+            if (darkModeEnabled) {
+                document.documentElement.classList.add('dark-mode');
+            } else {
+                document.documentElement.classList.remove('dark-mode');
+            }
+        } catch (e) {
+            console.error("Failed to apply theme", e);
+            // フォールバックとしてシステムのテーマ設定を利用
+            if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                document.documentElement.classList.add('dark-mode');
+            }
+        }
+    },
+    init() {
+        this.apply();
+        // OSのテーマ変更をリッスン
+        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', this.apply);
+    }
+};
+
+window.Theme = Theme; // グローバルに公開
 // ... (その他のグローバル関数は変更なし)
 
 // イベントリスナーの設定
@@ -447,6 +483,7 @@ document.addEventListener('DOMContentLoaded', function() {
 // アプリケーションの初期化
 document.addEventListener('DOMContentLoaded', function() {
     // ... (変更なし)
+    Theme.init(); // テーマの初期化
     // ユーザープロフィールUIの初期化
     Utils.updateUserProfileUI();
 });

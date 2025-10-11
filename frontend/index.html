@@ -475,6 +475,84 @@
             text-align: center;
             padding: 0 20px;
         }
+
+        /* ダークモード */
+        html.dark-mode, .dark-mode body {
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+        }
+
+        .dark-mode .left-sidebar,
+        .dark-mode .main-content,
+        .dark-mode .right-sidebar {
+            border-color: #333;
+        }
+
+        .dark-mode .nav-item:hover {
+            background: #2a2a2a;
+        }
+
+        .dark-mode .nav-item.active {
+            background: rgba(212, 165, 116, 0.1);
+            color: #d4a574;
+        }
+
+        .dark-mode .main-content,
+        .dark-mode .right-sidebar,
+        .dark-mode .bottom-nav,
+        .dark-mode .mobile-menu-content,
+        .dark-mode .mobile-search {
+            background-color: #1a1a1a;
+        }
+
+        .dark-mode .main-header {
+            background: rgba(26, 26, 26, 0.85);
+            border-bottom-color: #333;
+        }
+
+        .dark-mode .tab:hover {
+            background: #2a2a2a;
+        }
+
+        .dark-mode .tab.active {
+            color: #d4a574;
+        }
+
+        .dark-mode .search-box {
+            background: #2a2a2a;
+            border-color: #333;
+        }
+
+        .dark-mode .search-input {
+            color: #e0e0e0;
+        }
+
+        .dark-mode .search-input::placeholder {
+            color: #888;
+        }
+
+        .dark-mode .filter-btn {
+            background: #2a2a2a;
+            border-color: #333;
+            color: #e0e0e0;
+        }
+
+        .dark-mode .filter-btn:hover,
+        .dark-mode .filter-btn.active {
+            background: #d4a574;
+            border-color: #d4a574;
+            color: #1a1a1a;
+        }
+
+        .dark-mode .search-results {
+            background: #2a2a2a;
+            border-color: #333;
+        }
+
+        .dark-mode .results-header {
+            background: #1a1a1a;
+            border-bottom-color: #333;
+        }
     </style>
 </head>
 <body>

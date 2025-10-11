@@ -5,14 +5,28 @@ const SettingsComponent = {
         user: null,
         settings: {
             notifications: true,
-            darkMode: false,
+            theme: 'system', // 'light', 'dark', 'system'
             locationSharing: true,
             autoRefresh: true
         }
     },
 
+    // 設定の読み込み
+    loadSettings() {
+        try {
+            const savedSettings = JSON.parse(localStorage.getItem('appSettings'));
+            if (savedSettings) {
+                // 保存された設定を現在の状態にマージ
+                Object.assign(this.state.settings, savedSettings);
+            }
+        } catch (e) {
+            console.error("Failed to load settings", e);
+        }
+    },
+
     // レンダリング
     render(params = []) {
+        this.loadSettings(); // レンダリング前に設定を読み込む
         const contentArea = document.getElementById('contentArea');
         
         contentArea.innerHTML = `
@@ -289,13 +303,15 @@ const SettingsComponent = {
                 
                 <div class="settings-section">
                     <div class="settings-section-header">表示設定</div>
-                    <div class="settings-item" onclick="SettingsComponent.toggleSetting('darkMode')">
+                    <div class="settings-item">
                         <div class="settings-item-left">
-                            <div class="settings-item-title">ダークモード</div>
-                            <div class="settings-item-desc">画面の色を暗くする</div>
+                            <div class="settings-item-title">テーマ設定</div>
+                            <div class="settings-item-desc">アプリの表示テーマを選択</div>
                         </div>
-                        <div class="settings-item-right">
-                            <div class="toggle-switch ${this.state.settings.darkMode ? 'active' : ''}" id="darkMode-toggle"></div>
+                        <div class="settings-item-right" style="gap: 12px;">
+                            <label><input type="radio" name="theme" value="light" ${this.state.settings.theme === 'light' ? 'checked' : ''} onclick="SettingsComponent.setTheme('light')"> ライト</label>
+                            <label><input type="radio" name="theme" value="dark" ${this.state.settings.theme === 'dark' ? 'checked' : ''} onclick="SettingsComponent.setTheme('dark')"> ダーク</label>
+                            <label><input type="radio" name="theme" value="system" ${this.state.settings.theme === 'system' ? 'checked' : ''} onclick="SettingsComponent.setTheme('system')"> システム</label>
                         </div>
                     </div>
                     <div class="settings-item" onclick="SettingsComponent.showLanguageSettings()">
@@ -366,9 +382,16 @@ const SettingsComponent = {
         if (toggleElement) {
             toggleElement.classList.toggle('active');
         }
-        
-        // 設定を保存（実際の実装ではlocalStorageやAPIに保存）
         this.saveSettings();
+    },
+
+    // テーマ設定
+    setTheme(theme) {
+        this.state.settings.theme = theme;
+        this.saveSettings();
+        if (window.Theme) {
+            window.Theme.apply();
+        }
     },
 
     // 設定の保存
@@ -423,3 +446,6 @@ const SettingsComponent = {
 
 // コンポーネントをルーターに登録
 router.register('settings', SettingsComponent);
+
+// HTMLから呼び出せるようにグローバルに公開
+window.SettingsComponent = SettingsComponent;
