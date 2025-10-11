@@ -24,13 +24,18 @@ def get_password_hash(password: str) -> str:
     # bcryptは72バイトまでのパスワードしかサポートしていないため、
     # 長いパスワードは自動的に切り詰める
     if isinstance(password, str):
-        password = password.encode('utf-8')
+        # 文字列の場合はUTF-8エンコード
+        password_bytes = password.encode('utf-8')
+    else:
+        # バイト列の場合はそのまま使用
+        password_bytes = password
     
     # パスワードが72バイトを超える場合は切り詰める
-    if len(password) > 72:
-        password = password[:72]
+    if len(password_bytes) > 72:
+        password_bytes = password_bytes[:72]
     
-    return pwd_context.hash(password.decode('utf-8') if isinstance(password, bytes) else password)
+    # 切り詰めたバイト列を文字列に戻してハッシュ化
+    return pwd_context.hash(password_bytes.decode('utf-8'))
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """JWTアクセストークンの作成"""

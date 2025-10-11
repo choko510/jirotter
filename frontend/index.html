@@ -354,6 +354,11 @@
             gap: 8px;
         }
 
+        /* モバイルメニューボタン */
+        .mobile-menu-btn {
+            display: none;
+        }
+
         /* モバイル検索 */
         .mobile-search {
             display: none;
@@ -442,6 +447,7 @@
                 color: #1a1a1a;
                 padding: 8px;
                 margin-right: 12px;
+                display: block;
             }
 
             .tabs {
@@ -649,7 +655,7 @@
     </nav>
 
     <!-- サイドバーオーバーレイ（モバイル） -->
-    <div class="mobile-menu" id="sidebarOverlay" onclick="closeSidebarOnOverlay(event)"></div>
+    <div class="mobile-menu" id="sidebarOverlay" onclick="Utils.closeSidebarOnOverlay(event)"></div>
 
     <!-- モバイル検索 -->
     <div class="mobile-search" id="mobileSearch">

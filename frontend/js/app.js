@@ -449,6 +449,7 @@ const Utils = {
 
 // グローバル関数（HTMLからの呼び出し用）
 window.toggleSidebar = Utils.toggleSidebar;
+window.closeSidebarOnOverlay = Utils.closeSidebarOnOverlay;
 
 // --- ダークモード対応 ---
 const Theme = {

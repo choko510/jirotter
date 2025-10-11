@@ -29,6 +29,19 @@ const MapComponent = {
     async render(params = []) {
         const contentArea = document.getElementById('contentArea');
         
+        // マップ画面では右サイドバーを非表示にし、メインコンテンツを広げる
+        const rightSidebar = document.querySelector('.right-sidebar');
+        const mainContent = document.querySelector('.main-content');
+        
+        if (rightSidebar) {
+            rightSidebar.style.display = 'none';
+        }
+        
+        if (mainContent) {
+            mainContent.style.maxWidth = '100%';
+            mainContent.style.borderRight = 'none';
+        }
+        
         const mainHeader = document.querySelector('.main-header');
         const isHeaderVisible = mainHeader && mainHeader.style.display !== 'none';
         const mapHeight = isHeaderVisible ? 'calc(100vh - 60px)' : '100vh';
