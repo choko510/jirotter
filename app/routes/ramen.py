@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func, cast, Float
+from sqlalchemy import func, cast, Float, or_
 from typing import List, Optional
 import math
 import csv
@@ -61,6 +61,7 @@ async def get_nearby_ramen_shops_optimized(
     latitude: float = Query(..., description="緯度"),
     longitude: float = Query(..., description="経度"),
     radius_km: float = Query(5.0, ge=0.1, le=50.0, description="検索範囲（km）"),
+    shop_type: Optional[str] = Query(None, description="店舗タイプ (e.g., 'jiro')"),
     db: Session = Depends(get_db)
 ):
     """
@@ -97,9 +98,19 @@ async def get_nearby_ramen_shops_optimized(
         nearby_shops_query = (
             db.query(RamenShop, distance_col)
               .filter(distance_col <= radius_km) # DB側でフィルタリング
-              .order_by(distance_col.asc())      # DB側でソート
         )
         
+        # 店舗タイプでの絞り込み
+        if shop_type == 'jiro':
+            nearby_shops_query = nearby_shops_query.filter(
+                or_(
+                    RamenShop.name.ilike('%二郎%'),
+                    RamenShop.name.ilike('%ジロー%')
+                )
+            )
+
+        nearby_shops_query = nearby_shops_query.order_by(distance_col.asc()) # DB側でソート
+
         results = nearby_shops_query.all()
         
         # レスポンスデータの作成
@@ -137,4 +148,23 @@ async def get_all_ramen_shops(keyword: Optional[str] = Query(None, description="
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"ラーメン店の取得に失敗しました: {str(e)}"
+        )
+
+@router.get("/ramen/{shop_id}", response_model=RamenShopResponse)
+async def get_ramen_shop_details(shop_id: int, db: Session = Depends(get_db)):
+    """指定されたIDのラーメン店の詳細を返すエンドポイント"""
+    try:
+        shop = db.query(RamenShop).filter(RamenShop.id == shop_id).first()
+        if not shop:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="指定されたラーメン店が見つかりません"
+            )
+        return RamenShopResponse.model_validate(shop)
+    except HTTPException as e:
+        raise e
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"ラーメン店の詳細取得に失敗しました: {str(e)}"
         )

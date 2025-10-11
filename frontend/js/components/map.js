@@ -17,7 +17,9 @@ const MapComponent = {
         // マーカー管理関連
         markerLayerGroup: null, // マーカーをグループ化して管理
         visibleMarkers: new Set(), // 現在表示されているマーカー
-        markerVisibilityRadius: 50 // マーカー表示半径（km）
+        markerVisibilityRadius: 50, // マーカー表示半径（km）
+        // フィルター関連
+        isJiroFilterActive: false
     },
 
     // 初期化
@@ -541,7 +543,12 @@ const MapComponent = {
             }
             
             // APIリクエストを作成
-            const apiRequest = fetch(`/api/v1/ramen/nearby?latitude=${lat}&longitude=${lng}&radius_km=${radius}`)
+            let apiUrl = `/api/v1/ramen/nearby?latitude=${lat}&longitude=${lng}&radius_km=${radius}`;
+            if (this.state.isJiroFilterActive) {
+                apiUrl += '&shop_type=jiro';
+            }
+
+            const apiRequest = fetch(apiUrl)
                 .then(response => {
                     if (!response.ok) {
                         throw new Error('ラーメン店データの取得に失敗しました');
@@ -870,29 +877,41 @@ const MapComponent = {
 
     // フィルター切り替え
     toggleFilter(type) {
-        const button = event.target;
-        button.classList.toggle('active');
-        
-        // 実際のフィルター処理はここに実装
-        console.log('フィルター切り替え:', type);
+        if (type === 'jiro') {
+            const button = event.target;
+            button.classList.toggle('active');
+
+            // 状態を更新
+            this.state.isJiroFilterActive = !this.state.isJiroFilterActive;
+
+            // キャッシュをクリア
+            this.state.shopCache.clear();
+
+            // マーカーをクリア
+            this.clearShopMarkers();
+
+            // 現在の地図の中心で店舗を再取得
+            if (this.state.map) {
+                const center = this.state.map.getCenter();
+                this.addNearbyShops({ lat: center.lat, lng: center.lng });
+            }
+        }
     },
 
     // 店舗詳細表示
     async showShopDetails(shopId) {
         try {
             // APIから店舗詳細を取得
-            const response = await fetch(`/api/v1/ramen`);
+            const response = await fetch(`/api/v1/ramen/${shopId}`);
             
             if (!response.ok) {
+                if (response.status === 404) {
+                    throw new Error('店舗が見つかりませんでした');
+                }
                 throw new Error('店舗詳細の取得に失敗しました');
             }
             
-            const data = await response.json();
-            const shop = data.shops.find(s => s.id === shopId);
-            
-            if (!shop) {
-                throw new Error('店舗が見つかりませんでした');
-            }
+            const shop = await response.json();
             
             // 店舗詳細情報を表示
             const details = `
