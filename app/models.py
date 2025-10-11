@@ -44,13 +44,6 @@ class User(Base):
         from app.utils.auth import verify_password
         return verify_password(password, self.password_hash)
     
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'username': self.username,
-            'email': self.email,
-            'created_at': self.created_at.isoformat()
-        }
 
 class Post(Base):
     """投稿モデル"""
@@ -74,18 +67,9 @@ class Post(Base):
     def likes_count(self):
         return len(self.likes)
 
-    def to_dict(self):
-        """投稿情報を辞書形式で返す"""
-        return {
-            'id': self.id,
-            'content': self.content,
-            'user_id': self.user_id,
-            'author_username': self.author.username,
-            'image_url': self.image_url,
-            'created_at': self.created_at.isoformat(),
-            'likes_count': len(self.likes),
-            'replies_count': len(self.replies)
-        }
+    @property
+    def replies_count(self):
+        return len(self.replies)
 
 class Follow(Base):
     """フォローモデル"""
@@ -114,16 +98,6 @@ class Reply(Base):
     post_id = Column(Integer, ForeignKey('posts.id'), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'content': self.content,
-            'user_id': self.user_id,
-            'author_username': self.author.username,
-            'post_id': self.post_id,
-            'created_at': self.created_at.isoformat()
-        }
-
 class RamenShop(Base):
     """ラーメン店モデル"""
     __tablename__ = 'ramen_shops'
@@ -136,15 +110,3 @@ class RamenShop(Base):
     seats = Column(String(255))
     latitude = Column(Float, nullable=False)
     longitude = Column(Float, nullable=False)
-    
-    def to_dict(self):
-        return {
-            'id': self.id,
-            'name': self.name,
-            'address': self.address,
-            'business_hours': self.business_hours,
-            'closed_day': self.closed_day,
-            'seats': self.seats,
-            'latitude': self.latitude,
-            'longitude': self.longitude
-        }

@@ -105,9 +105,9 @@ async def get_nearby_ramen_shops_optimized(
         # レスポンスデータの作成
         shop_responses = []
         for shop, distance in results:
-            shop_dict = shop.to_dict() # to_dict()はモデルに実装されていると仮定
-            shop_dict['distance'] = round(distance, 2)
-            shop_responses.append(RamenShopResponse(**shop_dict))
+            shop_response = RamenShopResponse.model_validate(shop)
+            shop_response.distance = round(distance, 2)
+            shop_responses.append(shop_response)
 
         return RamenShopsResponse(
             shops=shop_responses,
@@ -131,7 +131,7 @@ async def get_all_ramen_shops(keyword: Optional[str] = Query(None, description="
             query = query.filter(RamenShop.name.ilike(f"%{keyword}%"))
 
         all_shops = query.all()
-        shop_responses = [RamenShopResponse(**shop.to_dict()) for shop in all_shops]
+        shop_responses = [RamenShopResponse.model_validate(shop) for shop in all_shops]
         return RamenShopsResponse(shops=shop_responses, total=len(shop_responses))
     except Exception as e:
         raise HTTPException(

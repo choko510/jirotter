@@ -73,6 +73,7 @@ class PostResponse(PostBase):
     image_url: Optional[str] = None
     created_at: datetime
     likes_count: int
+    replies_count: int
     replies: List[ReplyResponse] = []
     is_liked_by_current_user: bool = False
 

@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query, File, UploadFile, Form
-from sqlalchemy.orm import Session
-from sqlalchemy import desc
+from sqlalchemy.orm import Session, joinedload
+from sqlalchemy import desc, func
 from typing import Dict, Any, List, Optional
 import shutil
 import os
@@ -74,21 +74,49 @@ async def get_posts(
         total = db.query(Post).count()
         pages = (total + per_page - 1) // per_page
         
-        posts = db.query(Post).order_by(desc(Post.created_at)).offset(
+        # N+1問題を解決するためにeager loadingを使用
+        posts_query = db.query(Post).options(
+            joinedload(Post.author),
+            joinedload(Post.replies).joinedload(Reply.author)
+        )
+
+        posts = posts_query.order_by(desc(Post.created_at)).offset(
             (page - 1) * per_page
         ).limit(per_page).all()
         
+        post_ids = [post.id for post in posts]
+
+        # いいね数を一括で取得
+        likes_counts = db.query(
+            Like.post_id, func.count(Like.id).label('likes_count')
+        ).filter(Like.post_id.in_(post_ids)).group_by(Like.post_id).all()
+        likes_map = {post_id: count for post_id, count in likes_counts}
+
+        # 現在のユーザーがいいねした投稿IDを一括で取得
         liked_post_ids = set()
         if current_user:
-            likes = db.query(Like.post_id).filter(Like.user_id == current_user.id).all()
-            liked_post_ids = {like.post_id for like in likes}
+            user_likes = db.query(Like.post_id).filter(
+                Like.user_id == current_user.id,
+                Like.post_id.in_(post_ids)
+            ).all()
+            liked_post_ids = {like.post_id for like in user_likes}
 
+        # Pydanticモデルに直接マッピング
         post_responses = []
         for post in posts:
-            post_data = post.to_dict()
-            post_data['is_liked_by_current_user'] = post.id in liked_post_ids
-            post_data['replies'] = [reply.to_dict() for reply in post.replies]
-            post_responses.append(PostResponse(**post_data))
+            response_data = {
+                "id": post.id,
+                "content": post.content,
+                "user_id": post.user_id,
+                "author_username": post.author.username,
+                "image_url": post.image_url,
+                "created_at": post.created_at,
+                "likes_count": likes_map.get(post.id, 0),
+                "replies_count": len(post.replies),
+                "replies": post.replies,
+                "is_liked_by_current_user": post.id in liked_post_ids,
+            }
+            post_responses.append(PostResponse.model_validate(response_data))
         
         return PostsResponse(
             posts=post_responses,
@@ -110,7 +138,10 @@ async def get_post(
     db: Session = Depends(get_db)
 ):
     """特定の投稿取得エンドポイント"""
-    post = db.query(Post).filter(Post.id == post_id).first()
+    post = db.query(Post).options(
+        joinedload(Post.author),
+        joinedload(Post.replies).joinedload(Reply.author)
+    ).filter(Post.id == post_id).first()
     
     if not post:
         raise HTTPException(
@@ -118,17 +149,31 @@ async def get_post(
             detail="投稿が見つかりません"
         )
     
-    liked_post_ids = set()
-    if current_user:
-        likes = db.query(Like.post_id).filter(Like.user_id == current_user.id, Like.post_id == post_id).first()
-        if likes:
-            liked_post_ids.add(likes.post_id)
+    # いいね数を取得
+    likes_count = db.query(Like).filter(Like.post_id == post_id).count()
 
-    post_data = post.to_dict()
-    post_data['is_liked_by_current_user'] = post.id in liked_post_ids
-    post_data['replies'] = [reply.to_dict() for reply in post.replies]
+    # 現在のユーザーがいいねしているか
+    is_liked = False
+    if current_user:
+        is_liked = db.query(Like).filter(
+            Like.user_id == current_user.id,
+            Like.post_id == post_id
+        ).first() is not None
+
+    response_data = {
+        "id": post.id,
+        "content": post.content,
+        "user_id": post.user_id,
+        "author_username": post.author.username,
+        "image_url": post.image_url,
+        "created_at": post.created_at,
+        "likes_count": likes_count,
+        "replies_count": len(post.replies),
+        "replies": post.replies,
+        "is_liked_by_current_user": is_liked,
+    }
     
-    return PostResponse(**post_data)
+    return PostResponse.model_validate(response_data)
 
 @router.delete("/posts/{post_id}", response_model=Dict[str, str])
 async def delete_post(
@@ -184,22 +229,45 @@ async def get_user_posts(
         total = db.query(Post).filter(Post.user_id == user_id).count()
         pages = (total + per_page - 1) // per_page
         
-        posts = db.query(Post).filter(Post.user_id == user_id).order_by(desc(Post.created_at)).offset(
+        posts_query = db.query(Post).filter(Post.user_id == user_id).options(
+            joinedload(Post.author),
+            joinedload(Post.replies).joinedload(Reply.author)
+        )
+
+        posts = posts_query.order_by(desc(Post.created_at)).offset(
             (page - 1) * per_page
         ).limit(per_page).all()
-        
+
+        post_ids = [post.id for post in posts]
+
+        likes_counts = db.query(
+            Like.post_id, func.count(Like.id).label('likes_count')
+        ).filter(Like.post_id.in_(post_ids)).group_by(Like.post_id).all()
+        likes_map = {post_id: count for post_id, count in likes_counts}
+
         liked_post_ids = set()
         if current_user:
-            user_posts_ids = [post.id for post in posts]
-            likes = db.query(Like.post_id).filter(Like.user_id == current_user.id, Like.post_id.in_(user_posts_ids)).all()
-            liked_post_ids = {like.post_id for like in likes}
+            user_likes = db.query(Like.post_id).filter(
+                Like.user_id == current_user.id,
+                Like.post_id.in_(post_ids)
+            ).all()
+            liked_post_ids = {like.post_id for like in user_likes}
 
         post_responses = []
         for post in posts:
-            post_data = post.to_dict()
-            post_data['is_liked_by_current_user'] = post.id in liked_post_ids
-            post_data['replies'] = [reply.to_dict() for reply in post.replies]
-            post_responses.append(PostResponse(**post_data))
+            response_data = {
+                "id": post.id,
+                "content": post.content,
+                "user_id": post.user_id,
+                "author_username": post.author.username,
+                "image_url": post.image_url,
+                "created_at": post.created_at,
+                "likes_count": likes_map.get(post.id, 0),
+                "replies_count": len(post.replies),
+                "replies": post.replies,
+                "is_liked_by_current_user": post.id in liked_post_ids,
+            }
+            post_responses.append(PostResponse.model_validate(response_data))
         
         return PostsResponse(
             posts=post_responses,
