@@ -333,6 +333,40 @@ const API = {
         }
     },
 
+    // ユーザーのフォロワー一覧取得
+    async getFollowers(userId) {
+        try {
+            const response = await fetch(`/api/v1/users/${userId}/followers`, {
+                headers: this.getAuthHeader()
+            });
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            return { success: true, users: data };
+        } catch (error) {
+            console.error('フォロワーの取得に失敗しました:', error);
+            return { success: false, error: error.message };
+        }
+    },
+
+    // ユーザーのフォロー中一覧取得
+    async getFollowing(userId) {
+        try {
+            const response = await fetch(`/api/v1/users/${userId}/following`, {
+                headers: this.getAuthHeader()
+            });
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            const data = await response.json();
+            return { success: true, users: data };
+        } catch (error) {
+            console.error('フォロー中の取得に失敗しました:', error);
+            return { success: false, error: error.message };
+        }
+    },
+
     // 時間フォーマット
     formatTime(dateString) {
         const date = new Date(dateString);

@@ -1,9 +1,10 @@
 from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
+from typing import List
 
 from database import get_db
 from app.models import User, Follow
-from app.schemas import UserProfileResponse
+from app.schemas import UserProfileResponse, UserResponse
 from app.utils.auth import get_current_user_optional
 
 router = APIRouter(tags=["users"])
@@ -97,3 +98,23 @@ async def unfollow_user(
 
     db.delete(follow)
     db.commit()
+
+@router.get("/users/{user_id}/followers", response_model=List[UserResponse])
+async def get_followers(user_id: str, db: Session = Depends(get_db)):
+    """フォロワー一覧を取得する"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    followers = [UserResponse.model_validate(f.follower) for f in user.followers]
+    return followers
+
+@router.get("/users/{user_id}/following", response_model=List[UserResponse])
+async def get_following(user_id: str, db: Session = Depends(get_db)):
+    """フォロー中一覧を取得する"""
+    user = db.query(User).filter(User.id == user_id).first()
+    if not user:
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="User not found")
+
+    following = [UserResponse.model_validate(f.followed) for f in user.following]
+    return following
