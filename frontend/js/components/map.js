@@ -8,7 +8,16 @@ const MapComponent = {
         isLoading: false,
         lastCenter: null,
         debounceTimer: null,
-        moveThreshold: 0.01 // 緯度経度の変化閾値（約1km）
+        moveThreshold: 0.01, // 緯度経度の変化閾値（約1km）
+        // キャッシュ関連
+        shopCache: new Map(), // 店舗データキャッシュ
+        cacheRadius: 30, // キャッシュ有効半径（km）
+        maxCacheSize: 1000, // 最大キャッシュ数
+        pendingRequests: new Map(), // 進行中のAPIリクエストを追跡
+        // マーカー管理関連
+        markerLayerGroup: null, // マーカーをグループ化して管理
+        visibleMarkers: new Set(), // 現在表示されているマーカー
+        markerVisibilityRadius: 50 // マーカー表示半径（km）
     },
 
     // 初期化
@@ -312,9 +321,17 @@ const MapComponent = {
                 style: 'https://tiles.openfreemap.org/styles/liberty',
             }).addTo(this.state.map)
             
+            // マーカーをグループ化して管理
+            this.state.markerLayerGroup = L.layerGroup().addTo(this.state.map);
+            
             // 地図の移動イベントをリッスン（デバウンス処理付き）
             this.state.map.on('moveend', () => {
                 this.handleMapMove();
+            });
+            
+            // ズームレベル変更時にもマーカー表示を更新
+            this.state.map.on('zoomend', () => {
+                this.updateMarkerVisibility();
             });
             
             // 現在位置マーカーを追加
@@ -407,6 +424,8 @@ const MapComponent = {
                 // 閾値以下の移動ならAPIを呼ばない
                 if (latDiff < this.state.moveThreshold && lngDiff < this.state.moveThreshold) {
                     console.log('移動距離が閾値以下のため、APIを呼びません');
+                    // マーカーの表示範囲だけ更新
+                    this.updateMarkerVisibility();
                     return;
                 }
             }
@@ -419,24 +438,127 @@ const MapComponent = {
         }, 500);
     },
 
-    // 近くのラーメン店データを取得して追加
+    // キャッシュキーを生成
+    generateCacheKey(lat, lng, radius) {
+        // 緯度経度を小数点第3位まで丸めてキーを生成（約100m単位）
+        const roundedLat = Math.round(lat * 1000) / 1000;
+        const roundedLng = Math.round(lng * 1000) / 1000;
+        return `${roundedLat},${roundedLng},${radius}`;
+    },
+
+    // キャッシュに店舗データを保存
+    cacheShopData(key, data) {
+        // キャッシュサイズが上限に達した場合、最も古いエントリを削除
+        if (this.state.shopCache.size >= this.state.maxCacheSize) {
+            const firstKey = this.state.shopCache.keys().next().value;
+            this.state.shopCache.delete(firstKey);
+        }
+        
+        // タイムスタンプ付きでデータを保存
+        this.state.shopCache.set(key, {
+            data: data,
+            timestamp: Date.now()
+        });
+    },
+
+    // キャッシュから店舗データを取得
+    getCachedShopData(key) {
+        const cached = this.state.shopCache.get(key);
+        if (!cached) return null;
+        
+        // 5分以上経過したキャッシュは無効
+        const maxAge = 5 * 60 * 1000; // 5分
+        if (Date.now() - cached.timestamp > maxAge) {
+            this.state.shopCache.delete(key);
+            return null;
+        }
+        
+        return cached.data;
+    },
+
+    // 近くのキャッシュエントリを検索
+    findNearbyCacheEntry(lat, lng, radius) {
+        for (const [key, entry] of this.state.shopCache.entries()) {
+            const [cachedLat, cachedLng, cachedRadius] = key.split(',').map(Number);
+            
+            // 2点間の距離を計算（簡易計算）
+            const latDiff = Math.abs(lat - cachedLat);
+            const lngDiff = Math.abs(lng - cachedLng);
+            
+            // キャッシュの範囲内にあるかチェック
+            if (latDiff <= 0.01 && lngDiff <= 0.01 && cachedRadius >= radius) {
+                return entry.data;
+            }
+        }
+        return null;
+    },
+
+    // 近くのラーメン店データを取得して追加（キャッシュ対応版）
     async addNearbyShops(centerLocation) {
         try {
-            this.showLoading(true);
+            const { lat, lng } = centerLocation;
+            const radius = this.state.cacheRadius;
             
-            // APIから近くのラーメン店を取得（検索半径を10kmに拡大）
-            const response = await fetch(`/api/v1/ramen/nearby?latitude=${centerLocation.lat}&longitude=${centerLocation.lng}&radius_km=30`);
+            // キャッシュキーを生成
+            const cacheKey = this.generateCacheKey(lat, lng, radius);
             
-            if (!response.ok) {
-                throw new Error('ラーメン店データの取得に失敗しました');
+            // まず近くのキャッシュエントリを検索
+            let cachedData = this.findNearbyCacheEntry(lat, lng, radius);
+            
+            // 近くのキャッシュがなければ、正確なキーでキャッシュを検索
+            if (!cachedData) {
+                cachedData = this.getCachedShopData(cacheKey);
             }
             
-            const data = await response.json();
+            // キャッシュがあればそれを使用
+            if (cachedData) {
+                console.log('キャッシュから店舗データを使用');
+                this.updateShopMarkers(cachedData.shops);
+                return;
+            }
             
-            // 取得した店舗データでマーカーを更新（既存のマーカーを再利用）
-            this.updateShopMarkers(data.shops);
+            // 進行中の同じリクエストがあれば、それが完了するまで待つ
+            const pendingKey = `${lat},${lng},${radius}`;
+            if (this.state.pendingRequests.has(pendingKey)) {
+                console.log('進行中のリクエストを待機中...');
+                const existingRequest = this.state.pendingRequests.get(pendingKey);
+                const data = await existingRequest;
+                this.updateShopMarkers(data.shops);
+                return;
+            }
             
-            this.showLoading(false);
+            // APIリクエストを作成
+            const apiRequest = fetch(`/api/v1/ramen/nearby?latitude=${lat}&longitude=${lng}&radius_km=${radius}`)
+                .then(response => {
+                    if (!response.ok) {
+                        throw new Error('ラーメン店データの取得に失敗しました');
+                    }
+                    return response.json();
+                })
+                .then(data => {
+                    // 取得したデータをキャッシュに保存
+                    this.cacheShopData(cacheKey, data);
+                    
+                    // 取得した店舗データでマーカーを更新
+                    this.updateShopMarkers(data.shops);
+                    
+                    // リクエスト完了後、pendingリストから削除
+                    this.state.pendingRequests.delete(pendingKey);
+                    
+                    return data;
+                })
+                .catch(error => {
+                    console.error('ラーメン店データの取得に失敗しました:', error);
+                    this.showError('ラーメン店データの取得に失敗しました: ' + error.message);
+                    
+                    // エラー時もpendingリストから削除
+                    this.state.pendingRequests.delete(pendingKey);
+                    
+                    throw error;
+                });
+            
+            // 進行中のリクエストとして保存
+            this.state.pendingRequests.set(pendingKey, apiRequest);
             
         } catch (error) {
             console.error('ラーメン店データの取得に失敗しました:', error);
@@ -448,11 +570,14 @@ const MapComponent = {
     clearShopMarkers() {
         // 既存の店舗マーカーを地図から削除
         this.state.markers.forEach(marker => {
-            this.state.map.removeLayer(marker);
+            if (this.state.markerLayerGroup.hasLayer(marker)) {
+                this.state.markerLayerGroup.removeLayer(marker);
+            }
         });
         
-        // マーカーリストをクリア
+        // マーカーリストと表示セットをクリア
         this.state.markers = [];
+        this.state.visibleMarkers.clear();
     },
 
     // 店舗マーカーを更新（既存のマーカーを再利用）
@@ -510,11 +635,73 @@ const MapComponent = {
         // 不要なマーカーを削除
         this.state.markers = this.state.markers.filter(marker => {
             if (!existingMarkerIds.has(marker.shopId)) {
-                this.state.map.removeLayer(marker);
+                if (this.state.markerLayerGroup.hasLayer(marker)) {
+                    this.state.markerLayerGroup.removeLayer(marker);
+                }
+                this.state.visibleMarkers.delete(marker.shopId);
                 return false;
             }
             return true;
         });
+        
+        // 表示範囲内のマーカーだけを表示
+        this.updateMarkerVisibility();
+    },
+
+    // 表示範囲内のマーカーだけを表示/非表示
+    updateMarkerVisibility() {
+        if (!this.state.map) return;
+        
+        const bounds = this.state.map.getBounds();
+        const center = this.state.map.getCenter();
+        const zoom = this.state.map.getZoom();
+        
+        // ズームレベルに応じて表示範囲を調整
+        let visibilityRadius = this.state.markerVisibilityRadius;
+        if (zoom < 10) {
+            visibilityRadius = 100; // 低ズームでは広範囲を表示
+        } else if (zoom < 12) {
+            visibilityRadius = 50;
+        } else {
+            visibilityRadius = 30; // 高ズームでは狭範囲を表示
+        }
+        
+        this.state.markers.forEach(marker => {
+            const markerPos = marker.getLatLng();
+            const distance = this.calculateDistance(center.lat, center.lng, markerPos.lat, markerPos.lng);
+            
+            if (bounds.contains(markerPos) && distance <= visibilityRadius) {
+                // 表示範囲内の場合、マーカーを表示
+                if (!this.state.markerLayerGroup.hasLayer(marker)) {
+                    this.state.markerLayerGroup.addLayer(marker);
+                }
+                this.state.visibleMarkers.add(marker.shopId);
+            } else {
+                // 表示範囲外の場合、マーカーを非表示
+                if (this.state.markerLayerGroup.hasLayer(marker)) {
+                    this.state.markerLayerGroup.removeLayer(marker);
+                }
+                this.state.visibleMarkers.delete(marker.shopId);
+            }
+        });
+    },
+
+    // 2点間の距離を計算（Haversine formula）
+    calculateDistance(lat1, lng1, lat2, lng2) {
+        const R = 6371; // 地球の半径（km）
+        const dLat = this.toRad(lat2 - lat1);
+        const dLng = this.toRad(lng2 - lng1);
+        const a = 
+            Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(this.toRad(lat1)) * Math.cos(this.toRad(lat2)) * 
+            Math.sin(dLng/2) * Math.sin(dLng/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c;
+    },
+
+    // 度数をラジアンに変換
+    toRad(deg) {
+        return deg * (Math.PI/180);
     },
 
     // 店舗マーカーを追加
@@ -572,13 +759,35 @@ const MapComponent = {
         `;
         
         const marker = L.marker([shop.lat, shop.lng], { icon: shopIcon })
-            .addTo(this.state.map)
             .bindPopup(popupContent);
         
         // 店舗IDをマーカーに保存して後で識別できるようにする
         marker.shopId = shop.id;
-            
+        
+        // 最初はマーカーグループに追加せず、表示範囲チェック後に追加
         this.state.markers.push(marker);
+        
+        // 表示範囲内かチェックして、範囲内なら表示
+        if (this.state.map) {
+            const bounds = this.state.map.getBounds();
+            const center = this.state.map.getCenter();
+            const distance = this.calculateDistance(center.lat, center.lng, shop.lat, shop.lng);
+            const zoom = this.state.map.getZoom();
+            
+            let visibilityRadius = this.state.markerVisibilityRadius;
+            if (zoom < 10) {
+                visibilityRadius = 100;
+            } else if (zoom < 12) {
+                visibilityRadius = 50;
+            } else {
+                visibilityRadius = 30;
+            }
+            
+            if (bounds.contains([shop.lat, shop.lng]) && distance <= visibilityRadius) {
+                this.state.markerLayerGroup.addLayer(marker);
+                this.state.visibleMarkers.add(shop.id);
+            }
+        }
     },
 
     // 現在位置を取得
