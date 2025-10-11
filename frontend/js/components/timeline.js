@@ -44,6 +44,9 @@ const TimelineComponent = {
                 .post-icon-btn { width: 36px; height: 36px; border-radius: 50%; border: none; background: transparent; color: #d4a574; cursor: pointer; display: flex; align-items: center; justify-content: center; }
                 .tweet-btn { background: #dbaf3adb; color: #1a1a1a; border: none; padding: 8px 20px; border-radius: 20px; font-weight: bold; cursor: pointer; }
                 .tweet-btn:disabled { background: #ccc; cursor: not-allowed; }
+                .char-counter { color: #666; font-size: 14px; margin-right: 12px; }
+                .char-counter.warning { color: #ff9800; }
+                .char-counter.error { color: #f44336; }
                 .timeline-container { position: relative; overflow-y: auto; height: calc(100vh - 180px); }
                 .post-card { padding: 16px; border-bottom: 1px solid #e0e0e0; transition: background 0.2s; }
                 .post-card:hover { background: #f9f9f9; }
@@ -56,20 +59,27 @@ const TimelineComponent = {
                 .engagement-btn .liked { color: #e0245e; }
                 .image-preview { max-width: 100px; max-height: 100px; border-radius: 10px; margin-top: 10px; }
                 #timelineLoadingIndicator { text-align: center; padding: 20px; }
+                .post-content { line-height: 1.4; }
+                .post-content.collapsed { max-height: 4.2em; overflow: hidden; }
+                .show-more-btn { background: none; border: none; color: #d4a574; cursor: pointer; font-size: 14px; padding: 4px 0; }
+                .show-more-btn:hover { text-decoration: underline; }
             </style>
             
             <div class="post-input-area">
                 <div class="post-input-wrapper">
                     <div class="post-avatar"></div>
                     <div class="post-input-content">
-                        <textarea class="post-textarea" placeholder="今日食べる二郎は？" id="postTextarea"></textarea>
+                        <textarea class="post-textarea" placeholder="今日食べる二郎は？" id="postTextarea" maxlength="200"></textarea>
                         <div id="imagePreviewContainer"></div>
                         <div class="post-actions">
                             <div class="post-icons">
                                 <input type="file" id="imageUpload" accept="image/*" style="display: none;">
                                 <button class="post-icon-btn" title="画像" onclick="document.getElementById('imageUpload').click()"><i class="fas fa-image"></i></button>
                             </div>
-                            <button class="tweet-btn" id="tweetBtn" onclick="TimelineComponent.postTweet()" disabled>ツイート</button>
+                            <div style="display: flex; align-items: center;">
+                                <span class="char-counter" id="charCounter">0/200</span>
+                                <button class="tweet-btn" id="tweetBtn" onclick="TimelineComponent.postTweet()" disabled>ツイート</button>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -92,7 +102,21 @@ const TimelineComponent = {
         const tweetBtn = document.getElementById('tweetBtn');
         const imageUpload = document.getElementById('imageUpload');
         
-        textarea.addEventListener('input', () => tweetBtn.disabled = !textarea.value.trim() && !this.state.selectedImage);
+        textarea.addEventListener('input', () => {
+            const length = textarea.value.length;
+            const charCounter = document.getElementById('charCounter');
+            charCounter.textContent = `${length}/200`;
+            
+            // 文字数に応じて色を変更
+            charCounter.classList.remove('warning', 'error');
+            if (length > 180) {
+                charCounter.classList.add('error');
+            } else if (length > 150) {
+                charCounter.classList.add('warning');
+            }
+            
+            tweetBtn.disabled = (!textarea.value.trim() && !this.state.selectedImage) || length > 200;
+        });
         imageUpload.addEventListener('change', (event) => this.handleImageSelect(event));
     },
 
@@ -161,19 +185,26 @@ const TimelineComponent = {
     },
 
     createPostHTML(post) {
+        // ユーザーハンドルの@を除去してエスケープ
+        const userHandle = post.user.handle ? post.user.handle.substring(1) : '';
+        const escapedUserHandle = API.escapeHtml(userHandle);
+        
         return `
             <div class="post-card" id="post-${post.id}">
-                <div class="post-header" onclick="router.navigate('profile', ['${post.user.handle.substring(1)}'])">
+                <div class="post-header" onclick="router.navigate('profile', ['${escapedUserHandle}'])">
                     <div class="post-avatar">${post.user.avatar}</div>
                     <div class="post-user-info">
                         <div class="post-username">
-                            <span>${post.user.name}</span>
-                            <span class="post-meta">${post.user.handle} · ${post.time}</span>
+                            <span>${API.escapeHtml(post.user.name)}</span>
+                            <span class="post-meta">${API.escapeHtml(post.user.handle)} · ${API.escapeHtml(post.time)}</span>
                         </div>
                     </div>
                 </div>
-                <div class="post-text">${post.text.replace(/\n/g, '<br>')}</div>
-                ${post.image ? `<div class="post-image"><img src="${post.image}" style="width:100%; border-radius: 16px; margin-top: 12px;" alt="Post image"></div>` : ''}
+                <div class="post-text" id="post-text-${post.id}">
+                    <div class="post-content" id="post-content-${post.id}">${API.escapeHtmlWithLineBreaks(post.text)}</div>
+                    ${this.isLongText(post.text) ? `<button class="show-more-btn" onclick="TimelineComponent.toggleText(${post.id})">続きを見る</button>` : ''}
+                </div>
+                ${post.image ? `<div class="post-image"><img src="${API.escapeHtml(post.image)}" style="width:100%; border-radius: 16px; margin-top: 12px;" alt="Post image"></div>` : ''}
                 <div class="post-engagement">
                     <button class="engagement-btn" onclick="event.stopPropagation(); TimelineComponent.openCommentModal(${post.id})"><i class="fas fa-comment"></i> ${post.engagement.comments}</button>
                     <button class="engagement-btn" onclick="event.stopPropagation();"><i class="fas fa-retweet"></i> ${post.engagement.retweets}</button>
@@ -300,6 +331,26 @@ const TimelineComponent = {
 
     openCommentModal(postId) {
         router.navigate('comment', [postId]);
+    },
+
+    // 長いテキストかどうかを判定
+    isLongText(text) {
+        const lines = text.split('\n');
+        return lines.length > 3 || text.length > 150;
+    },
+
+    // テキストの表示/非表示を切り替え
+    toggleText(postId) {
+        const content = document.getElementById(`post-content-${postId}`);
+        const button = content.nextElementSibling;
+        
+        if (content.classList.contains('collapsed')) {
+            content.classList.remove('collapsed');
+            button.textContent = '閉じる';
+        } else {
+            content.classList.add('collapsed');
+            button.textContent = '続きを見る';
+        }
     }
 };
 

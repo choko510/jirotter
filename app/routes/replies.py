@@ -6,6 +6,7 @@ from database import get_db
 from app.models import Reply, Post, User
 from app.schemas import ReplyCreate, ReplyResponse
 from app.utils.auth import get_current_active_user
+from app.utils.security import validate_reply_content, escape_html
 
 router = APIRouter(tags=["replies"])
 
@@ -21,7 +22,22 @@ async def create_reply_for_post(
     if not post:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
 
-    reply = Reply(**reply_data.model_dump(), user_id=current_user.id, post_id=post_id)
+    # 返信内容のバリデーションとサニタイズ
+    errors, sanitized_content = validate_reply_content(reply_data.content)
+    if errors:
+        error_messages = []
+        for field, message in errors.items():
+            error_messages.append(message)
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=error_messages[0] if error_messages else "返信内容に誤りがあります"
+        )
+
+    reply = Reply(
+        content=sanitized_content,
+        user_id=current_user.id,
+        post_id=post_id
+    )
     db.add(reply)
     db.commit()
     db.refresh(reply)

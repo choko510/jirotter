@@ -9,6 +9,11 @@ class Settings:
     PROJECT_NAME: str = "SNS Backend"
     VERSION: str = "1.0.0"
     API_V1_STR: str = "/api/v1"
+    ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
+    
+    # 環境設定
+    DEBUG: bool = os.getenv("DEBUG", "true").lower() == "true"
+    DEVELOPMENT: bool = os.getenv("DEVELOPMENT", "true").lower() == "true"
     
     # データベース設定
     DATABASE_URL: str = os.getenv("DATABASE_URL", "sqlite:///./sns.db")

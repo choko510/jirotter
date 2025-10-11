@@ -347,6 +347,20 @@ const API = {
         if (diffDays < 7) return `${diffDays}日前`;
         
         return date.toLocaleDateString('ja-JP');
+    },
+
+    // HTMLエスケープ処理
+    escapeHtml(text) {
+        if (text === null || text === undefined) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
+    },
+
+    // テキスト内の改行を<br>タグに変換（XSS対策済み）
+    escapeHtmlWithLineBreaks(text) {
+        if (text === null || text === undefined) return '';
+        return this.escapeHtml(text).replace(/\n/g, '<br>');
     }
 };
 

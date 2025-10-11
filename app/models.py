@@ -98,6 +98,10 @@ class Reply(Base):
     post_id = Column(Integer, ForeignKey('posts.id'), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
 
+    @property
+    def author_username(self):
+        return self.author.username
+
 class RamenShop(Base):
     """ラーメン店モデル"""
     __tablename__ = 'ramen_shops'

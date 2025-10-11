@@ -30,3 +30,5 @@ Thumbs.db
 *.nix
 
 .pytest_cache
+
+uploads

@@ -9,6 +9,7 @@ from database import get_db
 from app.models import Post, User, Like, Reply
 from app.schemas import PostCreate, PostResponse, PostsResponse
 from app.utils.auth import get_current_user, get_current_active_user, get_current_user_optional
+from app.utils.security import validate_post_content, escape_html
 
 router = APIRouter(tags=["posts"])
 
@@ -23,16 +24,15 @@ async def create_post(
     db: Session = Depends(get_db)
 ):
     """投稿作成エンドポイント"""
-    if not content or not content.strip():
+    # 投稿内容のバリデーションとサニタイズ
+    errors, sanitized_content = validate_post_content(content)
+    if errors:
+        error_messages = []
+        for field, message in errors.items():
+            error_messages.append(message)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
-            detail="投稿内容は必須です"
-        )
-    
-    if len(content) > 1000:
-        raise HTTPException(
-            status_code=status.HTTP_400_BAD_REQUEST,
-            detail="投稿内容は1000文字以内で入力してください"
+            detail=error_messages[0] if error_messages else "投稿内容に誤りがあります"
         )
     
     image_url = None
@@ -44,7 +44,7 @@ async def create_post(
 
     try:
         post = Post(
-            content=content.strip(),
+            content=sanitized_content,
             user_id=current_user.id,
             image_url=image_url
         )

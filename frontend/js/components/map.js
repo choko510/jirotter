@@ -5,7 +5,10 @@ const MapComponent = {
         map: null,
         markers: [],
         userLocation: null,
-        isLoading: false
+        isLoading: false,
+        lastCenter: null,
+        debounceTimer: null,
+        moveThreshold: 0.01 // 緯度経度の変化閾値（約1km）
     },
 
     // 初期化
@@ -253,7 +256,6 @@ const MapComponent = {
                             </button>
                         </div>
                         <button class="map-filter-btn" onclick="MapComponent.toggleFilter('jiro')">二郎系</button>
-                        <button class="map-filter-btn" onclick="MapComponent.toggleFilter('ie')">家系</button>
                         <button class="map-filter-btn" onclick="MapComponent.getCurrentLocation()">
                             <i class="fas fa-location-arrow"></i>
                         </button>
@@ -279,10 +281,6 @@ const MapComponent = {
                         <div class="legend-item">
                             <div class="marker-icon" style="background: #d4a574;"></div>
                             <span>二郎系</span>
-                        </div>
-                        <div class="legend-item">
-                            <div class="marker-icon" style="background: #ff9800;"></div>
-                            <span>家系</span>
                         </div>
                         <div class="legend-item">
                             <div class="marker-icon" style="background: #4caf50;"></div>
@@ -314,14 +312,16 @@ const MapComponent = {
                 style: 'https://tiles.openfreemap.org/styles/liberty',
             }).addTo(this.state.map)
             
-            // 地図の移動イベントをリッスン
-            this.state.map.on('moveend', async () => {
-                const center = this.state.map.getCenter();
-                await this.addNearbyShops({ lat: center.lat, lng: center.lng });
+            // 地図の移動イベントをリッスン（デバウンス処理付き）
+            this.state.map.on('moveend', () => {
+                this.handleMapMove();
             });
             
             // 現在位置マーカーを追加
             this.addUserMarker(location);
+            
+            // 初期中心位置を保存
+            this.state.lastCenter = location;
             
             // 近くのラーメン店データを取得して追加
             await this.addNearbyShops(location);
@@ -387,13 +387,42 @@ const MapComponent = {
             .bindPopup(`<b>現在地</b><br>${location.city}, ${location.country}`);
     },
 
+    // マップ移動を処理する関数
+    handleMapMove() {
+        // デバウンス処理：前回のタイマーをクリア
+        if (this.state.debounceTimer) {
+            clearTimeout(this.state.debounceTimer);
+        }
+        
+        // 新しいタイマーを設定（500ms後に実行）
+        this.state.debounceTimer = setTimeout(async () => {
+            const currentCenter = this.state.map.getCenter();
+            const { lat, lng } = currentCenter;
+            
+            // 前回の中心位置との距離を計算
+            if (this.state.lastCenter) {
+                const latDiff = Math.abs(lat - this.state.lastCenter.lat);
+                const lngDiff = Math.abs(lng - this.state.lastCenter.lng);
+                
+                // 閾値以下の移動ならAPIを呼ばない
+                if (latDiff < this.state.moveThreshold && lngDiff < this.state.moveThreshold) {
+                    console.log('移動距離が閾値以下のため、APIを呼びません');
+                    return;
+                }
+            }
+            
+            // 現在の中心位置を保存
+            this.state.lastCenter = { lat, lng };
+            
+            // APIを呼び出して近くの店舗を取得
+            await this.addNearbyShops({ lat, lng });
+        }, 500);
+    },
+
     // 近くのラーメン店データを取得して追加
     async addNearbyShops(centerLocation) {
         try {
             this.showLoading(true);
-            
-            // 既存の店舗マーカーをクリア
-            this.clearShopMarkers();
             
             // APIから近くのラーメン店を取得（検索半径を10kmに拡大）
             const response = await fetch(`/api/v1/ramen/nearby?latitude=${centerLocation.lat}&longitude=${centerLocation.lng}&radius_km=30`);
@@ -404,34 +433,8 @@ const MapComponent = {
             
             const data = await response.json();
             
-            // 取得した店舗データを地図に追加
-            data.shops.forEach(shop => {
-                // 店舗タイプを判定（店名に基づく簡易判定）
-                let shopType = 'other';
-                if (shop.name.includes('二郎') || shop.name.includes('ジロー')) {
-                    shopType = 'jiro';
-                } else if (shop.name.includes('家系') || shop.name.includes('一蘭')) {
-                    shopType = 'ie';
-                } else if (shop.name.includes('醤油') || shop.name.includes('しお')) {
-                    shopType = 'shoyu';
-                }
-                
-                const shopData = {
-                    id: shop.id,
-                    name: shop.name,
-                    type: shopType,
-                    lat: shop.latitude,
-                    lng: shop.longitude,
-                    address: shop.address,
-                    business_hours: shop.business_hours,
-                    closed_day: shop.closed_day,
-                    seats: shop.seats,
-                    distance: shop.distance,
-                    description: `${shop.address}<br>営業時間: ${shop.business_hours || '不明'}<br>定休日: ${shop.closed_day || '不明'}<br>距離: 約${shop.distance}km`
-                };
-                
-                this.addShopMarker(shopData);
-            });
+            // 取得した店舗データでマーカーを更新（既存のマーカーを再利用）
+            this.updateShopMarkers(data.shops);
             
             this.showLoading(false);
             
@@ -452,11 +455,72 @@ const MapComponent = {
         this.state.markers = [];
     },
 
+    // 店舗マーカーを更新（既存のマーカーを再利用）
+    updateShopMarkers(shops) {
+        if (!this.state.map) return;
+
+        // 既存のマーカーをマップで管理
+        const existingMarkerIds = new Set();
+        
+        // 新しい店舗データでマーカーを更新または追加
+        shops.forEach(shop => {
+            // 店舗タイプを判定（店名に基づく簡易判定）
+            let shopType = 'other';
+            if (shop.name.includes('二郎') || shop.name.includes('ジロー')) {
+                shopType = 'jiro';
+            } else if (shop.name.includes('醤油') || shop.name.includes('しお')) {
+                shopType = 'shoyu';
+            }
+            
+            const shopData = {
+                id: shop.id,
+                name: shop.name,
+                type: shopType,
+                lat: shop.latitude,
+                lng: shop.longitude,
+                address: shop.address,
+                business_hours: shop.business_hours,
+                closed_day: shop.closed_day,
+                seats: shop.seats,
+                distance: shop.distance,
+                description: `${shop.address}<br>営業時間: ${shop.business_hours || '不明'}<br>定休日: ${shop.closed_day || '不明'}<br>距離: 約${shop.distance}km`
+            };
+            
+            // 既存のマーカーがあるかチェック
+            const existingMarkerIndex = this.state.markers.findIndex(marker =>
+                marker.shopId === shop.id
+            );
+            
+            if (existingMarkerIndex !== -1) {
+                // 既存のマーカーを更新
+                existingMarkerIds.add(shop.id);
+                // 位置が変わっていれば更新
+                const marker = this.state.markers[existingMarkerIndex];
+                const currentPos = marker.getLatLng();
+                if (currentPos.lat !== shopData.lat || currentPos.lng !== shopData.lng) {
+                    marker.setLatLng([shopData.lat, shopData.lng]);
+                }
+            } else {
+                // 新しいマーカーを追加
+                this.addShopMarker(shopData);
+                existingMarkerIds.add(shop.id);
+            }
+        });
+        
+        // 不要なマーカーを削除
+        this.state.markers = this.state.markers.filter(marker => {
+            if (!existingMarkerIds.has(marker.shopId)) {
+                this.state.map.removeLayer(marker);
+                return false;
+            }
+            return true;
+        });
+    },
+
     // 店舗マーカーを追加
     addShopMarker(shop) {
         const colors = {
             'jiro': '#d4a574',
-            'ie': '#ff9800',
             'shoyu': '#4caf50',
             'other': '#9e9e9e'
         };
@@ -510,6 +574,9 @@ const MapComponent = {
         const marker = L.marker([shop.lat, shop.lng], { icon: shopIcon })
             .addTo(this.state.map)
             .bindPopup(popupContent);
+        
+        // 店舗IDをマーカーに保存して後で識別できるようにする
+        marker.shopId = shop.id;
             
         this.state.markers.push(marker);
     },
@@ -648,10 +715,8 @@ const MapComponent = {
     updateMarkersWithSearchResults(shops) {
         if (!this.state.map) return;
 
-        // 既存の店舗マーカーをクリア
-        this.clearShopMarkers();
-
         if (shops.length === 0) {
+            this.clearShopMarkers();
             return;
         }
 

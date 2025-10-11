@@ -1,11 +1,20 @@
-from pydantic import BaseModel, EmailStr, ConfigDict
+from pydantic import BaseModel, EmailStr, ConfigDict, field_validator, field_serializer
 from datetime import datetime
 from typing import Optional, List
+import re
+from app.utils.security import escape_html
 
 # User Schemas
 class UserBase(BaseModel):
     id: str
     email: EmailStr
+    
+    @field_validator('id')
+    @classmethod
+    def validate_username(cls, v):
+        if not re.match(r'^[a-zA-Z0-9]+$', v):
+            raise ValueError('ユーザーIDは英数字のみで入力してください')
+        return v
 
 class UserCreate(UserBase):
     password: str
@@ -13,6 +22,13 @@ class UserCreate(UserBase):
 class UserLogin(BaseModel):
     id: str # username is now id
     password: str
+    
+    @field_validator('id')
+    @classmethod
+    def validate_username(cls, v):
+        if not re.match(r'^[a-zA-Z0-9]+$', v):
+            raise ValueError('ユーザーIDは英数字のみで入力してください')
+        return v
 
 class UserResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
@@ -38,7 +54,12 @@ class ReplyBase(BaseModel):
     content: str
 
 class ReplyCreate(ReplyBase):
-    pass
+    @field_validator('content')
+    @classmethod
+    def validate_content_length(cls, v):
+        if len(v) > 200:
+            raise ValueError('返信内容は200文字以内で入力してください')
+        return v
 
 class ReplyResponse(ReplyBase):
     model_config = ConfigDict(from_attributes=True)
@@ -48,6 +69,14 @@ class ReplyResponse(ReplyBase):
     post_id: int
     author_username: str
     created_at: datetime
+    
+    @field_serializer('content')
+    def serialize_content(self, value):
+        return escape_html(value)
+    
+    @field_serializer('author_username')
+    def serialize_author_username(self, value):
+        return escape_html(value)
 
 # Like Schemas
 class LikeResponse(BaseModel):
@@ -62,7 +91,12 @@ class PostBase(BaseModel):
     content: str
 
 class PostCreate(PostBase):
-    pass
+    @field_validator('content')
+    @classmethod
+    def validate_content_length(cls, v):
+        if len(v) > 200:
+            raise ValueError('投稿内容は200文字以内で入力してください')
+        return v
 
 class PostResponse(PostBase):
     model_config = ConfigDict(from_attributes=True)
@@ -76,6 +110,18 @@ class PostResponse(PostBase):
     replies_count: int
     replies: List[ReplyResponse] = []
     is_liked_by_current_user: bool = False
+    
+    @field_serializer('content')
+    def serialize_content(self, value):
+        return escape_html(value)
+    
+    @field_serializer('author_username')
+    def serialize_author_username(self, value):
+        return escape_html(value)
+    
+    @field_serializer('image_url')
+    def serialize_image_url(self, value):
+        return escape_html(value) if value else value
 
 class PostsResponse(BaseModel):
     posts: List[PostResponse]

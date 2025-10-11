@@ -241,7 +241,7 @@ const SearchComponent = {
                         <input 
                             type="text" 
                             class="search-input-large" 
-                            placeholder="店名や住所で検索..." 
+                            placeholder="店名や住所を検索..." 
                             id="searchInput"
                             value="${this.state.searchQuery}"
                         >
