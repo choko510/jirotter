@@ -213,6 +213,46 @@ const StudioComponent = {
                         font-size: 36px;
                     }
                 }
+
+                /* Dark Mode Overrides */
+                .dark-mode .studio-subtitle,
+                .dark-mode .progress-text,
+                .dark-mode .stamp-location,
+                .dark-mode .reward-desc {
+                    color: #aaa;
+                }
+                .dark-mode .studio-progress {
+                    background: #2a2a2a;
+                }
+                .dark-mode .progress-bar {
+                    background: #333;
+                }
+                .dark-mode .stamp-card {
+                    background: #2a2a2a;
+                    border-color: #333;
+                }
+                .dark-mode .stamp-card:hover {
+                    box-shadow: 0 4px 8px rgba(0, 0, 0, 0.4);
+                }
+                .dark-mode .stamp-card.unlocked {
+                    border-color: #d4a574;
+                    background: rgba(212, 165, 116, 0.1);
+                }
+                .dark-mode .rewards-section {
+                    background: #2a2a2a;
+                }
+                .dark-mode .reward-item {
+                    background: #1a1a1a;
+                    border-color: #333;
+                }
+                .dark-mode .reward-status {
+                    background: #333;
+                    color: #aaa;
+                }
+                .dark-mode .reward-status.unlocked {
+                    background: #d4a574;
+                    color: #1a1a1a;
+                }
             </style>
             
             <div class="studio-container">

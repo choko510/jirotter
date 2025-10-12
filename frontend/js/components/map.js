@@ -252,6 +252,44 @@ const MapComponent = {
                         padding: 8px;
                     }
                 }
+
+                /* Dark Mode Overrides */
+                .dark-mode .map-header,
+                .dark-mode .map-loading,
+                .dark-mode .map-error,
+                .dark-mode .map-legend {
+                    background: #2a2a2a;
+                    border-color: #333;
+                }
+                .dark-mode .map-subtitle {
+                    color: #aaa;
+                }
+                .dark-mode .map-search-input {
+                    background: #1a1a1a;
+                    border-color: #333;
+                    color: #e0e0e0;
+                }
+                .dark-mode .map-search-input:focus {
+                    background: #2a2a2a;
+                }
+                .dark-mode .map-search-btn {
+                    color: #aaa;
+                }
+                .dark-mode .map-filter-btn {
+                    background: #1a1a1a;
+                    border-color: #333;
+                    color: #e0e0e0;
+                }
+                .dark-mode .map-filter-btn:hover {
+                    background: #d4a574;
+                    border-color: #d4a574;
+                    color: #1a1a1a;
+                }
+                .dark-mode .map-filter-btn.active {
+                    background: #d4a574;
+                    border-color: #d4a574;
+                    color: #1a1a1a;
+                }
             </style>
             
             <div class="map-container">

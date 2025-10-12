@@ -138,6 +138,31 @@ const AuthComponent = {
                         padding: 16px;
                     }
                 }
+
+                /* Dark Mode Overrides */
+                .dark-mode .auth-container {
+                    background: #2a2a2a;
+                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+                }
+                .dark-mode .auth-title,
+                .dark-mode .form-label {
+                    color: #e0e0e0;
+                }
+                .dark-mode .auth-subtitle,
+                .dark-mode .auth-switch {
+                    color: #aaa;
+                }
+                .dark-mode .form-input {
+                    background: #1a1a1a;
+                    border-color: #333;
+                    color: #e0e0e0;
+                }
+                .dark-mode .form-input:focus {
+                    border-color: #d4a574;
+                }
+                .dark-mode .form-input::placeholder {
+                    color: #888;
+                }
             </style>
             
             <div class="auth-container">

@@ -39,6 +39,36 @@ const ShopDetailComponent = {
         }
         
         contentArea.innerHTML = `
+            <style>
+                /* Post-related styles copied from timeline.js */
+                .post-card { padding: 16px; border-bottom: 1px solid #e0e0e0; transition: background 0.2s; }
+                .post-card:hover { background: #f9f9f9; }
+                .post-header { display: flex; gap: 12px; margin-bottom: 12px; cursor: pointer; }
+                .post-avatar { width: 48px; height: 48px; border-radius: 50%; background: #d4a574; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; }
+                .post-user-info { flex: 1; }
+                .post-username { font-weight: bold; }
+                .post-meta { color: #666; font-size: 14px; }
+                .post-engagement { display: flex; justify-content: space-around; margin-top: 12px; padding-top: 12px; }
+                .engagement-btn { display: flex; align-items: center; gap: 8px; background: transparent; border: none; color: #666; cursor: pointer; }
+                .engagement-btn .liked { color: #e0245e; }
+                .post-content { line-height: 1.4; }
+                .post-content.collapsed { max-height: 4.2em; overflow: hidden; }
+                .show-more-btn { background: none; border: none; color: #d4a574; cursor: pointer; font-size: 14px; padding: 4px 0; }
+                .show-more-btn:hover { text-decoration: underline; }
+                .post-image img { width: 100%; border-radius: 16px; margin-top: 12px; }
+
+                /* Dark Mode Overrides for posts */
+                .dark-mode .post-card {
+                    border-bottom-color: #333;
+                }
+                .dark-mode .post-card:hover {
+                    background: #2a2a2a;
+                }
+                .dark-mode .post-meta,
+                .dark-mode .engagement-btn {
+                    color: #aaa;
+                }
+            </style>
             <div class="shop-detail-container">
                 <div class="shop-header">
                     <button class="back-button" onclick="router.navigate('search')">

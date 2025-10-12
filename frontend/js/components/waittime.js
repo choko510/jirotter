@@ -162,6 +162,32 @@ const WaittimeComponent = {
                         align-items: flex-start;
                     }
                 }
+
+                /* Dark Mode Overrides */
+                .dark-mode .waittime-subtitle,
+                .dark-mode .waittime-details {
+                    color: #aaa;
+                }
+                .dark-mode .sort-btn {
+                    background: #2a2a2a;
+                    border-color: #333;
+                    color: #e0e0e0;
+                }
+                .dark-mode .sort-btn:hover {
+                    background: #333;
+                }
+                .dark-mode .sort-btn.active {
+                    background: #d4a574;
+                    border-color: #d4a574;
+                    color: #1a1a1a;
+                }
+                .dark-mode .waittime-card {
+                    background: #2a2a2a;
+                    border-color: #333;
+                }
+                .dark-mode .waittime-card:hover {
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+                }
             </style>
             
             <div class="waittime-container">
