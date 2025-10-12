@@ -335,7 +335,7 @@ const SettingsComponent = {
                 .dark-mode .login-prompt-desc {
                     color: #aaa;
                 }
-                 .dark-mode .danger-item {
+                .dark-mode .danger-item {
                     border-color: #5c1f1f;
                 }
 
