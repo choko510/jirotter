@@ -383,9 +383,7 @@ const SearchComponent = {
 
     // 店舗詳細表示
     showShopDetail(shopId) {
-        alert(`店舗ID: ${shopId} の詳細を表示`);
-        // 実際の実装では、店舗詳細ページに遷移する
-        // router.navigate('shop', [shopId]);
+        router.navigate('shop', [shopId]);
     },
 
     // エラー表示

@@ -114,3 +114,20 @@ class RamenShop(Base):
     seats = Column(String(255))
     latitude = Column(Float, nullable=False)
     longitude = Column(Float, nullable=False)
+
+class Visit(Base):
+    """訪問記録モデル"""
+    __tablename__ = 'visits'
+    
+    id = Column(Integer, primary_key=True)
+    user_id = Column(String(80), ForeignKey('users.id'), nullable=False)
+    shop_id = Column(Integer, ForeignKey('ramen_shops.id'), nullable=False)
+    visit_date = Column(DateTime, nullable=False)
+    rating = Column(Integer)  # 1-5の評価
+    comment = Column(Text)
+    image_url = Column(String(255))
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    user = relationship('User', backref='visits')
+    shop = relationship('RamenShop', backref='visits')

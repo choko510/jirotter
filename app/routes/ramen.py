@@ -60,7 +60,7 @@ def load_ramen_data_on_startup(db: Session):
 async def get_nearby_ramen_shops_optimized(
     latitude: float = Query(..., description="緯度"),
     longitude: float = Query(..., description="経度"),
-    radius_km: float = Query(5.0, ge=0.1, le=50.0, description="検索範囲（km）"),
+    radius_km: float = Query(5.0, ge=0.1, le=200.0, description="検索範囲（km）"),
     db: Session = Depends(get_db)
 ):
     """
@@ -137,4 +137,25 @@ async def get_all_ramen_shops(keyword: Optional[str] = Query(None, description="
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"ラーメン店の取得に失敗しました: {str(e)}"
+        )
+
+
+@router.get("/ramen/{shop_id}", response_model=RamenShopResponse)
+async def get_ramen_shop_detail(shop_id: int, db: Session = Depends(get_db)):
+    """指定されたIDのラーメン店の詳細情報を返すエンドポイント"""
+    try:
+        shop = db.query(RamenShop).filter(RamenShop.id == shop_id).first()
+        if not shop:
+            raise HTTPException(
+                status_code=status.HTTP_404_NOT_FOUND,
+                detail="指定されたラーメン店が見つかりません"
+            )
+        
+        return RamenShopResponse.model_validate(shop)
+    except HTTPException:
+        raise
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"ラーメン店の詳細取得に失敗しました: {str(e)}"
         )

@@ -13,7 +13,9 @@ const TimelineComponent = {
         pullDistance: 0,
         maxPullDistance: 120,
         pullThreshold: 80,
-        selectedImage: null
+        selectedImage: null,
+        autoRefreshInterval: null,
+        lastRefreshTime: null
     },
 
     init() {
@@ -26,6 +28,123 @@ const TimelineComponent = {
                 this.switchTab(e.target);
             }
         });
+        
+        // ページの表示状態が変わったときに自動更新を再設定
+        document.addEventListener('visibilitychange', () => {
+            if (document.hidden) {
+                this.stopAutoRefresh();
+            } else {
+                this.setupAutoRefresh();
+            }
+        });
+    },
+
+    // 設定から自動更新の状態を取得
+    isAutoRefreshEnabled() {
+        try {
+            const settings = JSON.parse(localStorage.getItem('appSettings'));
+            return settings && settings.autoRefresh === true;
+        } catch (e) {
+            console.error("Failed to get auto refresh setting", e);
+            return false;
+        }
+    },
+
+    // 自動更新を設定
+    setupAutoRefresh() {
+        this.stopAutoRefresh(); // 既存の自動更新をクリア
+        
+        if (this.isAutoRefreshEnabled()) {
+            // 1分ごとに自動更新
+            this.state.autoRefreshInterval = setInterval(() => {
+                this.refreshTimeline();
+            }, 60000);
+        }
+    },
+
+    // 自動更新を停止
+    stopAutoRefresh() {
+        if (this.state.autoRefreshInterval) {
+            clearInterval(this.state.autoRefreshInterval);
+            this.state.autoRefreshInterval = null;
+        }
+    },
+
+    // タイムラインを更新（新着投稿のみ）
+    async refreshTimeline() {
+        if (this.state.isLoadingMore || this.state.isRefreshing) return;
+        
+        this.state.isRefreshing = true;
+        this.state.lastRefreshTime = new Date();
+        
+        try {
+            // 現在の最新投稿IDを保持
+            const latestPostId = this.state.posts.length > 0 ? this.state.posts[0].id : null;
+            
+            // タイムラインを再読み込み
+            const result = await API.getTimeline(this.state.currentTab, 1);
+            
+            if (result.posts.length > 0) {
+                // 新着投稿のみを抽出
+                let newPosts = result.posts;
+                if (latestPostId) {
+                    newPosts = result.posts.filter(post => post.id > latestPostId);
+                }
+                
+                if (newPosts.length > 0) {
+                    // 新着投稿を先頭に追加
+                    this.state.posts = [...newPosts, ...this.state.posts];
+                    this.prependPosts(newPosts);
+                    
+                    // 新着投稿があることを通知
+                    this.showNewPostsNotification(newPosts.length);
+                }
+            }
+        } catch (error) {
+            console.error('Error refreshing timeline:', error);
+        } finally {
+            this.state.isRefreshing = false;
+        }
+    },
+
+    // 新着投稿をDOMの先頭に追加
+    prependPosts(newPosts) {
+        const timeline = document.getElementById('timeline');
+        const postsHTML = newPosts.map(post => this.createPostHTML(post)).join('');
+        timeline.insertAdjacentHTML('afterbegin', postsHTML);
+    },
+
+    // 新着投稿通知を表示
+    showNewPostsNotification(count) {
+        const notification = document.createElement('div');
+        notification.className = 'new-posts-notification';
+        notification.style.cssText = `
+            position: fixed;
+            top: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: #d4a574;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 20px;
+            font-weight: bold;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.2);
+            z-index: 1000;
+            transition: opacity 0.3s;
+        `;
+        notification.textContent = `${count}件の新着投稿があります`;
+        
+        document.body.appendChild(notification);
+        
+        // 3秒後に通知を非表示
+        setTimeout(() => {
+            notification.style.opacity = '0';
+            setTimeout(() => {
+                if (notification.parentNode) {
+                    notification.parentNode.removeChild(notification);
+                }
+            }, 300);
+        }, 3000);
     },
 
     render(params = []) {
@@ -92,6 +211,7 @@ const TimelineComponent = {
 
         this.setupEventListeners();
         this.loadInitialPosts();
+        this.setupAutoRefresh(); // 自動更新を設定
     },
 
     setupEventListeners() {
@@ -190,8 +310,8 @@ const TimelineComponent = {
         const escapedUserHandle = API.escapeHtml(userHandle);
         
         return `
-            <div class="post-card" id="post-${post.id}">
-                <div class="post-header" onclick="router.navigate('profile', ['${escapedUserHandle}'])">
+            <div class="post-card" id="post-${post.id}" onclick="router.navigate('comment', [${post.id}])">
+                <div class="post-header" onclick="event.stopPropagation(); router.navigate('profile', ['${escapedUserHandle}'])">
                     <div class="post-avatar">${post.user.avatar}</div>
                     <div class="post-user-info">
                         <div class="post-username">
@@ -202,16 +322,14 @@ const TimelineComponent = {
                 </div>
                 <div class="post-text" id="post-text-${post.id}">
                     <div class="post-content" id="post-content-${post.id}">${API.escapeHtmlWithLineBreaks(post.text)}</div>
-                    ${this.isLongText(post.text) ? `<button class="show-more-btn" onclick="TimelineComponent.toggleText(${post.id})">続きを見る</button>` : ''}
+                    ${this.isLongText(post.text) ? `<button class="show-more-btn" onclick="event.stopPropagation(); TimelineComponent.toggleText(${post.id})">続きを見る</button>` : ''}
                 </div>
                 ${post.image ? `<div class="post-image"><img src="${API.escapeHtml(post.image)}" style="width:100%; border-radius: 16px; margin-top: 12px;" alt="Post image"></div>` : ''}
                 <div class="post-engagement">
                     <button class="engagement-btn" onclick="event.stopPropagation(); TimelineComponent.openCommentModal(${post.id})"><i class="fas fa-comment"></i> ${post.engagement.comments}</button>
-                    <button class="engagement-btn" onclick="event.stopPropagation();"><i class="fas fa-retweet"></i> ${post.engagement.retweets}</button>
                     <button class="engagement-btn" onclick="event.stopPropagation(); TimelineComponent.handleLike(${post.id})">
                         <i class="fas fa-heart ${post.isLiked ? 'liked' : ''}"></i> <span>${post.engagement.likes}</span>
                     </button>
-                    <button class="engagement-btn" onclick="event.stopPropagation();"><i class="fas fa-share"></i> ${post.engagement.shares}</button>
                 </div>
             </div>
         `;
@@ -240,6 +358,7 @@ const TimelineComponent = {
         tabElement.classList.add('active');
         this.state.currentTab = tabElement.dataset.tab;
         this.loadInitialPosts();
+        this.setupAutoRefresh(); // タブ切り替え時に自動更新を再設定
     },
 
     async handleLike(postId) {
@@ -314,6 +433,7 @@ const TimelineComponent = {
             document.getElementById('imagePreviewContainer').innerHTML = '';
             this.state.selectedImage = null;
             this.loadInitialPosts(); // Reload the timeline to show the new post
+            this.setupAutoRefresh(); // 投稿後に自動更新を再設定
         } else {
             alert(`投稿に失敗しました: ${result.error}`);
         }
@@ -351,6 +471,64 @@ const TimelineComponent = {
             content.classList.add('collapsed');
             button.textContent = '続きを見る';
         }
+    },
+    
+    // 投稿HTMLを作成する静的メソッド（他のコンポーネントから呼び出し用）
+    createPostHTML(post) {
+        // ユーザーハンドルの@を除去してエスケープ
+        const userHandle = post.user.handle ? post.user.handle.substring(1) : '';
+        const escapedUserHandle = API.escapeHtml(userHandle);
+        
+        return `
+            <div class="post-card" id="post-${post.id}" onclick="router.navigate('comment', [${post.id}])">
+                <div class="post-header" onclick="event.stopPropagation(); router.navigate('profile', ['${escapedUserHandle}'])">
+                    <div class="post-avatar">${post.user.avatar}</div>
+                    <div class="post-user-info">
+                        <div class="post-username">
+                            <span>${API.escapeHtml(post.user.name)}</span>
+                            <span class="post-meta">${API.escapeHtml(post.user.handle)} · ${API.escapeHtml(post.time)}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="post-text" id="post-text-${post.id}">
+                    <div class="post-content" id="post-content-${post.id}">${API.escapeHtmlWithLineBreaks(post.text)}</div>
+                    ${this.isLongText(post.text) ? `<button class="show-more-btn" onclick="event.stopPropagation(); TimelineComponent.toggleText(${post.id})">続きを見る</button>` : ''}
+                </div>
+                ${post.image ? `<div class="post-image"><img src="${API.escapeHtml(post.image)}" style="width:100%; border-radius: 16px; margin-top: 12px;" alt="Post image"></div>` : ''}
+                <div class="post-engagement">
+                    <button class="engagement-btn" onclick="event.stopPropagation(); TimelineComponent.openCommentModal(${post.id})"><i class="fas fa-comment"></i> ${post.engagement.comments}</button>
+                    <button class="engagement-btn" onclick="event.stopPropagation(); TimelineComponent.handleLike(${post.id})">
+                        <i class="fas fa-heart ${post.isLiked ? 'liked' : ''}"></i> <span>${post.engagement.likes}</span>
+                    </button>
+                </div>
+            </div>
+        `;
+    },
+    
+    // イベントリスナーを再設定する静的メソッド（他のコンポーネントから呼び出し用）
+    attachPostEventListeners() {
+        // タイムラインの投稿に対するイベントリスナーを再設定
+        document.querySelectorAll('.post-card').forEach(postCard => {
+            const postId = postCard.id.replace('post-', '');
+            
+            // いいねボタンのイベントリスナー
+            const likeButton = postCard.querySelector('.engagement-btn:nth-child(2)');
+            if (likeButton) {
+                likeButton.onclick = (e) => {
+                    e.stopPropagation();
+                    this.handleLike(parseInt(postId));
+                };
+            }
+            
+            // コメントボタンのイベントリスナー
+            const commentButton = postCard.querySelector('.engagement-btn:nth-child(1)');
+            if (commentButton) {
+                commentButton.onclick = (e) => {
+                    e.stopPropagation();
+                    this.openCommentModal(parseInt(postId));
+                };
+            }
+        });
     }
 };
 

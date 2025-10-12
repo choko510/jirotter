@@ -93,6 +93,66 @@ const API = {
         }
     },
 
+    // 店舗詳細取得
+    async getShopDetail(shopId) {
+        try {
+            const response = await fetch(`/api/v1/ramen/${shopId}`, {
+                headers: this.getAuthHeader()
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            return { success: true, shop: data };
+        } catch (error) {
+            console.error('店舗詳細の取得に失敗しました:', error);
+            return { success: false, error: error.message };
+        }
+    },
+
+    // 店舗関連投稿取得
+    async getShopPosts(shopName) {
+        try {
+            // 店舗名を含む投稿を検索
+            const response = await fetch(`/api/v1/posts?keyword=${encodeURIComponent(shopName)}`, {
+                headers: this.getAuthHeader()
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            
+            // 投稿データをフォーマット
+            const formattedPosts = data.posts.map(post => ({
+                id: post.id,
+                user: {
+                    name: post.author_username,
+                    handle: `@${post.author_username}`,
+                    avatar: '<i class="fas fa-user"></i>'
+                },
+                text: post.content,
+                image: post.image_url,
+                time: this.formatTime(post.created_at),
+                engagement: {
+                    comments: post.replies.length,
+                    retweets: 0,
+                    likes: post.likes_count,
+                    shares: 0
+                },
+                isLiked: post.is_liked_by_current_user
+            }));
+
+            return { success: true, posts: formattedPosts };
+        } catch (error) {
+            console.error('店舗投稿の取得に失敗しました:', error);
+            return { success: false, error: error.message, posts: [] };
+        }
+    },
+
     // 投稿作成
     async postTweet(content, imageFile) {
         try {

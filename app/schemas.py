@@ -148,3 +148,62 @@ class RamenShopResponse(RamenShopBase):
 class RamenShopsResponse(BaseModel):
     shops: List[RamenShopResponse]
     total: int
+
+# Visit Schemas
+class VisitBase(BaseModel):
+    visit_date: datetime
+    rating: Optional[int] = None
+    comment: Optional[str] = None
+    image_url: Optional[str] = None
+
+class VisitCreate(VisitBase):
+    shop_id: int
+    
+    @field_validator('rating')
+    @classmethod
+    def validate_rating(cls, v):
+        if v is not None and (v < 1 or v > 5):
+            raise ValueError('評価は1から5の間で入力してください')
+        return v
+    
+    @field_validator('comment')
+    @classmethod
+    def validate_comment_length(cls, v):
+        if v is not None and len(v) > 500:
+            raise ValueError('コメントは500文字以内で入力してください')
+        return v
+
+class VisitResponse(VisitBase):
+    model_config = ConfigDict(from_attributes=True)
+    
+    id: int
+    user_id: str
+    shop_id: int
+    created_at: datetime
+    shop_name: str
+    shop_address: str
+    author_username: str
+    
+    @field_serializer('comment')
+    def serialize_comment(self, value):
+        return escape_html(value) if value else value
+    
+    @field_serializer('shop_name')
+    def serialize_shop_name(self, value):
+        return escape_html(value)
+    
+    @field_serializer('shop_address')
+    def serialize_shop_address(self, value):
+        return escape_html(value)
+    
+    @field_serializer('author_username')
+    def serialize_author_username(self, value):
+        return escape_html(value)
+    
+    @field_serializer('image_url')
+    def serialize_image_url(self, value):
+        return escape_html(value) if value else value
+
+class VisitsResponse(BaseModel):
+    visits: List[VisitResponse]
+    total: int

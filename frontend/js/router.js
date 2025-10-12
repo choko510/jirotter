@@ -31,6 +31,18 @@ class Router {
                 this.navigate(route);
             });
         });
+
+        // 店舗詳細ページへのリンククリックイベント
+        document.addEventListener('click', (e) => {
+            const shopLink = e.target.closest('.shop-link');
+            if (shopLink) {
+                e.preventDefault();
+                const shopId = shopLink.getAttribute('data-shop-id');
+                if (shopId) {
+                    this.navigate('shop', [shopId]);
+                }
+            }
+        });
     }
 
     // ルート処理
@@ -106,17 +118,22 @@ class Router {
         
         if (rightSidebar && mainContent && container) {
             if (route === 'map') {
-                // mapページの場合、main-contentを広げるが、サイドバーは表示したままにする
+                // mapページの場合、右サイドバーを非表示にし、main-contentを広げる
+                rightSidebar.style.display = 'none';
                 mainContent.style.maxWidth = 'none';
+                mainContent.style.width = 'calc(100vw - 260px)'; // 左サイドバーの幅を引いた残りすべて
                 mainContent.style.borderRight = 'none';
-                container.style.gridTemplateColumns = '260px 1fr 350px';
+                mainContent.style.flex = '1'; // フレックスアイテムとして伸縮する
+                container.style.gridTemplateColumns = '260px 1fr 0px'; // 右サイドバーを0pxに
             } else {
                 // その他のページの場合、元のレイアウトに戻す
-                mainContent.style.maxWidth = '600px';
-                mainContent.style.borderRight = '1px solid #e0e0e0';
-                container.style.gridTemplateColumns = '260px 1fr 350px';
+                rightSidebar.style.display = '';
+                mainContent.style.maxWidth = '';
+                mainContent.style.width = '';
+                mainContent.style.borderRight = '';
+                mainContent.style.flex = '';
+                container.style.gridTemplateColumns = '';
             }
-            rightSidebar.style.display = ''; // サイドバーは常に表示
         }
     }
 
@@ -137,3 +154,9 @@ class Router {
 
 // グローバルルーターインスタンス
 const router = new Router();
+
+// DOMが読み込まれた後にコンポーネントを登録
+document.addEventListener('DOMContentLoaded', function() {
+    // 店舗詳細ページのルートを登録
+    router.register('shop', ShopDetailComponent);
+});

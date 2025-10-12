@@ -59,7 +59,6 @@
             position: sticky;
             top: 0;
             height: 100vh;
-            overflow-y: auto;
             display: flex;
             flex-direction: column;
         }
@@ -113,7 +112,7 @@
         /* メインカラム */
         .main-content {
             border-right: 1px solid #e0e0e0;
-            max-width: 600px;
+            max-width: 800px;
             background: #ffffff;
         }
 
@@ -559,6 +558,224 @@
             background: #1a1a1a;
             border-bottom-color: #333;
         }
+
+        /* 店舗詳細ページスタイル */
+        .shop-detail-container {
+            padding: 20px;
+            max-width: 800px;
+            margin: 0 auto;
+        }
+
+        .shop-header {
+            display: flex;
+            align-items: center;
+            margin-bottom: 20px;
+            gap: 16px;
+        }
+
+        .back-button {
+            background: transparent;
+            border: none;
+            color: #d4a574;
+            font-size: 18px;
+            cursor: pointer;
+            padding: 8px;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: background 0.2s;
+        }
+
+        .back-button:hover {
+            background: rgba(212, 165, 116, 0.1);
+        }
+
+        .shop-name {
+            font-size: 24px;
+            font-weight: bold;
+            margin: 0;
+            flex: 1;
+        }
+
+        .shop-info-card {
+            background: #ffffff;
+            border-radius: 16px;
+            overflow: hidden;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            margin-bottom: 20px;
+            border: 1px solid #e0e0e0;
+        }
+
+        .shop-map-container {
+            height: 250px;
+            position: relative;
+        }
+
+        .shop-map {
+            width: 100%;
+            height: 100%;
+        }
+
+        .shop-details {
+            padding: 20px;
+        }
+
+        .shop-info-item {
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .shop-info-item:last-child {
+            margin-bottom: 0;
+        }
+
+        .shop-info-item i {
+            color: #d4a574;
+            font-size: 18px;
+            width: 24px;
+            text-align: center;
+            margin-top: 2px;
+        }
+
+        .shop-info-item span {
+            flex: 1;
+            line-height: 1.5;
+        }
+
+        .shop-actions {
+            display: flex;
+            gap: 12px;
+            margin-bottom: 30px;
+        }
+
+        .action-button {
+            flex: 1;
+            padding: 12px 20px;
+            border-radius: 30px;
+            border: 1px solid #e0e0e0;
+            background: #ffffff;
+            color: #1a1a1a;
+            font-size: 16px;
+            font-weight: 500;
+            cursor: pointer;
+            transition: all 0.2s;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+        }
+
+        .action-button:hover {
+            background: #f5f5f5;
+        }
+
+        .action-button.primary {
+            background: #d4a574;
+            border-color: #d4a574;
+            color: #ffffff;
+        }
+
+        .action-button.primary:hover {
+            background: #c49563;
+            border-color: #c49563;
+        }
+
+        .shop-posts-section h2 {
+            font-size: 20px;
+            margin-bottom: 16px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e0e0e0;
+        }
+
+        .posts-container {
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+
+        .no-posts {
+            text-align: center;
+            padding: 40px 20px;
+            color: #666;
+        }
+
+        .no-posts i {
+            font-size: 48px;
+            margin-bottom: 16px;
+            color: #d4a574;
+        }
+
+        .no-posts p {
+            margin: 0;
+            font-size: 16px;
+        }
+
+        /* ダークモード対応 */
+        .dark-mode .shop-info-card {
+            background: #2a2a2a;
+            border-color: #333;
+        }
+
+        .dark-mode .shop-details {
+            background: #2a2a2a;
+        }
+
+        .dark-mode .shop-info-item span {
+            color: #e0e0e0;
+        }
+
+        .dark-mode .action-button {
+            background: #2a2a2a;
+            border-color: #333;
+            color: #e0e0e0;
+        }
+
+        .dark-mode .action-button:hover {
+            background: #333;
+        }
+
+        .dark-mode .shop-posts-section h2 {
+            color: #e0e0e0;
+            border-bottom-color: #333;
+        }
+
+        .dark-mode .no-posts {
+            color: #aaa;
+        }
+
+        /* モバイル対応 */
+        @media (max-width: 768px) {
+            .shop-detail-container {
+                padding: 16px;
+            }
+
+            .shop-header {
+                margin-bottom: 16px;
+            }
+
+            .shop-name {
+                font-size: 20px;
+            }
+
+            .shop-map-container {
+                height: 200px;
+            }
+
+            .shop-details {
+                padding: 16px;
+            }
+
+            .shop-actions {
+                flex-direction: column;
+            }
+
+            .action-button {
+                width: 100%;
+            }
+        }
     </style>
 </head>
 <body>
@@ -689,6 +906,7 @@
     <script src="js/components/studio.js"></script>
     <script src="js/components/settings.js"></script>
     <script src="js/components/profile.js"></script>
+    <script src="js/components/shop-detail.js"></script>
     <script src="js/app.js"></script>
 </body>
 </html>

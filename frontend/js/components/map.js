@@ -29,19 +29,6 @@ const MapComponent = {
     async render(params = []) {
         const contentArea = document.getElementById('contentArea');
         
-        // マップ画面では右サイドバーを非表示にし、メインコンテンツを広げる
-        const rightSidebar = document.querySelector('.right-sidebar');
-        const mainContent = document.querySelector('.main-content');
-        
-        if (rightSidebar) {
-            rightSidebar.style.display = 'none';
-        }
-        
-        if (mainContent) {
-            mainContent.style.maxWidth = '100%';
-            mainContent.style.borderRight = 'none';
-        }
-        
         const mainHeader = document.querySelector('.main-header');
         const isHeaderVisible = mainHeader && mainHeader.style.display !== 'none';
         const mapHeight = isHeaderVisible ? 'calc(100vh - 60px)' : '100vh';
@@ -51,6 +38,7 @@ const MapComponent = {
                 .map-container {
                     padding: 0;
                     height: ${mapHeight};
+                    width: 100%;
                     display: flex;
                     flex-direction: column;
                 }
@@ -141,11 +129,13 @@ const MapComponent = {
                 .map-content {
                     flex: 1;
                     position: relative;
+                    width: 100%;
                 }
                 
                 #map {
                     width: 100%;
                     height: 100%;
+                    min-height: 100%;
                 }
                 
                 .map-loading {
@@ -239,6 +229,8 @@ const MapComponent = {
                 @media (max-width: 768px) {
                     .map-container {
                         height: calc(100vh - 120px);
+                        width: 100vw;
+                        max-width: 100%;
                     }
                     
                     .map-header {
@@ -354,7 +346,7 @@ const MapComponent = {
             this.state.lastCenter = location;
             
             // 近くのラーメン店データを取得して追加
-            await this.addNearbyShops(location);
+            await this.addNearbyShops(location, null);
             
             this.showLoading(false);
             
@@ -447,7 +439,7 @@ const MapComponent = {
             this.state.lastCenter = { lat, lng };
             
             // APIを呼び出して近くの店舗を取得
-            await this.addNearbyShops({ lat, lng });
+            await this.addNearbyShops({ lat, lng }, null);
         }, 500);
     },
 
@@ -507,71 +499,113 @@ const MapComponent = {
     },
 
     // 近くのラーメン店データを取得して追加（キャッシュ対応版）
-    async addNearbyShops(centerLocation) {
+    async addNearbyShops(centerLocation, currentRadius = null) {
         try {
             const { lat, lng } = centerLocation;
-            const radius = this.state.cacheRadius;
+            // 検索範囲を段階的に広げるための配列
+            const radiusSteps = [30, 50, 100, 200]; // km
+            const maxRadius = 200; // 最大検索範囲
             
-            // キャッシュキーを生成
-            const cacheKey = this.generateCacheKey(lat, lng, radius);
+            // 初期検索範囲を設定
+            let radius = currentRadius || this.state.cacheRadius;
             
-            // まず近くのキャッシュエントリを検索
-            let cachedData = this.findNearbyCacheEntry(lat, lng, radius);
-            
-            // 近くのキャッシュがなければ、正確なキーでキャッシュを検索
-            if (!cachedData) {
-                cachedData = this.getCachedShopData(cacheKey);
+            // 現在の検索範囲がradiusStepsに含まれていない場合は、次のステップを見つける
+            let radiusIndex = radiusSteps.indexOf(radius);
+            if (radiusIndex === -1) {
+                // 現在の半径が配列にない場合は、最も近い大きい値を見つける
+                radiusIndex = radiusSteps.findIndex(r => r > radius);
+                if (radiusIndex === -1) {
+                    radiusIndex = radiusSteps.length - 1; // 最大値を使用
+                }
             }
             
-            // キャッシュがあればそれを使用
-            if (cachedData) {
-                console.log('キャッシュから店舗データを使用');
-                this.updateShopMarkers(cachedData.shops);
-                return;
-            }
-            
-            // 進行中の同じリクエストがあれば、それが完了するまで待つ
-            const pendingKey = `${lat},${lng},${radius}`;
-            if (this.state.pendingRequests.has(pendingKey)) {
-                console.log('進行中のリクエストを待機中...');
-                const existingRequest = this.state.pendingRequests.get(pendingKey);
-                const data = await existingRequest;
-                this.updateShopMarkers(data.shops);
-                return;
-            }
-            
-            // APIリクエストを作成
-            const apiRequest = fetch(`/api/v1/ramen/nearby?latitude=${lat}&longitude=${lng}&radius_km=${radius}`)
-                .then(response => {
-                    if (!response.ok) {
-                        throw new Error('ラーメン店データの取得に失敗しました');
-                    }
-                    return response.json();
-                })
-                .then(data => {
-                    // 取得したデータをキャッシュに保存
-                    this.cacheShopData(cacheKey, data);
+            // 検索範囲を段階的に広げながら店舗を検索
+            for (let i = radiusIndex; i < radiusSteps.length; i++) {
+                radius = radiusSteps[i];
+                
+                // キャッシュキーを生成
+                const cacheKey = this.generateCacheKey(lat, lng, radius);
+                
+                // まず近くのキャッシュエントリを検索
+                let cachedData = this.findNearbyCacheEntry(lat, lng, radius);
+                
+                // 近くのキャッシュがなければ、正確なキーでキャッシュを検索
+                if (!cachedData) {
+                    cachedData = this.getCachedShopData(cacheKey);
+                }
+                
+                // キャッシュがあればそれを使用
+                if (cachedData) {
+                    console.log(`キャッシュから店舗データを使用 (範囲: ${radius}km)`);
+                    this.updateShopMarkers(cachedData.shops);
                     
-                    // 取得した店舗データでマーカーを更新
+                    // 店舗数が10以下で、まだ最大検索範囲に達していない場合は次の範囲を試す
+                    if (cachedData.shops.length <= 10 && radius < maxRadius) {
+                        console.log(`店舗数が${cachedData.shops.length}件のため、検索範囲を広げます`);
+                        continue;
+                    }
+                    return;
+                }
+                
+                // 進行中の同じリクエストがあれば、それが完了するまで待つ
+                const pendingKey = `${lat},${lng},${radius}`;
+                if (this.state.pendingRequests.has(pendingKey)) {
+                    console.log(`進行中のリクエストを待機中... (範囲: ${radius}km)`);
+                    const existingRequest = this.state.pendingRequests.get(pendingKey);
+                    const data = await existingRequest;
                     this.updateShopMarkers(data.shops);
                     
-                    // リクエスト完了後、pendingリストから削除
-                    this.state.pendingRequests.delete(pendingKey);
-                    
-                    return data;
-                })
-                .catch(error => {
-                    console.error('ラーメン店データの取得に失敗しました:', error);
-                    this.showError('ラーメン店データの取得に失敗しました: ' + error.message);
-                    
-                    // エラー時もpendingリストから削除
-                    this.state.pendingRequests.delete(pendingKey);
-                    
-                    throw error;
-                });
-            
-            // 進行中のリクエストとして保存
-            this.state.pendingRequests.set(pendingKey, apiRequest);
+                    // 店舗数が10以下で、まだ最大検索範囲に達していない場合は次の範囲を試す
+                    if (data.shops.length <= 10 && radius < maxRadius) {
+                        console.log(`店舗数が${data.shops.length}件のため、検索範囲を広げます`);
+                        continue;
+                    }
+                    return;
+                }
+                
+                // APIリクエストを作成
+                const apiRequest = fetch(`/api/v1/ramen/nearby?latitude=${lat}&longitude=${lng}&radius_km=${radius}`)
+                    .then(response => {
+                        if (!response.ok) {
+                            throw new Error('ラーメン店データの取得に失敗しました');
+                        }
+                        return response.json();
+                    })
+                    .then(data => {
+                        // 取得したデータをキャッシュに保存
+                        this.cacheShopData(cacheKey, data);
+                        
+                        // 取得した店舗データでマーカーを更新
+                        this.updateShopMarkers(data.shops);
+                        
+                        // リクエスト完了後、pendingリストから削除
+                        this.state.pendingRequests.delete(pendingKey);
+                        
+                        // 店舗数が10以下で、まだ最大検索範囲に達していない場合は次の範囲を試す
+                        if (data.shops.length <= 10 && radius < maxRadius) {
+                            console.log(`店舗数が${data.shops.length}件のため、検索範囲を広げます`);
+                            // 次の範囲で再検索
+                            this.addNearbyShops(centerLocation, radiusSteps[i + 1]);
+                        }
+                        
+                        return data;
+                    })
+                    .catch(error => {
+                        console.error('ラーメン店データの取得に失敗しました:', error);
+                        this.showError('ラーメン店データの取得に失敗しました: ' + error.message);
+                        
+                        // エラー時もpendingリストから削除
+                        this.state.pendingRequests.delete(pendingKey);
+                        
+                        throw error;
+                    });
+                
+                // 進行中のリクエストとして保存
+                this.state.pendingRequests.set(pendingKey, apiRequest);
+                
+                // この範囲での検索を開始したので、ループを抜ける
+                break;
+            }
             
         } catch (error) {
             console.error('ラーメン店データの取得に失敗しました:', error);

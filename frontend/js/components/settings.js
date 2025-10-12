@@ -11,6 +11,13 @@ const SettingsComponent = {
         }
     },
 
+    // 認証状態をチェック
+    isAuthenticated() {
+        const authToken = API.getCookie('authToken');
+        const userCookie = API.getCookie('user');
+        return !!(authToken && userCookie);
+    },
+
     // 設定の読み込み
     loadSettings() {
         try {
@@ -28,6 +35,24 @@ const SettingsComponent = {
     render(params = []) {
         this.loadSettings(); // レンダリング前に設定を読み込む
         const contentArea = document.getElementById('contentArea');
+        const isLoggedIn = this.isAuthenticated();
+        
+        // ユーザー情報の取得
+        let userName = 'ユーザー名';
+        let userHandle = '@username';
+        
+        if (isLoggedIn) {
+            try {
+                const userCookie = API.getCookie('user');
+                if (userCookie) {
+                    const user = JSON.parse(decodeURIComponent(userCookie));
+                    userName = user.username || userName;
+                    userHandle = `@${user.id}` || userHandle;
+                }
+            } catch (e) {
+                console.error("Failed to parse user cookie", e);
+            }
+        }
         
         contentArea.innerHTML = `
             <style>
@@ -222,6 +247,46 @@ const SettingsComponent = {
                     background: #d32f2f;
                 }
                 
+                .login-prompt {
+                    background: #f9f9f9;
+                    border: 1px solid #e0e0e0;
+                    border-radius: 12px;
+                    padding: 24px;
+                    text-align: center;
+                    margin-bottom: 20px;
+                }
+                
+                .login-prompt-title {
+                    font-size: 18px;
+                    font-weight: bold;
+                    margin-bottom: 8px;
+                }
+                
+                .login-prompt-desc {
+                    color: #666;
+                    margin-bottom: 16px;
+                }
+                
+                .login-button {
+                    background: #d4a574;
+                    color: white;
+                    border: none;
+                    padding: 10px 20px;
+                    border-radius: 8px;
+                    cursor: pointer;
+                    font-weight: bold;
+                    transition: background 0.2s;
+                }
+                
+                .login-button:hover {
+                    background: #c49564;
+                }
+                
+                .disabled-section {
+                    opacity: 0.6;
+                    pointer-events: none;
+                }
+                
                 @media (max-width: 768px) {
                     .settings-container {
                         padding: 16px;
@@ -245,20 +310,28 @@ const SettingsComponent = {
                     <p class="settings-subtitle">アカウントとアプリの設定を管理</p>
                 </div>
                 
-                <div class="settings-section">
+                ${!isLoggedIn ? `
+                    <div class="login-prompt">
+                        <div class="login-prompt-title">ログインが必要です</div>
+                        <div class="login-prompt-desc">アカウント設定を利用するにはログインしてください</div>
+                        <button class="login-button" onclick="AuthComponent.showLoginForm()">ログイン</button>
+                    </div>
+                ` : ''}
+                
+                <div class="settings-section ${!isLoggedIn ? 'disabled-section' : ''}">
                     <div class="profile-section">
                         <div class="profile-avatar"><i class="fas fa-user"></i></div>
                         <div class="profile-info">
-                            <div class="profile-name">ユーザー名</div>
-                            <div class="profile-handle">@username</div>
+                            <div class="profile-name">${userName}</div>
+                            <div class="profile-handle">${userHandle}</div>
                         </div>
-                        <button class="profile-edit" onclick="SettingsComponent.editProfile()">プロフィール編集</button>
+                        <button class="profile-edit" onclick="SettingsComponent.editProfile()" ${!isLoggedIn ? 'disabled' : ''}>プロフィール編集</button>
                     </div>
                 </div>
                 
-                <div class="settings-section">
+                <div class="settings-section ${!isLoggedIn ? 'disabled-section' : ''}">
                     <div class="settings-section-header">通知設定</div>
-                    <div class="settings-item" onclick="SettingsComponent.toggleSetting('notifications')">
+                    <div class="settings-item" onclick="${isLoggedIn ? 'SettingsComponent.toggleSetting(\'notifications\')' : ''}">
                         <div class="settings-item-left">
                             <div class="settings-item-title">プッシュ通知</div>
                             <div class="settings-item-desc">新しい投稿やコメントを通知</div>
@@ -267,7 +340,7 @@ const SettingsComponent = {
                             <div class="toggle-switch ${this.state.settings.notifications ? 'active' : ''}" id="notifications-toggle"></div>
                         </div>
                     </div>
-                    <div class="settings-item" onclick="SettingsComponent.toggleSetting('autoRefresh')">
+                    <div class="settings-item" onclick="${isLoggedIn ? 'SettingsComponent.toggleSetting(\'autoRefresh\')' : ''}">
                         <div class="settings-item-left">
                             <div class="settings-item-title">自動更新</div>
                             <div class="settings-item-desc">タイムラインを自動で更新</div>
@@ -278,9 +351,9 @@ const SettingsComponent = {
                     </div>
                 </div>
                 
-                <div class="settings-section">
+                <div class="settings-section ${!isLoggedIn ? 'disabled-section' : ''}">
                     <div class="settings-section-header">プライバシー</div>
-                    <div class="settings-item" onclick="SettingsComponent.toggleSetting('locationSharing')">
+                    <div class="settings-item" onclick="${isLoggedIn ? 'SettingsComponent.toggleSetting(\'locationSharing\')' : ''}">
                         <div class="settings-item-left">
                             <div class="settings-item-title">位置情報共有</div>
                             <div class="settings-item-desc">現在地を投稿に含める</div>
@@ -289,7 +362,7 @@ const SettingsComponent = {
                             <div class="toggle-switch ${this.state.settings.locationSharing ? 'active' : ''}" id="locationSharing-toggle"></div>
                         </div>
                     </div>
-                    <div class="settings-item" onclick="SettingsComponent.showBlockedUsers()">
+                    <div class="settings-item" onclick="${isLoggedIn ? 'SettingsComponent.showBlockedUsers()' : ''}">
                         <div class="settings-item-left">
                             <div class="settings-item-title">ブロックしたユーザー</div>
                             <div class="settings-item-desc">ブロック中のユーザーを管理</div>
@@ -348,41 +421,51 @@ const SettingsComponent = {
                     </div>
                 </div>
                 
-                <div class="danger-zone">
-                    <div class="settings-section">
-                        <div class="settings-section-header">危険な操作</div>
-                        <div class="settings-item danger-item" onclick="SettingsComponent.confirmLogout()">
-                            <div class="settings-item-left">
-                                <div class="settings-item-title">ログアウト</div>
-                                <div class="settings-item-desc">現在のアカウントからログアウト</div>
+                ${isLoggedIn ? `
+                    <div class="danger-zone">
+                        <div class="settings-section">
+                            <div class="settings-section-header">危険な操作</div>
+                            <div class="settings-item danger-item" onclick="SettingsComponent.confirmLogout()">
+                                <div class="settings-item-left">
+                                    <div class="settings-item-title">ログアウト</div>
+                                    <div class="settings-item-desc">現在のアカウントからログアウト</div>
+                                </div>
+                                <div class="settings-item-right">
+                                    <button class="danger-button">ログアウト</button>
+                                </div>
                             </div>
-                            <div class="settings-item-right">
-                                <button class="danger-button">ログアウト</button>
-                            </div>
-                        </div>
-                        <div class="settings-item danger-item" onclick="SettingsComponent.confirmDeleteAccount()">
-                            <div class="settings-item-left">
-                                <div class="settings-item-title">アカウント削除</div>
-                                <div class="settings-item-desc">アカウントとすべてのデータを削除</div>
-                            </div>
-                            <div class="settings-item-right">
-                                <button class="danger-button">削除</button>
+                            <div class="settings-item danger-item" onclick="SettingsComponent.confirmDeleteAccount()">
+                                <div class="settings-item-left">
+                                    <div class="settings-item-title">アカウント削除</div>
+                                    <div class="settings-item-desc">アカウントとすべてのデータを削除</div>
+                                </div>
+                                <div class="settings-item-right">
+                                    <button class="danger-button">削除</button>
+                                </div>
                             </div>
                         </div>
                     </div>
-                </div>
+                ` : ''}
             </div>
         `;
     },
 
     // 設定の切り替え
     toggleSetting(settingName) {
+        if (!this.isAuthenticated()) {
+            return;
+        }
         this.state.settings[settingName] = !this.state.settings[settingName];
         const toggleElement = document.getElementById(`${settingName}-toggle`);
         if (toggleElement) {
             toggleElement.classList.toggle('active');
         }
         this.saveSettings();
+        
+        // 自動更新設定が変更された場合は、タイムラインコンポーネントに通知
+        if (settingName === 'autoRefresh' && window.TimelineComponent) {
+            window.TimelineComponent.setupAutoRefresh();
+        }
     },
 
     // テーマ設定
@@ -401,6 +484,9 @@ const SettingsComponent = {
 
     // プロフィール編集
     editProfile() {
+        if (!this.isAuthenticated()) {
+            return;
+        }
         alert('プロフィール編集機能は現在開発中です');
         // 実際の実装ではプロフィール編集ページに遷移
         // router.navigate('profile-edit');
@@ -408,6 +494,9 @@ const SettingsComponent = {
 
     // ブロックしたユーザー表示
     showBlockedUsers() {
+        if (!this.isAuthenticated()) {
+            return;
+        }
         alert('ブロックしたユーザーはいません');
     },
 
@@ -428,6 +517,9 @@ const SettingsComponent = {
 
     // ログアウト確認
     confirmLogout() {
+        if (!this.isAuthenticated()) {
+            return;
+        }
         if (confirm('本当にログアウトしますか？')) {
             Utils.logout();
         }
@@ -435,6 +527,9 @@ const SettingsComponent = {
 
     // アカウント削除確認
     confirmDeleteAccount() {
+        if (!this.isAuthenticated()) {
+            return;
+        }
         if (confirm('本当にアカウントを削除しますか？この操作は元に戻せません。')) {
             if (confirm('最終確認：すべてのデータが削除されます。よろしいですか？')) {
                 alert('アカウント削除機能は現在開発中です');
