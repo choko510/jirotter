@@ -302,6 +302,46 @@ const SettingsComponent = {
                         text-align: center;
                     }
                 }
+
+                /* Dark Mode Overrides */
+                .dark-mode .settings-subtitle,
+                .dark-mode .settings-item-desc,
+                .dark-mode .settings-value,
+                .dark-mode .settings-arrow,
+                .dark-mode .profile-handle {
+                    color: #aaa;
+                }
+                .dark-mode .settings-section {
+                    background: #2a2a2a;
+                    border-color: #333;
+                }
+                .dark-mode .settings-section-header {
+                    background: #1a1a1a;
+                    border-bottom-color: #333;
+                }
+                .dark-mode .settings-item {
+                    border-bottom-color: #333;
+                }
+                .dark-mode .settings-item:hover {
+                    background: #333;
+                }
+                .dark-mode .toggle-switch {
+                    background: #555;
+                }
+                .dark-mode .login-prompt {
+                    background: #2a2a2a;
+                    border-color: #333;
+                }
+                .dark-mode .login-prompt-desc {
+                    color: #aaa;
+                }
+                .dark-mode .danger-item {
+                    border-color: #5c1f1f;
+                }
+
+                .dark-mode .danger-item:hover {
+                    background: #5c1f1f;
+                }
             </style>
             
             <div class="settings-container">

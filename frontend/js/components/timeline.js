@@ -157,7 +157,7 @@ const TimelineComponent = {
                 .post-input-wrapper { display: flex; gap: 12px; }
                 .post-avatar { width: 48px; height: 48px; border-radius: 50%; background: #d4a574; flex-shrink: 0; }
                 .post-input-content { flex: 1; }
-                .post-textarea { width: 100%; background: transparent; border: none; font-size: 20px; resize: none; outline: none; min-height: 60px; }
+                .post-textarea { width: 100%; background: transparent; border: none; font-size: 20px; resize: none; outline: none; min-height: 60px; color: inherit; }
                 .post-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
                 .post-icons { display: flex; gap: 4px; }
                 .post-icon-btn { width: 36px; height: 36px; border-radius: 50%; border: none; background: transparent; color: #d4a574; cursor: pointer; display: flex; align-items: center; justify-content: center; }
@@ -182,6 +182,24 @@ const TimelineComponent = {
                 .post-content.collapsed { max-height: 4.2em; overflow: hidden; }
                 .show-more-btn { background: none; border: none; color: #d4a574; cursor: pointer; font-size: 14px; padding: 4px 0; }
                 .show-more-btn:hover { text-decoration: underline; }
+
+                /* Dark Mode Overrides */
+                .dark-mode .post-input-area,
+                .dark-mode .post-card {
+                    border-bottom-color: #333;
+                }
+                .dark-mode .post-card:hover {
+                    background: #2a2a2a;
+                }
+                .dark-mode .post-meta,
+                .dark-mode .char-counter,
+                .dark-mode .engagement-btn {
+                    color: #aaa;
+                }
+                .dark-mode .tweet-btn:disabled {
+                    background: #555;
+                    color: #aaa;
+                }
             </style>
             
             <div class="post-input-area">

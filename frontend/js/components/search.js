@@ -230,6 +230,45 @@ const SearchComponent = {
                         font-size: 16px;
                     }
                 }
+
+                /* Dark Mode Overrides */
+                .dark-mode .search-input-large {
+                    background: #2a2a2a;
+                    border-color: #333;
+                    color: #e0e0e0;
+                }
+                .dark-mode .search-input-large:focus {
+                    background: #333;
+                }
+                .dark-mode .search-icon-large,
+                .dark-mode .results-count,
+                .dark-mode .shop-category,
+                .dark-mode .shop-reviews {
+                    color: #aaa;
+                }
+                .dark-mode .filter-option {
+                    background: #2a2a2a;
+                    border-color: #333;
+                    color: #e0e0e0;
+                }
+                .dark-mode .filter-option:hover {
+                    background: #333;
+                }
+                .dark-mode .filter-option.active {
+                    background: #d4a574;
+                    border-color: #d4a574;
+                    color: #1a1a1a;
+                }
+                .dark-mode .results-header {
+                    border-bottom-color: #333;
+                }
+                .dark-mode .shop-card {
+                    background: #2a2a2a;
+                    border-color: #333;
+                }
+                .dark-mode .shop-card:hover {
+                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+                }
             </style>
             
             <div class="search-container">

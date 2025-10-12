@@ -35,6 +35,12 @@ const ProfileComponent = {
                 .profile-post-item { border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; }
                 .profile-post-item img { width: 100%; height: auto; }
                 .profile-post-item p { padding: 10px; }
+
+                /* Dark Mode Overrides */
+                .dark-mode .profile-id { color: #aaa; }
+                .dark-mode .profile-tabs { border-bottom-color: #333; }
+                .dark-mode .profile-post-item { border-color: #333; }
+                .dark-mode .profile-tab.active { color: #d4a574; }
             </style>
             <div id="profileContainer">
                 <div class="loading">プロフィールを読み込み中...</div>
