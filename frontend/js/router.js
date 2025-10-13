@@ -50,6 +50,9 @@ class Router {
         const hash = window.location.hash.slice(1) || 'timeline';
         const [route, ...params] = hash.split('/');
         
+        // 以前のCSSをアンロード
+        Utils.unloadCSS();
+
         // ナビゲーションのアクティブ状態を更新
         this.updateActiveNavigation(route);
         

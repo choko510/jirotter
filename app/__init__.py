@@ -73,6 +73,7 @@ def create_app():
     )
     
     # 静的ファイルの提供設定（キャッシュ無効化）
+    app.mount("/static", StaticFiles(directory="frontend/static", html=True), name="static")
     app.mount("/js", StaticFiles(directory="frontend/js", html=True), name="js")
     app.mount("/uploads", StaticFiles(directory="uploads", html=True), name="uploads")
     

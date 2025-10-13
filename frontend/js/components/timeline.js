@@ -153,65 +153,11 @@ const TimelineComponent = {
     render(params = []) {
         this.state.selectedImage = null;
         const contentArea = document.getElementById('contentArea');
-        contentArea.innerHTML = `
-            <style>
-                /* ... styles ... */
-                .post-input-area { padding: 16px; border-bottom: 1px solid #e0e0e0; }
-                .post-input-wrapper { display: flex; gap: 12px; }
-                .post-avatar { width: 48px; height: 48px; border-radius: 50%; background: #d4a574; flex-shrink: 0; }
-                .post-input-content { flex: 1; }
-                .post-textarea { width: 100%; background: transparent; border: none; font-size: 20px; resize: none; outline: none; min-height: 60px; color: inherit; }
-                .post-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
-                .post-icons { display: flex; gap: 4px; }
-                .post-icon-btn { width: 36px; height: 36px; border-radius: 50%; border: none; background: transparent; color: #d4a574; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-                .tweet-btn { background: #dbaf3adb; color: #1a1a1a; border: none; padding: 8px 20px; border-radius: 20px; font-weight: bold; cursor: pointer; }
-                .tweet-btn:disabled { background: #ccc; cursor: not-allowed; }
-                .char-counter { color: #666; font-size: 14px; margin-right: 12px; }
-                .char-counter.warning { color: #ff9800; }
-                .char-counter.error { color: #f44336; }
-                .timeline-container { position: relative; overflow-y: auto; height: calc(100vh - 180px); }
-                .post-card { padding: 16px; border-bottom: 1px solid #e0e0e0; transition: background 0.2s; }
-                .post-card:hover { background: #f9f9f9; }
-                .post-header { display: flex; gap: 12px; margin-bottom: 12px; cursor: pointer; }
-                .post-user-info { flex: 1; }
-                .post-username { font-weight: bold; }
-                .post-meta { color: #666; font-size: 14px; }
-                .post-engagement { display: flex; justify-content: space-around; margin-top: 12px; padding-top: 12px; }
-                .engagement-btn { display: flex; align-items: center; gap: 8px; background: transparent; border: none; color: #666; cursor: pointer; }
-                .engagement-btn .liked { color: #e0245e; }
-                .image-preview { max-width: 100px; max-height: 100px; border-radius: 10px; margin-top: 10px; }
-                #timelineLoadingIndicator { text-align: center; padding: 20px; }
-                .post-content { line-height: 1.4; }
-                .post-content.collapsed { max-height: 4.2em; overflow: hidden; }
-                .show-more-btn { background: none; border: none; color: #d4a574; cursor: pointer; font-size: 14px; padding: 4px 0; }
-                .show-more-btn:hover { text-decoration: underline; }
-                .shop-reference { margin-top: 12px; padding: 12px; background: #f5f5f5; border-radius: 8px; cursor: pointer; transition: background 0.2s; }
-                .shop-reference:hover { background: #e8e8e8; }
-                .shop-reference-content { display: flex; align-items: center; color: #d4a574; }
-                .shop-reference-content i { margin-right: 8px; }
 
-                /* Dark Mode Overrides */
-                .dark-mode .post-input-area,
-                .dark-mode .post-card {
-                    border-bottom-color: #333;
-                }
-                .dark-mode .post-card:hover {
-                    background: #2a2a2a;
-                }
-                .dark-mode .post-meta,
-                .dark-mode .char-counter,
-                .dark-mode .engagement-btn {
-                    color: #aaa;
-                }
-                .dark-mode .tweet-btn:disabled {
-                    background: #555;
-                    color: #aaa;
-                }
-                .dark-mode .shop-reference { background: #333; }
-                .dark-mode .shop-reference:hover { background: #444; }
-                .dark-mode .shop-reference-content { color: #d4a574; }
-            </style>
-            
+        // CSSの動的読み込み
+        Utils.loadCSS('timeline');
+
+        contentArea.innerHTML = `
             <div class="post-input-area">
                 <div class="post-input-wrapper">
                     <div class="post-avatar"></div>
