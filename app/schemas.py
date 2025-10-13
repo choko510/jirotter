@@ -91,6 +91,8 @@ class PostBase(BaseModel):
     content: str
 
 class PostCreate(PostBase):
+    shop_id: Optional[int] = None
+    
     @field_validator('content')
     @classmethod
     def validate_content_length(cls, v):
@@ -105,6 +107,9 @@ class PostResponse(PostBase):
     user_id: str
     author_username: str
     image_url: Optional[str] = None
+    shop_id: Optional[int] = None
+    shop_name: Optional[str] = None
+    shop_address: Optional[str] = None
     created_at: datetime
     likes_count: int
     replies_count: int
@@ -121,6 +126,14 @@ class PostResponse(PostBase):
     
     @field_serializer('image_url')
     def serialize_image_url(self, value):
+        return escape_html(value) if value else value
+    
+    @field_serializer('shop_name')
+    def serialize_shop_name(self, value):
+        return escape_html(value) if value else value
+    
+    @field_serializer('shop_address')
+    def serialize_shop_address(self, value):
         return escape_html(value) if value else value
 
 class PostsResponse(BaseModel):

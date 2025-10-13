@@ -61,8 +61,17 @@ def sanitize_content(content: str) -> str:
     # HTMLタグを除去
     content = re.sub(r'<[^>]+>', '', content)
     
-    # 危険なJavaScriptイベントハンドラを除去
-    content = re.sub(r'on\w+\s*=', '', content, flags=re.IGNORECASE)
+    # 危険なJavaScriptイベントハンドラを除去（最適化されたパターン）
+    # 具体的なイベントハンドラ名を明示的に指定することで、バックトラッキングを削減
+    dangerous_handlers = [
+        r'onclick\s*=', r'ondblclick\s*=', r'onmousedown\s*=', r'onmouseup\s*=', r'onmouseover\s*=',
+        r'onmouseout\s*=', r'onmousemove\s*=', r'onkeydown\s*=', r'onkeyup\s*=', r'onkeypress\s*=',
+        r'onload\s*=', r'onunload\s*=', r'onchange\s*=', r'onsubmit\s*=', r'onreset\s*=', r'onselect\s*=',
+        r'onblur\s*=', r'onfocus\s*=', r'onresize\s*=', r'onerror\s*=', r'onscroll\s*='
+    ]
+    
+    for pattern in dangerous_handlers:
+        content = re.sub(pattern, '', content, flags=re.IGNORECASE)
     
     # JavaScriptプロトコルを除去
     content = re.sub(r'javascript\s*:', '', content, flags=re.IGNORECASE)

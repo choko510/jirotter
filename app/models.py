@@ -53,11 +53,13 @@ class Post(Base):
     content = Column(Text, nullable=False)
     user_id = Column(String(80), ForeignKey('users.id'), nullable=False)
     image_url = Column(String(255), nullable=True)
+    shop_id = Column(Integer, ForeignKey('ramen_shops.id'), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
     # Relationships
     likes = relationship('Like', backref='post', lazy=True, cascade='all, delete-orphan')
     replies = relationship('Reply', backref='post', lazy=True, cascade='all, delete-orphan')
+    shop = relationship('RamenShop', backref='posts')
 
     @property
     def author_username(self):

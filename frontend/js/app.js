@@ -154,12 +154,15 @@ const API = {
     },
 
     // 投稿作成
-    async postTweet(content, imageFile) {
+    async postTweet(content, imageFile, shopId = null) {
         try {
             const formData = new FormData();
             formData.append('content', content);
             if (imageFile) {
                 formData.append('image', imageFile);
+            }
+            if (shopId) {
+                formData.append('shop_id', shopId);
             }
 
             const response = await fetch('/api/v1/posts', {
@@ -521,9 +524,9 @@ const Utils = {
                         </div>
                     `;
                 } catch(e) {
-                     console.error("Failed to parse user cookie", e);
-                     // クッキーがおかしい場合はログアウトさせる
-                     this.logout();
+                    console.error("Failed to parse user cookie", e);
+                    // クッキーがおかしい場合はログアウトさせる
+                    this.logout();
                 }
             }
         }
@@ -580,18 +583,15 @@ const Theme = {
 };
 
 window.Theme = Theme; // グローバルに公開
-// ... (その他のグローバル関数は変更なし)
 
 // イベントリスナーの設定
 document.addEventListener('DOMContentLoaded', function() {
-    // ... (変更なし)
     // ユーザープロフィールUIの初期化
     Utils.updateUserProfileUI();
 });
 
 // アプリケーションの初期化
 document.addEventListener('DOMContentLoaded', function() {
-    // ... (変更なし)
     Theme.init(); // テーマの初期化
     // ユーザープロフィールUIの初期化
     Utils.updateUserProfileUI();

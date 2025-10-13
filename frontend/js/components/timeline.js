@@ -15,7 +15,10 @@ const TimelineComponent = {
         pullThreshold: 80,
         selectedImage: null,
         autoRefreshInterval: null,
-        lastRefreshTime: null
+        lastRefreshTime: null,
+        selectedShop: null,
+        shopSearchQuery: '',
+        shopSearchResults: []
     },
 
     init() {
@@ -182,6 +185,10 @@ const TimelineComponent = {
                 .post-content.collapsed { max-height: 4.2em; overflow: hidden; }
                 .show-more-btn { background: none; border: none; color: #d4a574; cursor: pointer; font-size: 14px; padding: 4px 0; }
                 .show-more-btn:hover { text-decoration: underline; }
+                .shop-reference { margin-top: 12px; padding: 12px; background: #f5f5f5; border-radius: 8px; cursor: pointer; transition: background 0.2s; }
+                .shop-reference:hover { background: #e8e8e8; }
+                .shop-reference-content { display: flex; align-items: center; color: #d4a574; }
+                .shop-reference-content i { margin-right: 8px; }
 
                 /* Dark Mode Overrides */
                 .dark-mode .post-input-area,
@@ -200,6 +207,9 @@ const TimelineComponent = {
                     background: #555;
                     color: #aaa;
                 }
+                .dark-mode .shop-reference { background: #333; }
+                .dark-mode .shop-reference:hover { background: #444; }
+                .dark-mode .shop-reference-content { color: #d4a574; }
             </style>
             
             <div class="post-input-area">
@@ -208,10 +218,12 @@ const TimelineComponent = {
                     <div class="post-input-content">
                         <textarea class="post-textarea" placeholder="今日食べる二郎は？" id="postTextarea" maxlength="200"></textarea>
                         <div id="imagePreviewContainer"></div>
+                        <div id="shopPreviewContainer"></div>
                         <div class="post-actions">
                             <div class="post-icons">
                                 <input type="file" id="imageUpload" accept="image/*" style="display: none;">
                                 <button class="post-icon-btn" title="画像" onclick="document.getElementById('imageUpload').click()"><i class="fas fa-image"></i></button>
+                                <button class="post-icon-btn" title="店舗" onclick="TimelineComponent.openShopModal()"><i class="fas fa-store"></i></button>
                             </div>
                             <div style="display: flex; align-items: center;">
                                 <span class="char-counter" id="charCounter">0/200</span>
@@ -253,7 +265,7 @@ const TimelineComponent = {
                 charCounter.classList.add('warning');
             }
             
-            tweetBtn.disabled = (!textarea.value.trim() && !this.state.selectedImage) || length > 200;
+            tweetBtn.disabled = (!textarea.value.trim() && !this.state.selectedImage && !this.state.selectedShop) || length > 200;
         });
         imageUpload.addEventListener('change', (event) => this.handleImageSelect(event));
     },
@@ -342,6 +354,14 @@ const TimelineComponent = {
                     <div class="post-content" id="post-content-${post.id}">${API.escapeHtmlWithLineBreaks(post.text)}</div>
                     ${this.isLongText(post.text) ? `<button class="show-more-btn" onclick="event.stopPropagation(); TimelineComponent.toggleText(${post.id})">続きを見る</button>` : ''}
                 </div>
+                ${post.shop_id ? `
+                <div class="shop-reference" onclick="event.stopPropagation(); router.navigate('shop', [${post.shop_id}])">
+                    <div class="shop-reference-content">
+                        <i class="fas fa-store"></i>
+                        <span>${API.escapeHtml(post.shop_name || '')}</span>
+                    </div>
+                </div>
+                ` : ''}
                 ${post.image ? `<div class="post-image"><img src="${API.escapeHtml(post.image)}" style="width:100%; border-radius: 16px; margin-top: 12px;" alt="Post image"></div>` : ''}
                 <div class="post-engagement">
                     <button class="engagement-btn" onclick="event.stopPropagation(); TimelineComponent.openCommentModal(${post.id})"><i class="fas fa-comment"></i> ${post.engagement.comments}</button>
@@ -432,8 +452,8 @@ const TimelineComponent = {
         const content = textarea.value.trim();
         const imageFile = this.state.selectedImage;
 
-        if (!content && !imageFile) {
-            alert('投稿内容を入力するか、画像を選択してください');
+        if (!content && !imageFile && !this.state.selectedShop) {
+            alert('投稿内容を入力するか、画像、または店舗を選択してください');
             return;
         }
 
@@ -444,12 +464,17 @@ const TimelineComponent = {
             return;
         }
 
-        const result = await API.postTweet(content, imageFile);
+        // 店舗IDを取得
+        const shopId = this.state.selectedShop ? this.state.selectedShop.id : null;
+
+        const result = await API.postTweet(content, imageFile, shopId);
         if (result.success) {
             textarea.value = '';
             document.getElementById('tweetBtn').disabled = true;
             document.getElementById('imagePreviewContainer').innerHTML = '';
+            document.getElementById('shopPreviewContainer').innerHTML = '';
             this.state.selectedImage = null;
+            this.state.selectedShop = null;
             this.loadInitialPosts(); // Reload the timeline to show the new post
             this.setupAutoRefresh(); // 投稿後に自動更新を再設定
         } else {
@@ -464,6 +489,231 @@ const TimelineComponent = {
             const previewContainer = document.getElementById('imagePreviewContainer');
             previewContainer.innerHTML = `<img src="${URL.createObjectURL(file)}" class="image-preview" alt="Image preview"/>`;
             document.getElementById('tweetBtn').disabled = false;
+        }
+    },
+
+    // 店舗選択モーダルを開く
+    openShopModal() {
+        const modal = document.createElement('div');
+        modal.className = 'shop-modal-overlay';
+        modal.innerHTML = `
+            <div class="shop-modal">
+                <div class="shop-modal-header">
+                    <h3>店舗を選択</h3>
+                    <button class="close-modal" onclick="TimelineComponent.closeShopModal()">&times;</button>
+                </div>
+                <div class="shop-modal-search">
+                    <input type="text" id="shopSearchInput" placeholder="店名や住所を検索..." value="${this.state.shopSearchQuery}">
+                    <button onclick="TimelineComponent.searchShops()"><i class="fas fa-search"></i></button>
+                </div>
+                <div class="shop-modal-results" id="shopSearchResults">
+                    <div class="loading">検索中...</div>
+                </div>
+            </div>
+        `;
+        
+        // モーダルのスタイルを追加
+        const style = document.createElement('style');
+        style.textContent = `
+            .shop-modal-overlay {
+                position: fixed;
+                top: 0;
+                left: 0;
+                right: 0;
+                bottom: 0;
+                background: rgba(0, 0, 0, 0.5);
+                display: flex;
+                align-items: center;
+                justify-content: center;
+                z-index: 1000;
+            }
+            .shop-modal {
+                background: white;
+                border-radius: 12px;
+                width: 90%;
+                max-width: 500px;
+                max-height: 80vh;
+                overflow: hidden;
+                display: flex;
+                flex-direction: column;
+            }
+            .shop-modal-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 16px;
+                border-bottom: 1px solid #e0e0e0;
+            }
+            .shop-modal-header h3 {
+                margin: 0;
+            }
+            .close-modal {
+                background: none;
+                border: none;
+                font-size: 24px;
+                cursor: pointer;
+                color: #666;
+            }
+            .shop-modal-search {
+                display: flex;
+                padding: 16px;
+                border-bottom: 1px solid #e0e0e0;
+            }
+            .shop-modal-search input {
+                flex: 1;
+                padding: 8px 12px;
+                border: 1px solid #e0e0e0;
+                border-radius: 20px;
+                outline: none;
+            }
+            .shop-modal-search button {
+                background: #d4a574;
+                color: white;
+                border: none;
+                border-radius: 50%;
+                width: 36px;
+                height: 36px;
+                margin-left: 8px;
+                cursor: pointer;
+            }
+            .shop-modal-results {
+                flex: 1;
+                overflow-y: auto;
+                padding: 8px;
+            }
+            .shop-result-item {
+                padding: 12px;
+                border-radius: 8px;
+                cursor: pointer;
+                margin-bottom: 8px;
+                border: 1px solid #e0e0e0;
+            }
+            .shop-result-item:hover {
+                background: #f5f5f5;
+            }
+            .shop-result-name {
+                font-weight: bold;
+                margin-bottom: 4px;
+            }
+            .shop-result-address {
+                font-size: 14px;
+                color: #666;
+            }
+            .no-shop-results {
+                padding: 20px;
+                text-align: center;
+                color: #666;
+            }
+            .dark-mode .shop-modal {
+                background: #2a2a2a;
+                color: #e0e0e0;
+            }
+            .dark-mode .shop-modal-header,
+            .dark-mode .shop-modal-search {
+                border-bottom-color: #333;
+            }
+            .dark-mode .shop-modal-search input {
+                background: #333;
+                border-color: #444;
+                color: #e0e0e0;
+            }
+            .dark-mode .shop-result-item {
+                border-color: #333;
+            }
+            .dark-mode .shop-result-item:hover {
+                background: #333;
+            }
+        `;
+        document.head.appendChild(style);
+        document.body.appendChild(modal);
+        
+        // 検索入力イベント
+        const searchInput = document.getElementById('shopSearchInput');
+        searchInput.addEventListener('input', (e) => {
+            this.state.shopSearchQuery = e.target.value;
+            // デバウンス処理
+            clearTimeout(this.shopSearchTimeout);
+            this.shopSearchTimeout = setTimeout(() => {
+                this.searchShops();
+            }, 500);
+        });
+        
+        // 初回検索を実行
+        this.searchShops();
+    },
+
+    // 店舗検索
+    async searchShops() {
+        const resultsContainer = document.getElementById('shopSearchResults');
+        resultsContainer.innerHTML = '<div class="loading">検索中...</div>';
+        
+        try {
+            const shops = await API.getShops(this.state.shopSearchQuery, {});
+            this.state.shopSearchResults = shops;
+            
+            if (shops.length === 0) {
+                resultsContainer.innerHTML = '<div class="no-shop-results">条件に一致する店舗が見つかりませんでした</div>';
+            } else {
+                resultsContainer.innerHTML = shops.map(shop => `
+                    <div class="shop-result-item" onclick="TimelineComponent.selectShop(${shop.id})">
+                        <div class="shop-result-name">${shop.name}</div>
+                        <div class="shop-result-address">${shop.address}</div>
+                    </div>
+                `).join('');
+            }
+        } catch (error) {
+            console.error('店舗検索に失敗しました:', error);
+            resultsContainer.innerHTML = '<div class="no-shop-results">検索中にエラーが発生しました</div>';
+        }
+    },
+
+    // 店舗を選択
+    selectShop(shopId) {
+        const shop = this.state.shopSearchResults.find(s => s.id === shopId);
+        if (shop) {
+            this.state.selectedShop = shop;
+            this.renderShopPreview();
+            this.closeShopModal();
+            document.getElementById('tweetBtn').disabled = false;
+        }
+    },
+
+    // 店舗プレビューをレンダリング
+    renderShopPreview() {
+        if (!this.state.selectedShop) return;
+        
+        const previewContainer = document.getElementById('shopPreviewContainer');
+        previewContainer.innerHTML = `
+            <div class="shop-preview" style="margin-top: 10px; padding: 10px; background: #f5f5f5; border-radius: 8px; display: flex; align-items: center; justify-content: space-between;">
+                <div style="display: flex; align-items: center;">
+                    <i class="fas fa-store" style="margin-right: 8px; color: #d4a574;"></i>
+                    <div>
+                        <div style="font-weight: bold;">${this.state.selectedShop.name}</div>
+                        <div style="font-size: 12px; color: #666;">${this.state.selectedShop.address}</div>
+                    </div>
+                </div>
+                <button onclick="TimelineComponent.removeShop()" style="background: none; border: none; color: #666; cursor: pointer;">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        `;
+    },
+
+    // 店舗選択を解除
+    removeShop() {
+        this.state.selectedShop = null;
+        document.getElementById('shopPreviewContainer').innerHTML = '';
+        
+        const textarea = document.getElementById('postTextarea');
+        const tweetBtn = document.getElementById('tweetBtn');
+        tweetBtn.disabled = (!textarea.value.trim() && !this.state.selectedImage) || textarea.value.length > 200;
+    },
+
+    // 店舗モーダルを閉じる
+    closeShopModal() {
+        const modal = document.querySelector('.shop-modal-overlay');
+        if (modal) {
+            modal.remove();
         }
     },
 
@@ -523,6 +773,22 @@ const TimelineComponent = {
         `;
     },
     
+    // 店舗検索して移動
+    async searchAndNavigateToShop(shopName) {
+        try {
+            const shops = await API.getShops(shopName, {});
+            if (shops.length > 0) {
+                // 最初の検索結果に移動
+                router.navigate('shop', [shops[0].id]);
+            } else {
+                alert(`「${shopName}」の店舗が見つかりませんでした`);
+            }
+        } catch (error) {
+            console.error('店舗検索に失敗しました:', error);
+            alert('店舗検索に失敗しました');
+        }
+    },
+
     // イベントリスナーを再設定する静的メソッド（他のコンポーネントから呼び出し用）
     attachPostEventListeners() {
         // タイムラインの投稿に対するイベントリスナーを再設定

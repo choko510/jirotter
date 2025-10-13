@@ -20,6 +20,7 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 async def create_post(
     content: str = Form(...),
     image: Optional[UploadFile] = File(None),
+    shop_id: Optional[int] = Form(None),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
 ):
@@ -35,6 +36,15 @@ async def create_post(
             detail=error_messages[0] if error_messages else "投稿内容に誤りがあります"
         )
     
+    # 店舗IDのバリデーション
+    if shop_id is not None:
+        shop = db.query(RamenShop).filter(RamenShop.id == shop_id).first()
+        if not shop:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="指定された店舗が存在しません"
+            )
+    
     image_url = None
     if image:
         file_path = os.path.join(UPLOAD_DIR, image.filename)
@@ -46,7 +56,8 @@ async def create_post(
         post = Post(
             content=sanitized_content,
             user_id=current_user.id,
-            image_url=image_url
+            image_url=image_url,
+            shop_id=shop_id
         )
         
         db.add(post)
@@ -77,7 +88,8 @@ async def get_posts(
         # N+1問題を解決するためにeager loadingを使用
         posts_query = db.query(Post).options(
             joinedload(Post.author),
-            joinedload(Post.replies).joinedload(Reply.author)
+            joinedload(Post.replies).joinedload(Reply.author),
+            joinedload(Post.shop)
         )
 
         posts = posts_query.order_by(desc(Post.created_at)).offset(
@@ -110,6 +122,9 @@ async def get_posts(
                 "user_id": post.user_id,
                 "author_username": post.author.username,
                 "image_url": post.image_url,
+                "shop_id": post.shop_id,
+                "shop_name": post.shop.name if post.shop else None,
+                "shop_address": post.shop.address if post.shop else None,
                 "created_at": post.created_at,
                 "likes_count": likes_map.get(post.id, 0),
                 "replies_count": len(post.replies),
@@ -140,7 +155,8 @@ async def get_post(
     """特定の投稿取得エンドポイント"""
     post = db.query(Post).options(
         joinedload(Post.author),
-        joinedload(Post.replies).joinedload(Reply.author)
+        joinedload(Post.replies).joinedload(Reply.author),
+        joinedload(Post.shop)
     ).filter(Post.id == post_id).first()
     
     if not post:
@@ -166,6 +182,9 @@ async def get_post(
         "user_id": post.user_id,
         "author_username": post.author.username,
         "image_url": post.image_url,
+        "shop_id": post.shop_id,
+        "shop_name": post.shop.name if post.shop else None,
+        "shop_address": post.shop.address if post.shop else None,
         "created_at": post.created_at,
         "likes_count": likes_count,
         "replies_count": len(post.replies),
@@ -231,7 +250,8 @@ async def get_user_posts(
         
         posts_query = db.query(Post).filter(Post.user_id == user_id).options(
             joinedload(Post.author),
-            joinedload(Post.replies).joinedload(Reply.author)
+            joinedload(Post.replies).joinedload(Reply.author),
+            joinedload(Post.shop)
         )
 
         posts = posts_query.order_by(desc(Post.created_at)).offset(
@@ -261,6 +281,9 @@ async def get_user_posts(
                 "user_id": post.user_id,
                 "author_username": post.author.username,
                 "image_url": post.image_url,
+                "shop_id": post.shop_id,
+                "shop_name": post.shop.name if post.shop else None,
+                "shop_address": post.shop.address if post.shop else None,
                 "created_at": post.created_at,
                 "likes_count": likes_map.get(post.id, 0),
                 "replies_count": len(post.replies),
