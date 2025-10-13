@@ -19,11 +19,29 @@ const ProfileComponent = {
         this.fetchProfileData(userId);
 
         const contentArea = document.getElementById('contentArea');
-
-        // CSSの動的読み込み
-        Utils.loadCSS('profile');
-
         contentArea.innerHTML = `
+            <style>
+                .profile-page { padding: 20px; }
+                .profile-header { display: flex; align-items: center; gap: 20px; margin-bottom: 20px; }
+                .profile-avatar { width: 80px; height: 80px; border-radius: 50%; background: #ccc; }
+                .profile-info { font-size: 16px; }
+                .profile-name { font-size: 24px; font-weight: bold; }
+                .profile-id { color: #666; }
+                .profile-stats { display: flex; gap: 20px; margin: 10px 0; }
+                .profile-tabs { display: flex; border-bottom: 1px solid #e0e0e0; margin-bottom: 20px; }
+                .profile-tab { padding: 12px 20px; cursor: pointer; }
+                .profile-tab.active { border-bottom: 2px solid #d4a574; font-weight: bold; }
+                .profile-post-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+                .profile-post-item { border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; }
+                .profile-post-item img { width: 100%; height: auto; }
+                .profile-post-item p { padding: 10px; }
+
+                /* Dark Mode Overrides */
+                .dark-mode .profile-id { color: #aaa; }
+                .dark-mode .profile-tabs { border-bottom-color: #333; }
+                .dark-mode .profile-post-item { border-color: #333; }
+                .dark-mode .profile-tab.active { color: #d4a574; }
+            </style>
             <div id="profileContainer">
                 <div class="loading">プロフィールを読み込み中...</div>
             </div>
