@@ -439,6 +439,51 @@ const MapComponent = {
                     border-color: #d4a574;
                     color: #1a1a1a;
                 }
+
+                /* Shop Detail Panel */
+                .shop-detail-panel {
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 350px;
+                    height: 100%;
+                    background: white;
+                    z-index: 1010;
+                    transform: translateX(-100%);
+                    transition: transform 0.3s ease-in-out;
+                    box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+                    overflow-y: auto;
+                }
+
+                .shop-detail-panel.show {
+                    transform: translateX(0);
+                }
+
+                .dark-mode .shop-detail-panel {
+                    background: #2a2a2a;
+                    border-right: 1px solid #333;
+                }
+
+                @media (max-width: 768px) {
+                    .shop-detail-panel {
+                        width: 100%;
+                        height: 60%;
+                        bottom: 0;
+                        top: auto;
+                        left: 0;
+                        transform: translateY(100%);
+                        border-top: 1px solid #e0e0e0;
+                    }
+
+                    .shop-detail-panel.show {
+                        transform: translateY(0);
+                    }
+
+                    .dark-mode .shop-detail-panel {
+                         border-top: 1px solid #333;
+                         border-right: none;
+                    }
+                }
             </style>
             
             <div class="map-container">
@@ -474,6 +519,7 @@ const MapComponent = {
                 
                 <div class="map-content">
                     <div id="map"></div>
+                    <div id="shopDetailPanel" class="shop-detail-panel"></div>
                     
                     <div class="map-loading" id="mapLoading" style="display: none;">
                         <div class="map-spinner"></div>
@@ -1212,36 +1258,83 @@ const MapComponent = {
 
     // 店舗詳細表示
     async showShopDetails(shopId) {
+        const panel = document.getElementById('shopDetailPanel');
+        panel.innerHTML = '<div class="map-loading"><div class="map-spinner"></div><p>読み込み中...</p></div>';
+        panel.classList.add('show');
+
         try {
-            // APIから店舗詳細を取得
-            const response = await fetch(`/api/v1/ramen`);
-            
+            const response = await fetch(`/api/v1/ramen/${shopId}`);
             if (!response.ok) {
-                throw new Error('店舗詳細の取得に失敗しました');
+                throw new Error('店舗情報の取得に失敗しました');
             }
-            
-            const data = await response.json();
-            const shop = data.shops.find(s => s.id === shopId);
-            
-            if (!shop) {
-                throw new Error('店舗が見つかりませんでした');
+            const shop = await response.json();
+
+            if (this.state.map && shop.latitude && shop.longitude) {
+                const latLng = [shop.latitude, shop.longitude];
+                const isMobile = window.innerWidth <= 768;
+
+                this.state.map.setView(latLng, this.state.map.getZoom(), { animate: false });
+
+                setTimeout(() => {
+                    if (isMobile) {
+                        const mapHeight = this.state.map.getSize().y;
+                        const panelHeight = mapHeight * 0.6; // Panel is 60% of height
+                        const yOffset = panelHeight / 2;
+                        this.state.map.panBy([0, -yOffset], { animate: true });
+                    } else {
+                        const panelWidth = 350; // Panel is 350px wide
+                        const xOffset = panelWidth / 2;
+                        this.state.map.panBy([xOffset, 0], { animate: true });
+                    }
+                }, 100);
             }
-            
-            // 店舗詳細情報を表示
-            const details = `
-                店名: ${shop.name}
-                住所: ${shop.address}
-                営業時間: ${shop.business_hours || '不明'}
-                定休日: ${shop.closed_day || '不明'}
-                座席数: ${shop.seats || '不明'}
+
+            panel.innerHTML = `
+                <div class="shop-detail-container" style="padding: 16px;">
+                    <div class="shop-header" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px;">
+                        <h2 class="shop-name" style="font-size: 18px; font-weight: bold; margin: 0; flex: 1;">${this.escapeHtml(shop.name)}</h2>
+                        <button class="back-button" onclick="MapComponent.hideShopDetails()" style="background: transparent; border: none; font-size: 20px; cursor: pointer; padding: 4px;">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                     <div class="shop-info-card" style="border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; margin-bottom: 12px;">
+                        <div class="shop-details" style="padding: 12px;">
+                            <div class="shop-info-item" style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px;">
+                                <i class="fas fa-map-marker-alt" style="color: #d4a574; font-size: 14px; margin-top: 2px;"></i>
+                                <span style="font-size: 14px;">${this.escapeHtml(shop.address)}</span>
+                            </div>
+                            ${shop.business_hours ? `
+                            <div class="shop-info-item" style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px;">
+                                <i class="fas fa-clock" style="color: #d4a574; font-size: 14px; margin-top: 2px;"></i>
+                                <span style="font-size: 14px;">${this.escapeHtml(shop.business_hours)}</span>
+                            </div>
+                            ` : ''}
+                            ${shop.closed_day ? `
+                            <div class="shop-info-item" style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px;">
+                                <i class="fas fa-calendar-times" style="color: #d4a574; font-size: 14px; margin-top: 2px;"></i>
+                                <span style="font-size: 14px;">定休日: ${this.escapeHtml(shop.closed_day)}</span>
+                            </div>
+                            ` : ''}
+                        </div>
+                    </div>
+                </div>
             `;
-            
-            alert(details);
-            
         } catch (error) {
             console.error('店舗詳細の取得に失敗しました:', error);
-            alert('店舗詳細の取得に失敗しました: ' + error.message);
+            panel.innerHTML = `<div class="error" style="padding: 20px; text-align: center;">店舗情報の取得に失敗しました</div>`;
         }
+    },
+
+    hideShopDetails() {
+        const panel = document.getElementById('shopDetailPanel');
+        panel.classList.remove('show');
+    },
+
+    escapeHtml(text) {
+        if (text === null || text === undefined) return '';
+        const div = document.createElement('div');
+        div.textContent = text;
+        return div.innerHTML;
     },
 
     // ローディング表示
