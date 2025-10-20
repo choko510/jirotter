@@ -5,6 +5,10 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>ラーメンSNS</title>
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="preload" href="https://fonts.googleapis.com/earlyaccess/notosansjapanese.css" as="style" onload="this.onload=null;this.rel='stylesheet'">
+    <noscript>
+        <link rel="stylesheet" href="https://fonts.googleapis.com/earlyaccess/notosansjapanese.css">
+    </noscript>
     <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js"></script>
     <link href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css" rel="stylesheet">
 
@@ -22,7 +26,7 @@
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            font-family: "Noto Sans Japanese", sans-serif;
             background: #ffffff;
             color: #1a1a1a;
         }
@@ -30,7 +34,6 @@
         .container {
             display: grid;
             grid-template-columns: 260px 1fr 350px;
-            max-width: 1400px;
             margin: 0 auto;
             min-height: 100vh;
         }
@@ -797,7 +800,7 @@
                     <span>待ち時間リスト</span>
                 </div>
                 <div class="nav-item" data-route="studio">
-                    <div class="nav-icon"><i class="fas fa-film"></i></div>
+                    <div class="nav-icon"><i class="fa-solid fa-stamp"></i></div>
                     <span>スタンプラリー</span>
                 </div>
                 <div class="nav-item" data-route="settings">

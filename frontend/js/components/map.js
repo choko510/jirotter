@@ -1,5 +1,17 @@
 // MAPコンポーネント
 const MapComponent = {
+    // ブランド設定
+    BRAND_CONFIG: {
+        butayama: { name: '豚山', color: '#fcd700ff', textColor: 'black', markerText: '豚', keywords: ['豚山'] },
+        ramenso: { name: 'ラーメン荘', color: '#3498db', textColor: 'white', markerText: '荘', keywords: ['ラーメン荘'] },
+        rakeiko: { name: 'ら・けいこ', color: '#2ecc71', textColor: 'white', keywords: ['ら・けいこ'] },
+        ahare: { name: '麺屋あっ晴れ', color: '#e74c3c', textColor: 'white', keywords: ['あっ晴れ'] },
+        tachikawa: { name: '立川マシマシ', color: '#9b59b6', textColor: 'white', keywords: ['立川マシマシ'] },
+        tsukemensha: { name: 'つけめん舎', color: '#1abc9c', textColor: 'white', keywords: ['つけめん舎'] },
+        jiro: { name: '直系二郎', color: '#d4a574', textColor: 'white', markerText: '直', keywords: ['ラーメン二郎'] },
+        other: { name: 'その他', color: '#95a5a6', textColor: 'white', keywords: [] }
+    },
+
     // 状態管理
     state: {
         map: null,
@@ -17,12 +29,90 @@ const MapComponent = {
         // マーカー管理関連
         markerLayerGroup: null, // マーカーをグループ化して管理
         visibleMarkers: new Set(), // 現在表示されているマーカー
-        markerVisibilityRadius: 50 // マーカー表示半径（km）
+        markerVisibilityRadius: 50, // マーカー表示半径（km）
+        // ブランドフィルター関連
+        activeFilters: new Set(), // 現在アクティブなフィルター
+        brandShopCounts: {} // ブランドごとの店舗数
     },
 
     // 初期化
     init() {
         // 初期化処理はrender内で行う
+    },
+
+    // 店名からブランドを判定する関数
+    determineBrand(shopName) {
+        for (const [brandKey, brandConfig] of Object.entries(this.BRAND_CONFIG)) {
+            if (brandKey === 'other') continue;
+            
+            for (const keyword of brandConfig.keywords) {
+                if (shopName.includes(keyword)) {
+                    return brandKey;
+                }
+            }
+        }
+        return 'other';
+    },
+
+    // ブランドごとの店舗数をカウントする関数
+    countShopsByBrand(shops) {
+        const counts = {};
+        
+        // すべてのブランドを初期化
+        for (const brandKey of Object.keys(this.BRAND_CONFIG)) {
+            counts[brandKey] = 0;
+        }
+        
+        // 店舗をブランドごとにカウント
+        shops.forEach(shop => {
+            const brand = this.determineBrand(shop.name);
+            counts[brand]++;
+        });
+        
+        return counts;
+    },
+
+    // ブランドフィルターUIを生成する関数
+    generateBrandFilterButtons() {
+        let buttonsHtml = '';
+        
+        for (const [brandKey, brandConfig] of Object.entries(this.BRAND_CONFIG)) {
+            if (brandKey === 'other') continue; // 「その他」はフィルターに表示しない
+            
+            const count = this.state.brandShopCounts[brandKey] || 0;
+            // 店舗数が0のブランドは表示しない
+            if (count === 0) continue;
+            
+            buttonsHtml += `
+                <button class="map-filter-btn"
+                        data-brand="${brandKey}"
+                        onclick="MapComponent.toggleFilter('${brandKey}')"
+                        title="${brandConfig.name}: ${count}件">
+                    ${brandConfig.name} (${count})
+                </button>
+            `;
+        }
+        
+        return buttonsHtml;
+    },
+
+    // 地図の凡例を生成する関数
+    generateLegend() {
+        let legendHtml = '<div class="legend-title">ブランド</div>';
+        
+        for (const [brandKey, brandConfig] of Object.entries(this.BRAND_CONFIG)) {
+            const count = this.state.brandShopCounts[brandKey] || 0;
+            if (count > 0 || brandKey === 'other') {
+                legendHtml += `
+                    <div class="legend-item">
+                        <div class="marker-icon" style="background: ${brandConfig.color};"></div>
+                        <span>${brandConfig.name} (${count})</span>
+                    </div>
+                `;
+            }
+        }
+        
+        return legendHtml;
     },
 
     // レンダリング
@@ -58,11 +148,6 @@ const MapComponent = {
                     display: flex;
                     align-items: center;
                     gap: 8px;
-                }
-                
-                .map-subtitle {
-                    color: #666;
-                    font-size: 14px;
                 }
                 
                 .map-controls {
@@ -124,6 +209,45 @@ const MapComponent = {
                     background: #d4a574;
                     border-color: #d4a574;
                     color: white;
+                }
+                
+                .brand-filters {
+                    padding: 12px 16px;
+                    background: #f9f9f9;
+                    border-bottom: 1px solid #e0e0e0;
+                }
+                
+                .filter-title {
+                    font-size: 14px;
+                    font-weight: bold;
+                    margin-bottom: 8px;
+                    color: #333;
+                }
+                
+                .filter-buttons {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 8px;
+                    margin-bottom: 12px;
+                }
+                
+                .filter-actions {
+                    display: flex;
+                    gap: 8px;
+                }
+                
+                .filter-action-btn {
+                    padding: 4px 12px;
+                    background: white;
+                    border: 1px solid #e0e0e0;
+                    border-radius: 16px;
+                    font-size: 12px;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                }
+                
+                .filter-action-btn:hover {
+                    background: #f0f0f0;
                 }
                 
                 .map-content {
@@ -246,10 +370,37 @@ const MapComponent = {
                         gap: 8px;
                     }
                     
+                    .brand-filters {
+                        padding: 8px 12px;
+                    }
+                    
+                    .filter-buttons {
+                        gap: 6px;
+                    }
+                    
+                    .map-filter-btn {
+                        padding: 6px 12px;
+                        font-size: 12px;
+                    }
+                    
+                    .filter-actions {
+                        flex-wrap: wrap;
+                    }
+                    
+                    .filter-action-btn {
+                        font-size: 11px;
+                        padding: 3px 8px;
+                    }
+                    
                     .map-legend {
                         bottom: 10px;
                         right: 10px;
                         padding: 8px;
+                        font-size: 11px;
+                    }
+                    
+                    .legend-item {
+                        font-size: 11px;
                     }
                 }
 
@@ -261,9 +412,7 @@ const MapComponent = {
                     background: #2a2a2a;
                     border-color: #333;
                 }
-                .dark-mode .map-subtitle {
-                    color: #aaa;
-                }
+
                 .dark-mode .map-search-input {
                     background: #1a1a1a;
                     border-color: #333;
@@ -298,7 +447,6 @@ const MapComponent = {
                         <i class="fas fa-map-marked-alt"></i>
                         店舗マップ
                     </h1>
-                    <p class="map-subtitle">近くのラーメン店を地図で探す</p>
                     
                     <div class="map-controls">
                         <div class="map-search">
@@ -307,10 +455,20 @@ const MapComponent = {
                                 <i class="fas fa-search"></i>
                             </button>
                         </div>
-                        <button class="map-filter-btn" onclick="MapComponent.toggleFilter('jiro')">二郎系</button>
                         <button class="map-filter-btn" onclick="MapComponent.getCurrentLocation()">
                             <i class="fas fa-location-arrow"></i>
                         </button>
+                    </div>
+                    
+                    <div class="brand-filters" id="brandFilters">
+                        <div class="filter-title">ブランドで絞り込み:</div>
+                        <div class="filter-buttons" id="filterButtons">
+                            <!-- ブランドフィルターボタンは動的に生成されます -->
+                        </div>
+                        <div class="filter-actions">
+                            <button class="filter-action-btn" onclick="MapComponent.selectAllBrands()">すべて選択</button>
+                            <button class="filter-action-btn" onclick="MapComponent.clearAllFilters()">クリア</button>
+                        </div>
                     </div>
                 </div>
                 
@@ -328,16 +486,8 @@ const MapComponent = {
                         <button onclick="MapComponent.retryLoad()">再試行</button>
                     </div>
                     
-                    <div class="map-legend">
-                        <div class="legend-title">店舗タイプ</div>
-                        <div class="legend-item">
-                            <div class="marker-icon" style="background: #d4a574;"></div>
-                            <span>二郎系</span>
-                        </div>
-                        <div class="legend-item">
-                            <div class="marker-icon" style="background: #4caf50;"></div>
-                            <span>醤油系</span>
-                        </div>
+                    <div class="map-legend" id="mapLegend">
+                        <!-- 凡例は動的に生成されます -->
                     </div>
                 </div>
             </div>
@@ -346,6 +496,8 @@ const MapComponent = {
         // マップを初期化
         setTimeout(async () => {
             await this.initializeMap();
+            // ブランドフィルターUIを初期化
+            this.initializeBrandFilters();
         }, 100);
     },
 
@@ -406,15 +558,27 @@ const MapComponent = {
             
             const data = await response.json();
             
-            if (data.status !== 'success') {
-                throw new Error(data.message || '位置情報の取得に失敗しました');
+            // ipinfo.ioのレスポンス形式に対応
+            if (data.error) {
+                throw new Error(data.error.message || '位置情報の取得に失敗しました');
+            }
+            
+            // locフィールドから緯度経度を抽出
+            const [lat, lng] = data.loc ? data.loc.split(',').map(coord => parseFloat(coord)) : [null, null];
+            
+            if (!lat || !lng) {
+                throw new Error('位置情報の取得に失敗しました');
             }
             
             this.state.userLocation = {
-                lat: data.lat,
-                lng: data.lon,
-                city: data.city,
-                country: data.country
+                lat: lat,
+                lng: lng,
+                city: data.city || '',
+                country: data.country || '',
+                region: data.region || '',
+                postal: data.postal || '',
+                timezone: data.timezone || '',
+                org: data.org || ''
             };
             
             return this.state.userLocation;
@@ -665,27 +829,66 @@ const MapComponent = {
         this.state.visibleMarkers.clear();
     },
 
+    // ブランドフィルターを初期化する関数
+    initializeBrandFilters() {
+        // デフォルトではすべての店舗を表示（フィルターは無効）
+        this.state.activeFilters.clear();
+        
+        // フィルターボタンを生成
+        this.updateFilterButtons();
+        
+        // 凡例を更新
+        this.updateLegend();
+    },
+
+    // フィルターボタンを更新する関数
+    updateFilterButtons() {
+        const filterButtonsContainer = document.getElementById('filterButtons');
+        if (filterButtonsContainer) {
+            filterButtonsContainer.innerHTML = this.generateBrandFilterButtons();
+            
+            // アクティブなフィルターのボタンをハイライト
+            this.state.activeFilters.forEach(brandKey => {
+                const button = filterButtonsContainer.querySelector(`[data-brand="${brandKey}"]`);
+                if (button) {
+                    button.classList.add('active');
+                }
+            });
+        }
+    },
+
+    // 凡例を更新する関数
+    updateLegend() {
+        const legendContainer = document.getElementById('mapLegend');
+        if (legendContainer) {
+            legendContainer.innerHTML = this.generateLegend();
+        }
+    },
+
     // 店舗マーカーを更新（既存のマーカーを再利用）
     updateShopMarkers(shops) {
         if (!this.state.map) return;
+
+        // ブランドごとの店舗数をカウント
+        this.state.brandShopCounts = this.countShopsByBrand(shops);
+        
+        // フィルターボタンと凡例を更新
+        this.updateFilterButtons();
+        this.updateLegend();
 
         // 既存のマーカーをマップで管理
         const existingMarkerIds = new Set();
         
         // 新しい店舗データでマーカーを更新または追加
         shops.forEach(shop => {
-            // 店舗タイプを判定（店名に基づく簡易判定）
-            let shopType = 'other';
-            if (shop.name.includes('二郎') || shop.name.includes('ジロー')) {
-                shopType = 'jiro';
-            } else if (shop.name.includes('醤油') || shop.name.includes('しお')) {
-                shopType = 'shoyu';
-            }
+            // ブランドを判定
+            const brand = this.determineBrand(shop.name);
             
             const shopData = {
                 id: shop.id,
                 name: shop.name,
-                type: shopType,
+                brand: brand,
+                type: brand, // 互換性のためtypeにも保存
                 lat: shop.latitude,
                 lng: shop.longitude,
                 address: shop.address,
@@ -710,6 +913,8 @@ const MapComponent = {
                 if (currentPos.lat !== shopData.lat || currentPos.lng !== shopData.lng) {
                     marker.setLatLng([shopData.lat, shopData.lng]);
                 }
+                // ブランド情報も更新
+                marker.brand = brand;
             } else {
                 // 新しいマーカーを追加
                 this.addShopMarker(shopData);
@@ -754,15 +959,19 @@ const MapComponent = {
         this.state.markers.forEach(marker => {
             const markerPos = marker.getLatLng();
             const distance = this.calculateDistance(center.lat, center.lng, markerPos.lat, markerPos.lng);
+            const brand = marker.brand || 'other';
             
-            if (bounds.contains(markerPos) && distance <= visibilityRadius) {
-                // 表示範囲内の場合、マーカーを表示
+            const isInBounds = bounds.contains(markerPos) && distance <= visibilityRadius;
+            const isActiveFilter = this.state.activeFilters.size === 0 || this.state.activeFilters.has(brand);
+            
+            if (isInBounds && isActiveFilter) {
+                // 表示範囲内かつフィルターに合致する場合、マーカーを表示
                 if (!this.state.markerLayerGroup.hasLayer(marker)) {
                     this.state.markerLayerGroup.addLayer(marker);
                 }
                 this.state.visibleMarkers.add(marker.shopId);
             } else {
-                // 表示範囲外の場合、マーカーを非表示
+                // 表示範囲外またはフィルターに合致しない場合、マーカーを非表示
                 if (this.state.markerLayerGroup.hasLayer(marker)) {
                     this.state.markerLayerGroup.removeLayer(marker);
                 }
@@ -791,11 +1000,12 @@ const MapComponent = {
 
     // 店舗マーカーを追加
     addShopMarker(shop) {
-        const colors = {
-            'jiro': '#d4a574',
-            'shoyu': '#4caf50',
-            'other': '#9e9e9e'
-        };
+        const brand = shop.brand || shop.type || 'other';
+        const brandConfig = this.BRAND_CONFIG[brand];
+        const color = brandConfig ? brandConfig.color : this.BRAND_CONFIG.other.color;
+        const textColor = brandConfig ? brandConfig.textColor : this.BRAND_CONFIG.other.textColor;
+        // markerTextが設定されていない場合はデフォルトで「ラ」を表示
+        const markerText = (brandConfig && brandConfig.markerText) ? brandConfig.markerText : 'ラ';
         
         // より目立つマーカーアイコンを作成
         const shopIcon = L.divIcon({
@@ -811,7 +1021,7 @@ const MapComponent = {
                         left: 0;
                         width: 30px;
                         height: 30px;
-                        background: ${colors[shop.type]};
+                        background: ${color};
                         border-radius: 50% 50% 50% 0;
                         border: 2px solid white;
                         box-shadow: 0 2px 5px rgba(0,0,0,0.3);
@@ -822,11 +1032,10 @@ const MapComponent = {
                         top: 50%;
                         left: 50%;
                         transform: translate(-50%, -50%);
-                        color: white;
+                        color: ${textColor};
                         font-weight: bold;
                         font-size: 12px;
-                        text-shadow: 0 1px 2px rgba(0,0,0,0.5);
-                    ">ラ</div>
+                    ">${markerText}</div>
                 </div>
             `,
             iconSize: [30, 30],
@@ -839,15 +1048,17 @@ const MapComponent = {
             <div style="max-width: 200px;">
                 <h3 style="margin: 0 0 8px 0;">${shop.name}</h3>
                 <p style="margin: 0 0 8px 0; font-size: 12px;">${shop.description}</p>
-                <button onclick="MapComponent.showShopDetails(${shop.id})" style="margin-top: 8px; padding: 4px 8px; background: #d4a574; color: white; border: none; border-radius: 4px; cursor: pointer;">詳細を見る</button>
+                <p style="margin: 0 0 8px 0; font-size: 12px;">ブランド: ${brandConfig ? brandConfig.name : 'その他'}</p>
+                <button onclick="MapComponent.showShopDetails(${shop.id})" style="margin-top: 8px; padding: 4px 8px; background: ${color}; color: white; border: none; border-radius: 4px; cursor: pointer;">詳細を見る</button>
             </div>
         `;
         
         const marker = L.marker([shop.lat, shop.lng], { icon: shopIcon })
             .bindPopup(popupContent);
         
-        // 店舗IDをマーカーに保存して後で識別できるようにする
+        // 店舗IDとブランドをマーカーに保存して後で識別できるようにする
         marker.shopId = shop.id;
+        marker.brand = brand;
         
         // 最初はマーカーグループに追加せず、表示範囲チェック後に追加
         this.state.markers.push(marker);
@@ -869,8 +1080,11 @@ const MapComponent = {
             }
             
             if (bounds.contains([shop.lat, shop.lng]) && distance <= visibilityRadius) {
-                this.state.markerLayerGroup.addLayer(marker);
-                this.state.visibleMarkers.add(shop.id);
+                // フィルターが適用されている場合は、フィルターに合致する場合のみ表示
+                if (this.state.activeFilters.size === 0 || this.state.activeFilters.has(brand)) {
+                    this.state.markerLayerGroup.addLayer(marker);
+                    this.state.visibleMarkers.add(shop.id);
+                }
             }
         }
     },
@@ -941,12 +1155,59 @@ const MapComponent = {
     },
 
     // フィルター切り替え
-    toggleFilter(type) {
-        const button = event.target;
-        button.classList.toggle('active');
+    toggleFilter(brand) {
+        // まずすべてのフィルターをクリア
+        this.state.activeFilters.clear();
         
-        // 実際のフィルター処理はここに実装
-        console.log('フィルター切り替え:', type);
+        // すべてのボタンを非アクティブにする
+        const buttons = document.querySelectorAll('.map-filter-btn[data-brand]');
+        buttons.forEach(btn => {
+            btn.classList.remove('active');
+        });
+        
+        // 選択されたブランドのみをアクティブにする
+        this.state.activeFilters.add(brand);
+        
+        // 選択されたボタンをアクティブにする
+        const button = document.querySelector(`[data-brand="${brand}"]`);
+        if (button) {
+            button.classList.add('active');
+        }
+        
+        // マーカーの表示を更新
+        this.updateMarkerVisibility();
+    },
+
+    // すべてのブランドを選択
+    selectAllBrands() {
+        // すべてのブランドをアクティブにする
+        for (const brandKey of Object.keys(this.BRAND_CONFIG)) {
+            this.state.activeFilters.add(brandKey);
+        }
+        
+        // すべてのボタンをアクティブ状態にする
+        const buttons = document.querySelectorAll('.map-filter-btn[data-brand]');
+        buttons.forEach(button => {
+            button.classList.add('active');
+        });
+        
+        // マーカーの表示を更新
+        this.updateMarkerVisibility();
+    },
+
+    // すべてのフィルターをクリア
+    clearAllFilters() {
+        // すべてのフィルターをクリア
+        this.state.activeFilters.clear();
+        
+        // すべてのボタンを非アクティブ状態にする
+        const buttons = document.querySelectorAll('.map-filter-btn[data-brand]');
+        buttons.forEach(button => {
+            button.classList.remove('active');
+        });
+        
+        // マーカーの表示を更新（すべての店舗を表示）
+        this.updateMarkerVisibility();
     },
 
     // 店舗詳細表示
