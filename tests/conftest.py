@@ -3,6 +3,10 @@ from fastapi.testclient import TestClient
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import StaticPool
+import subprocess
+import time
+import os
+import signal
 
 from app import create_app
 from database import Base, get_db
@@ -15,6 +19,27 @@ engine = create_engine(
     poolclass=StaticPool,
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+
+@pytest.fixture(scope="session", autouse=True)
+def live_server():
+    """
+    Fixture to run the FastAPI application in a live server as a separate process.
+    This allows Playwright tests to access the application.
+    The server is started before the test session and terminated afterwards.
+    """
+    proc = subprocess.Popen(
+        ["uvicorn", "app:create_app", "--host", "0.0.0.0", "--port", "8000", "--factory"],
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        preexec_fn=os.setsid
+    )
+    # Wait for the server to be ready
+    time.sleep(5)
+    yield
+    # Terminate the server process
+    os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+    proc.wait()
+
 
 @pytest.fixture(scope="function")
 def test_db():
