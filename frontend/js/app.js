@@ -537,7 +537,7 @@ const Utils = {
         API.setCookie('authToken', '', -1);
         API.setCookie('user', '', -1);
         alert('ログアウトしました');
-        router.navigate('timeline');
+        router.navigate('auth', ['login']);
         this.updateUserProfileUI();
     },
 
