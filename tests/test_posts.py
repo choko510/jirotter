@@ -57,8 +57,34 @@ def test_create_post_empty_content(test_client, test_db):
     }
     
     response = test_client.post("/api/v1/posts", data=post_data, headers=headers)
-    
+
     assert response.status_code == 400
+
+def test_create_post_with_invalid_shop_id(test_client, test_db):
+    """存在しない店舗IDを指定した場合の投稿作成テスト"""
+    # ユーザー登録
+    user_data = {
+        "id": "invalidshopuser",
+        "email": "invalidshop@example.com",
+        "password": "password123"
+    }
+    response = test_client.post("/api/v1/auth/register", json=user_data)
+    token = response.json()["access_token"]
+
+    headers = {
+        "Authorization": f"Bearer {token}"
+    }
+
+    post_data = {
+        "content": "店舗が存在しない場合のテスト投稿",
+        "shop_id": 999999
+    }
+
+    response = test_client.post("/api/v1/posts", data=post_data, headers=headers)
+    data = response.json()
+
+    assert response.status_code == 400
+    assert data["detail"] == "指定された店舗が存在しません"
 
 def test_get_all_posts(test_client, test_db):
     """全ての投稿取得テスト"""
