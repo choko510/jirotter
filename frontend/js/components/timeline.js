@@ -389,7 +389,7 @@ const TimelineComponent = {
                     </div>
                 </div>
                 ` : ''}
-                ${post.image ? `<div class="post-image"><img src="${API.escapeHtml(post.image)}" style="width:100%; border-radius: 16px; margin-top: 12px;" alt="Post image"></div>` : ''}
+                ${post.image ? `<div class="post-image"><img src="${API.escapeHtml(post.image)}" style="width:60%; border-radius: 16px; margin-top: 12px;" alt="Post image"></div>` : ''}
                 <div class="post-engagement">
                     <button class="engagement-btn" onclick="event.stopPropagation(); TimelineComponent.openCommentModal(${post.id})"><i class="fas fa-comment"></i> ${post.engagement.comments}</button>
                     <button class="engagement-btn" onclick="event.stopPropagation(); TimelineComponent.handleLike(${post.id})">

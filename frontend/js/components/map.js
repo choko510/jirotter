@@ -20,7 +20,7 @@ const MapComponent = {
         isLoading: false,
         lastCenter: null,
         debounceTimer: null,
-        moveThreshold: 0.01, // 緯度経度の変化閾値（約1km）
+        moveThreshold: 0.02, // 緯度経度の変化閾値（約2km）
         // キャッシュ関連
         shopCache: new Map(), // 店舗データキャッシュ
         cacheRadius: 30, // キャッシュ有効半径（km）
@@ -30,6 +30,9 @@ const MapComponent = {
         markerLayerGroup: null, // マーカーをグループ化して管理
         visibleMarkers: new Set(), // 現在表示されているマーカー
         markerVisibilityRadius: 50, // マーカー表示半径（km）
+        // クラスタリング関連
+        brandClusters: {}, // ブランドごとのクラスターグループ
+        clusterEnabled: true, // クラスタリング有効フラグ
         // ブランドフィルター関連
         activeFilters: new Set(), // 現在アクティブなフィルター
         brandShopCounts: {} // ブランドごとの店舗数
@@ -80,8 +83,7 @@ const MapComponent = {
             if (brandKey === 'other') continue; // 「その他」はフィルターに表示しない
             
             const count = this.state.brandShopCounts[brandKey] || 0;
-            // 店舗数が0のブランドは表示しない
-            if (count === 0) continue;
+            // 店舗数が0でもフィルターは表示する（フィルター解除のため）
             
             buttonsHtml += `
                 <button class="map-filter-btn"
@@ -440,6 +442,25 @@ const MapComponent = {
                     color: #1a1a1a;
                 }
 
+                .dark-mode .brand-filters {
+                    background: #2a2a2a;
+                    border-bottom-color: #333;
+                }
+
+                .dark-mode .filter-title {
+                    color: #e0e0e0;
+                }
+
+                .dark-mode .filter-action-btn {
+                    background: #1a1a1a;
+                    border-color: #333;
+                    color: #e0e0e0;
+                }
+
+                .dark-mode .filter-action-btn:hover {
+                    background: #333;
+                }
+
                 /* Shop Detail Panel */
                 .shop-detail-panel {
                     position: absolute;
@@ -488,7 +509,162 @@ const MapComponent = {
                          border-top: 1px solid #333;
                          border-right: none;
                     }
-                }
+               }
+
+               /* Marker Cluster Styles */
+               .marker-cluster {
+                   background: rgba(255, 255, 255, 0.8);
+                   border-radius: 50%;
+                   text-align: center;
+                   font-weight: bold;
+                   font-family: Arial, sans-serif;
+                   border: 2px solid rgba(0, 0, 0, 0.2);
+               }
+
+               .marker-cluster div {
+                   width: 30px;
+                   height: 30px;
+                   margin-left: 5px;
+                   margin-top: 5px;
+                   border-radius: 50%;
+                   text-align: center;
+                   line-height: 30px;
+               }
+
+               .marker-cluster span {
+                   line-height: 30px;
+               }
+
+               /* クラスターサイズ別スタイル */
+               .marker-cluster-small {
+                   background-color: rgba(181, 226, 140, 0.6);
+               }
+
+               .marker-cluster-small div {
+                   background-color: rgba(110, 204, 57, 0.6);
+               }
+
+               .marker-cluster-medium {
+                   background-color: rgba(241, 211, 87, 0.6);
+               }
+
+               .marker-cluster-medium div {
+                   background-color: rgba(240, 194, 12, 0.6);
+               }
+
+               .marker-cluster-large {
+                   background-color: rgba(253, 156, 115, 0.6);
+               }
+
+               .marker-cluster-large div {
+                   background-color: rgba(241, 128, 23, 0.6);
+               }
+
+               /* 豚山ブランド用のピンククラスタースタイル */
+               .marker-cluster-pink {
+                   background-color: rgba(252, 215, 0, 0.3) !important;
+                   border: 2px solid rgba(252, 215, 0, 0.8) !important;
+               }
+
+               .marker-cluster-pink div {
+                   background-color: rgba(252, 215, 0, 0.8) !important;
+                   color: black !important;
+               }
+
+               .marker-cluster-pink.marker-cluster-small {
+                   background-color: rgba(252, 215, 0, 0.3) !important;
+               }
+
+               .marker-cluster-pink.marker-cluster-small div {
+                   background-color: rgba(252, 215, 0, 0.6) !important;
+               }
+
+               .marker-cluster-pink.marker-cluster-medium {
+                   background-color: rgba(252, 215, 0, 0.4) !important;
+               }
+
+               .marker-cluster-pink.marker-cluster-medium div {
+                   background-color: rgba(252, 215, 0, 0.7) !important;
+               }
+
+               .marker-cluster-pink.marker-cluster-large {
+                   background-color: rgba(252, 215, 0, 0.5) !important;
+               }
+
+               .marker-cluster-pink.marker-cluster-large div {
+                   background-color: rgba(252, 215, 0, 0.9) !important;
+               }
+
+               /* 他のブランド用のクラスタースタイル */
+               .marker-cluster-ramenso {
+                   background-color: rgba(52, 152, 219, 0.3) !important;
+                   border: 2px solid rgba(52, 152, 219, 0.8) !important;
+               }
+
+               .marker-cluster-ramenso div {
+                   background-color: rgba(52, 152, 219, 0.8) !important;
+                   color: white !important;
+               }
+
+               .marker-cluster-rakeiko {
+                   background-color: rgba(46, 204, 113, 0.3) !important;
+                   border: 2px solid rgba(46, 204, 113, 0.8) !important;
+               }
+
+               .marker-cluster-rakeiko div {
+                   background-color: rgba(46, 204, 113, 0.8) !important;
+                   color: white !important;
+               }
+
+               .marker-cluster-ahare {
+                   background-color: rgba(231, 76, 60, 0.3) !important;
+                   border: 2px solid rgba(231, 76, 60, 0.8) !important;
+               }
+
+               .marker-cluster-ahare div {
+                   background-color: rgba(231, 76, 60, 0.8) !important;
+                   color: white !important;
+               }
+
+               .marker-cluster-tachikawa {
+                   background-color: rgba(155, 89, 182, 0.3) !important;
+                   border: 2px solid rgba(155, 89, 182, 0.8) !important;
+               }
+
+               .marker-cluster-tachikawa div {
+                   background-color: rgba(155, 89, 182, 0.8) !important;
+                   color: white !important;
+               }
+
+               .marker-cluster-tsukemensha {
+                   background-color: rgba(26, 188, 156, 0.3) !important;
+                   border: 2px solid rgba(26, 188, 156, 0.8) !important;
+               }
+
+               .marker-cluster-tsukemensha div {
+                   background-color: rgba(26, 188, 156, 0.8) !important;
+                   color: white !important;
+               }
+
+               .marker-cluster-jiro {
+                   background-color: rgba(212, 165, 116, 0.3) !important;
+                   border: 2px solid rgba(212, 165, 116, 0.8) !important;
+               }
+
+               .marker-cluster-jiro div {
+                   background-color: rgba(212, 165, 116, 0.8) !important;
+                   color: white !important;
+               }
+
+               .marker-cluster-other {
+                   background-color: rgba(149, 165, 166, 0.3) !important;
+                   border: 2px solid rgba(149, 165, 166, 0.8) !important;
+               }
+
+               .marker-cluster-other div {
+                   background-color: rgba(149, 165, 166, 0.8) !important;
+                   color: white !important;
+               }
             </style>
             
             <div class="map-container">
@@ -561,14 +737,20 @@ const MapComponent = {
             const location = await this.getLocationFromIP();
             
             // マップを作成
-            this.state.map = L.map('map').setView([location.lat, location.lng], 13);
+            this.state.map = L.map('map', {
+                maxZoom: 18
+            }).setView([location.lat, location.lng], 13);
             
             L.maplibreGL({
                 style: 'https://tiles.openfreemap.org/styles/liberty',
+                maxZoom: 18
             }).addTo(this.state.map)
             
             // マーカーをグループ化して管理
             this.state.markerLayerGroup = L.layerGroup().addTo(this.state.map);
+            
+            // ブランドごとのクラスターグループを初期化
+            this.initializeBrandClusters();
             
             // 地図の移動イベントをリッスン（デバウンス処理付き）
             this.state.map.on('moveend', () => {
@@ -577,6 +759,15 @@ const MapComponent = {
             
             // ズームレベル変更時にもマーカー表示を更新
             this.state.map.on('zoomend', () => {
+                const currentZoom = this.state.map.getZoom();
+                const searchRadius = this.calculateSearchRadius(currentZoom);
+                console.log(`ズームレベル変更: ${currentZoom}, 検索範囲を ${searchRadius}km に調整`);
+                
+                // ズームレベルが大きく変更された場合は再検索
+                const center = this.state.map.getCenter();
+                this.addNearbyShops({ lat: center.lat, lng: center.lng }, null);
+                
+                // マーカーの表示範囲も更新
                 this.updateMarkerVisibility();
             });
             
@@ -673,6 +864,7 @@ const MapComponent = {
         this.state.debounceTimer = setTimeout(async () => {
             const currentCenter = this.state.map.getCenter();
             const { lat, lng } = currentCenter;
+            const currentZoom = this.state.map.getZoom();
             
             // 前回の中心位置との距離を計算
             if (this.state.lastCenter) {
@@ -690,6 +882,10 @@ const MapComponent = {
             
             // 現在の中心位置を保存
             this.state.lastCenter = { lat, lng };
+            
+            // ズームレベルに応じて検索範囲を計算
+            const searchRadius = this.calculateSearchRadius(currentZoom);
+            console.log(`マップ移動: ズームレベル ${currentZoom}, 検索範囲 ${searchRadius}km`);
             
             // APIを呼び出して近くの店舗を取得
             await this.addNearbyShops({ lat, lng }, null);
@@ -751,16 +947,132 @@ const MapComponent = {
         return null;
     },
 
+    // ブランドごとのクラスターグループを初期化
+    initializeBrandClusters() {
+        // 各ブランドのクラスターグループを作成
+        for (const [brandKey, brandConfig] of Object.entries(this.BRAND_CONFIG)) {
+            // ブランドごとに異なるクラスタースタイルを設定
+            const clusterOptions = {
+                // 4個未満のマーカーはクラスタリングしないカスタム関数
+                iconCreateFunction: (cluster) => {
+                    const count = cluster.getChildCount();
+                    
+                    // 4個未満のマーカーはクラスタリングしない
+                    if (count < 4) {
+                        // 最初のマーカーのアイコンを取得して返す
+                        const markers = cluster.getAllChildMarkers();
+                        if (markers.length > 0) {
+                            return markers[0].getIcon();
+                        }
+                    }
+                    
+                    let size = 'small';
+                    let className = `marker-cluster marker-cluster-${brandKey}`;
+                    
+                    if (count >= 20) {
+                        size = 'large';
+                    } else if (count >= 10) {
+                        size = 'medium';
+                    }
+                    
+                    className += ` marker-cluster-${size}`;
+                    
+                    return L.divIcon({
+                        html: `<div><span>${count}</span></div>`,
+                        className: className,
+                        iconSize: L.point(40, 40)
+                    });
+                },
+                // ブランドごとに異なるクラスターカラーを設定
+                spiderfyOnMaxZoom: true,
+                showCoverageOnHover: true,
+                zoomToBoundsOnClick: true,
+                maxClusterRadius: 80, // やや大きめの半径でクラスタリング
+                // ズームレベル15以上ではクラスタリングを無効にする
+                disableClusteringAtZoom: 15,
+                // 少数のマーカーがクラスタリングされないように設定
+                chunkedLoading: true,
+                spiderfyDistanceMultiplier: 2.0
+            };
+            
+            // 特にピンク（豚山）のクラスタースタイルをカスタマイズ
+            if (brandKey === 'butayama') {
+                clusterOptions.iconCreateFunction = (cluster) => {
+                    const count = cluster.getChildCount();
+                    let size = 'small';
+                    let className = `marker-cluster marker-cluster-pink`;
+                    
+                    if (count >= 20) {
+                        size = 'large';
+                    } else if (count >= 10) {
+                        size = 'medium';
+                    }
+                    
+                    className += ` marker-cluster-${size}`;
+                    
+                    return L.divIcon({
+                        html: `<div><span>${count}</span></div>`,
+                        className: className,
+                        iconSize: L.point(40, 40)
+                    });
+                };
+            }
+            
+            this.state.brandClusters[brandKey] = L.markerClusterGroup(clusterOptions);
+            this.state.map.addLayer(this.state.brandClusters[brandKey]);
+        }
+    },
+
+    // ズームレベルに応じて検索範囲を計算する関数
+    calculateSearchRadius(zoomLevel) {
+        // ズームレベルに応じて検索範囲を動的に調整
+        // ズームアウト時（低いズームレベル）は広範囲を検索
+        // ズームイン時（高いズームレベル）は狭範囲を検索
+        
+        if (zoomLevel <= 6) {
+            // 日本全土が見えるような非常に広い範囲
+            return 500;
+        } else if (zoomLevel <= 8) {
+            // 広域（地方レベル）
+            return 300;
+        } else if (zoomLevel <= 10) {
+            // 中域（県レベル）
+            return 150;
+        } else if (zoomLevel <= 12) {
+            // やや広域（市レベル）
+            return 80;
+        } else if (zoomLevel <= 14) {
+            // 標準（地域レベル）
+            return 40;
+        } else if (zoomLevel <= 16) {
+            // やや狭域（近隣レベル）
+            return 20;
+        } else {
+            // 狭域（詳細レベル）
+            return 10;
+        }
+    },
+
     // 近くのラーメン店データを取得して追加（キャッシュ対応版）
     async addNearbyShops(centerLocation, currentRadius = null) {
         try {
             const { lat, lng } = centerLocation;
-            // 検索範囲を段階的に広げるための配列
-            const radiusSteps = [30, 50, 100, 200]; // km
-            const maxRadius = 200; // 最大検索範囲
             
-            // 初期検索範囲を設定
-            let radius = currentRadius || this.state.cacheRadius;
+            // 現在のズームレベルを取得
+            const zoomLevel = this.state.map ? this.state.map.getZoom() : 13;
+            
+            // ズームレベルに応じて検索範囲を計算
+            let radius;
+            if (currentRadius) {
+                radius = currentRadius;
+            } else {
+                radius = this.calculateSearchRadius(zoomLevel);
+                console.log(`ズームレベル ${zoomLevel} に基づき検索範囲を ${radius}km に設定`);
+            }
+            
+            // 検索範囲を段階的に広げるための配列
+            const radiusSteps = [10, 20, 40, 80, 150, 300, 500]; // km
+            const maxRadius = 500; // 最大検索範囲
             
             // 現在の検索範囲がradiusStepsに含まれていない場合は、次のステップを見つける
             let radiusIndex = radiusSteps.indexOf(radius);
@@ -870,8 +1182,18 @@ const MapComponent = {
     clearShopMarkers() {
         // 既存の店舗マーカーを地図から削除
         this.state.markers.forEach(marker => {
-            if (this.state.markerLayerGroup.hasLayer(marker)) {
-                this.state.markerLayerGroup.removeLayer(marker);
+            const brand = marker.brand || 'other';
+            
+            if (this.state.clusterEnabled && this.state.brandClusters[brand]) {
+                // クラスタリングが有効な場合はクラスターグループから削除
+                if (this.state.brandClusters[brand].hasLayer(marker)) {
+                    this.state.brandClusters[brand].removeLayer(marker);
+                }
+            } else {
+                // クラスタリングが無効な場合は通常のマーカーグループから削除
+                if (this.state.markerLayerGroup.hasLayer(marker)) {
+                    this.state.markerLayerGroup.removeLayer(marker);
+                }
             }
         });
         
@@ -976,8 +1298,18 @@ const MapComponent = {
         // 不要なマーカーを削除
         this.state.markers = this.state.markers.filter(marker => {
             if (!existingMarkerIds.has(marker.shopId)) {
-                if (this.state.markerLayerGroup.hasLayer(marker)) {
-                    this.state.markerLayerGroup.removeLayer(marker);
+                const brand = marker.brand || 'other';
+                
+                if (this.state.clusterEnabled && this.state.brandClusters[brand]) {
+                    // クラスタリングが有効な場合はクラスターグループから削除
+                    if (this.state.brandClusters[brand].hasLayer(marker)) {
+                        this.state.brandClusters[brand].removeLayer(marker);
+                    }
+                } else {
+                    // クラスタリングが無効な場合は通常のマーカーグループから削除
+                    if (this.state.markerLayerGroup.hasLayer(marker)) {
+                        this.state.markerLayerGroup.removeLayer(marker);
+                    }
                 }
                 this.state.visibleMarkers.delete(marker.shopId);
                 return false;
@@ -1017,14 +1349,30 @@ const MapComponent = {
             
             if (isInBounds && isActiveFilter) {
                 // 表示範囲内かつフィルターに合致する場合、マーカーを表示
-                if (!this.state.markerLayerGroup.hasLayer(marker)) {
-                    this.state.markerLayerGroup.addLayer(marker);
+                if (this.state.clusterEnabled && this.state.brandClusters[brand]) {
+                    // クラスタリングが有効な場合はクラスターグループに追加
+                    if (!this.state.brandClusters[brand].hasLayer(marker)) {
+                        this.state.brandClusters[brand].addLayer(marker);
+                    }
+                } else {
+                    // クラスタリングが無効な場合は通常のマーカーグループに追加
+                    if (!this.state.markerLayerGroup.hasLayer(marker)) {
+                        this.state.markerLayerGroup.addLayer(marker);
+                    }
                 }
                 this.state.visibleMarkers.add(marker.shopId);
             } else {
                 // 表示範囲外またはフィルターに合致しない場合、マーカーを非表示
-                if (this.state.markerLayerGroup.hasLayer(marker)) {
-                    this.state.markerLayerGroup.removeLayer(marker);
+                if (this.state.clusterEnabled && this.state.brandClusters[brand]) {
+                    // クラスタリングが有効な場合はクラスターグループから削除
+                    if (this.state.brandClusters[brand].hasLayer(marker)) {
+                        this.state.brandClusters[brand].removeLayer(marker);
+                    }
+                } else {
+                    // クラスタリングが無効な場合は通常のマーカーグループから削除
+                    if (this.state.markerLayerGroup.hasLayer(marker)) {
+                        this.state.markerLayerGroup.removeLayer(marker);
+                    }
                 }
                 this.state.visibleMarkers.delete(marker.shopId);
             }
@@ -1111,8 +1459,16 @@ const MapComponent = {
         marker.shopId = shop.id;
         marker.brand = brand;
         
-        // 最初はマーカーグループに追加せず、表示範囲チェック後に追加
+        // 最初はマーカーリストに追加
         this.state.markers.push(marker);
+        
+        // クラスタリングが有効な場合はブランドごとのクラスターグループに追加
+        if (this.state.clusterEnabled && this.state.brandClusters[brand]) {
+            this.state.brandClusters[brand].addLayer(marker);
+        } else {
+            // クラスタリングが無効な場合は通常のマーカーグループに追加
+            this.state.markerLayerGroup.addLayer(marker);
+        }
         
         // 表示範囲内かチェックして、範囲内なら表示
         if (this.state.map) {
@@ -1133,7 +1489,6 @@ const MapComponent = {
             if (bounds.contains([shop.lat, shop.lng]) && distance <= visibilityRadius) {
                 // フィルターが適用されている場合は、フィルターに合致する場合のみ表示
                 if (this.state.activeFilters.size === 0 || this.state.activeFilters.has(brand)) {
-                    this.state.markerLayerGroup.addLayer(marker);
                     this.state.visibleMarkers.add(shop.id);
                 }
             }

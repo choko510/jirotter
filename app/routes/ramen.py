@@ -60,7 +60,7 @@ def load_ramen_data_on_startup(db: Session):
 async def get_nearby_ramen_shops_optimized(
     latitude: float = Query(..., description="緯度"),
     longitude: float = Query(..., description="経度"),
-    radius_km: float = Query(5.0, ge=0.1, le=200.0, description="検索範囲（km）"),
+    radius_km: float = Query(5.0, ge=0.1, le=500.0, description="検索範囲（km）"),
     db: Session = Depends(get_db)
 ):
     """

@@ -21,30 +21,28 @@
       "google.gemini-cli-vscode-ide-companion"
     ];
     # Enable previews
-    previews = {
-      enable = true;
-      previews = {
-        web = {
-          # Run the FastAPI application with the PORT set to IDX's defined port for previews
-          command = ["python" "run.py"];
-          manager = "web";
-          env = {
+    #previews = {
+      #enable = true;
+      #previews = {
+      #  web = {
+      #    # Run the FastAPI application with the PORT set to IDX's defined port for previews
+      #    command = ["python" "run.py"];
+      #    manager = "web";
+      #    env = {
             # Environment variables to set for your server
-            PORT = "$PORT";
-          };
-        };
-      };
-    };
+      #      PORT = "$PORT";
+      #    };
+      #  };
+      #};
+    #};
     # Workspace lifecycle hooks
     workspace = {
       # Runs when a workspace is first created
-      onCreate = {
+    
         # Example: install JS dependencies from NPM
         # npm-install = "npm install";
         # Install Python dependencies
-        # Open editors for the following files by default, if they exist:
-        default.openFiles = [ ".idx/dev.nix" "README.md" ];
-      };
+        # Open editors for the following files by
       # Runs when the workspace is (re)started
       onStart = {
         # Example: start a background task to watch and re-build backend code

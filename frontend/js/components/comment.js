@@ -6,6 +6,16 @@ const CommentComponent = {
         comments: [],
         isLoading: true,
         error: null,
+        // 画像モーダル関連の状態
+        imageModal: {
+            isOpen: false,
+            images: [],
+            currentIndex: 0,
+            zoom: 1,
+            isDragging: false,
+            dragStart: { x: 0, y: 0 },
+            position: { x: 0, y: 0 }
+        }
     },
 
     // レンダリング
@@ -82,6 +92,14 @@ const CommentComponent = {
                     font-weight: bold;
                 }
 
+                .post-username span {
+                    cursor: pointer;
+                }
+
+                .post-username span:hover {
+                    text-decoration: underline;
+                }
+
                 .post-meta {
                     color: #666;
                     font-size: 14px;
@@ -117,6 +135,42 @@ const CommentComponent = {
                 .post-image img {
                     border-radius: 16px;
                     max-width: 100%;
+                    cursor: pointer;
+                    transition: transform 0.2s;
+                }
+
+                .post-image img:hover {
+                    transform: scale(0.98);
+                }
+
+                .post-engagement {
+                    display: flex;
+                    justify-content: space-around;
+                    margin-top: 12px;
+                    padding-top: 12px;
+                    border-top: 1px solid #e0e0e0;
+                }
+
+                .engagement-btn {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    background: transparent;
+                    border: none;
+                    color: #666;
+                    cursor: pointer;
+                    padding: 4px 8px;
+                    border-radius: 4px;
+                    transition: all 0.2s;
+                }
+
+                .engagement-btn:hover {
+                    background: #f5f5f5;
+                    color: #d4a574;
+                }
+
+                .engagement-btn .liked {
+                    color: #e0245e;
                 }
 
                 /* コメント入力 */
@@ -228,6 +282,14 @@ const CommentComponent = {
 
                 .comment-username {
                     font-weight: bold;
+                }
+
+                .comment-username span {
+                    cursor: pointer;
+                }
+
+                .comment-username span:hover {
+                    text-decoration: underline;
                 }
 
                 .comment-time {
@@ -342,6 +404,236 @@ const CommentComponent = {
                     background: #333;
                     color: #d4a574;
                 }
+
+                .dark-mode .post-engagement {
+                    border-top-color: #333;
+                }
+
+                .dark-mode .engagement-btn {
+                    color: #aaa;
+                }
+
+                .dark-mode .engagement-btn:hover {
+                    background: #333;
+                    color: #d4a574;
+                }
+
+                /* 画像モーダルスタイル */
+                .image-modal-overlay {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background: rgba(0, 0, 0, 0.9);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 1000;
+                    opacity: 0;
+                    visibility: hidden;
+                    transition: opacity 0.3s, visibility 0.3s;
+                }
+
+                .image-modal-overlay.show {
+                    opacity: 1;
+                    visibility: visible;
+                }
+
+                .image-modal-container {
+                    position: relative;
+                    width: 90%;
+                    height: 90%;
+                    max-width: 1200px;
+                    max-height: 800px;
+                    display: flex;
+                    flex-direction: column;
+                }
+
+                .image-modal-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 16px;
+                    color: white;
+                }
+
+                .image-modal-close {
+                    background: none;
+                    border: none;
+                    color: white;
+                    font-size: 24px;
+                    cursor: pointer;
+                    width: 40px;
+                    height: 40px;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: background 0.2s;
+                }
+
+                .image-modal-close:hover {
+                    background: rgba(255, 255, 255, 0.1);
+                }
+
+                .image-modal-content {
+                    flex: 1;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    position: relative;
+                    overflow: hidden;
+                }
+
+                .image-modal-image-container {
+                    position: relative;
+                    width: 100%;
+                    height: 100%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    cursor: grab;
+                }
+
+                .image-modal-image-container.dragging {
+                    cursor: grabbing;
+                }
+
+                .image-modal-image {
+                    max-width: 100%;
+                    max-height: 100%;
+                    object-fit: contain;
+                    transform-origin: center;
+                    transition: transform 0.1s;
+                    user-select: none;
+                    -webkit-user-drag: none;
+                }
+
+                .image-modal-nav {
+                    position: absolute;
+                    top: 50%;
+                    transform: translateY(-50%);
+                    background: rgba(0, 0, 0, 0.5);
+                    color: white;
+                    border: none;
+                    width: 50px;
+                    height: 50px;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    cursor: pointer;
+                    font-size: 18px;
+                    transition: background 0.2s;
+                    z-index: 10;
+                }
+
+                .image-modal-nav:hover {
+                    background: rgba(0, 0, 0, 0.7);
+                }
+
+                .image-modal-nav.prev {
+                    left: 20px;
+                }
+
+                .image-modal-nav.next {
+                    right: 20px;
+                }
+
+                .image-modal-nav.disabled {
+                    opacity: 0.3;
+                    cursor: not-allowed;
+                }
+
+                .image-modal-controls {
+                    position: absolute;
+                    bottom: 20px;
+                    left: 50%;
+                    transform: translateX(-50%);
+                    display: flex;
+                    gap: 16px;
+                    background: rgba(0, 0, 0, 0.5);
+                    padding: 12px 20px;
+                    border-radius: 30px;
+                    color: white;
+                }
+
+                .image-modal-control-btn {
+                    background: none;
+                    border: none;
+                    color: white;
+                    cursor: pointer;
+                    font-size: 18px;
+                    width: 36px;
+                    height: 36px;
+                    border-radius: 50%;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: background 0.2s;
+                }
+
+                .image-modal-control-btn:hover {
+                    background: rgba(255, 255, 255, 0.1);
+                }
+
+                .image-modal-indicator {
+                    font-size: 14px;
+                    display: flex;
+                    align-items: center;
+                    min-width: 60px;
+                    justify-content: center;
+                }
+
+                .image-modal-loading {
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
+                    color: white;
+                    font-size: 18px;
+                }
+
+                /* モバイル対応 */
+                @media (max-width: 768px) {
+                    .image-modal-container {
+                        width: 100%;
+                        height: 100%;
+                        max-width: none;
+                        max-height: none;
+                    }
+
+                    .image-modal-header {
+                        padding: 12px 16px;
+                    }
+
+                    .image-modal-nav {
+                        width: 40px;
+                        height: 40px;
+                        font-size: 16px;
+                    }
+
+                    .image-modal-nav.prev {
+                        left: 10px;
+                    }
+
+                    .image-modal-nav.next {
+                        right: 10px;
+                    }
+
+                    .image-modal-controls {
+                        bottom: 16px;
+                        padding: 8px 16px;
+                        gap: 12px;
+                    }
+
+                    .image-modal-control-btn {
+                        width: 32px;
+                        height: 32px;
+                        font-size: 16px;
+                    }
+                }
             </style>
             
             <div class="comment-container">
@@ -367,6 +659,41 @@ const CommentComponent = {
                     </div>
                     <div class="comments-list" id="commentsList">
                         <div class="loading">コメントを読み込み中...</div>
+                    </div>
+                </div>
+                
+                <!-- 画像モーダル -->
+                <div class="image-modal-overlay" id="imageModal">
+                    <div class="image-modal-container">
+                        <div class="image-modal-header">
+                            <div class="image-modal-indicator" id="imageModalIndicator">1 / 1</div>
+                            <button class="image-modal-close" id="imageModalClose">&times;</button>
+                        </div>
+                        <div class="image-modal-content">
+                            <button class="image-modal-nav prev" id="imageModalPrev">
+                                <i class="fas fa-chevron-left"></i>
+                            </button>
+                            <div class="image-modal-image-container" id="imageModalImageContainer">
+                                <img class="image-modal-image" id="imageModalImage" src="" alt="拡大画像">
+                                <div class="image-modal-loading" id="imageModalLoading" style="display: none;">
+                                    <i class="fas fa-spinner fa-spin"></i> 読み込み中...
+                                </div>
+                            </div>
+                            <button class="image-modal-nav next" id="imageModalNext">
+                                <i class="fas fa-chevron-right"></i>
+                            </button>
+                        </div>
+                        <div class="image-modal-controls">
+                            <button class="image-modal-control-btn" id="imageModalZoomOut" title="縮小">
+                                <i class="fas fa-search-minus"></i>
+                            </button>
+                            <button class="image-modal-control-btn" id="imageModalZoomReset" title="元のサイズ">
+                                <i class="fas fa-compress"></i>
+                            </button>
+                            <button class="image-modal-control-btn" id="imageModalZoomIn" title="拡大">
+                                <i class="fas fa-search-plus"></i>
+                            </button>
+                        </div>
                     </div>
                 </div>
             </div>
@@ -396,6 +723,9 @@ const CommentComponent = {
             });
             submitBtn.addEventListener('click', () => this.submitComment());
         }
+        
+        // 画像モーダルのイベントリスナーを設定
+        this.setupImageModalListeners();
     },
 
     // 投稿とコメントの読み込み
@@ -443,7 +773,7 @@ const CommentComponent = {
                 <div class="comment-avatar"><i class="fas fa-user"></i></div>
                 <div class="post-user-info">
                     <div class="post-username">
-                        <span>${API.escapeHtml(post.author_username)}</span>
+                        <span onclick="event.stopPropagation(); router.navigate('profile', ['${API.escapeHtml(post.user_id)}'])">${API.escapeHtml(post.author_username)}</span>
                         <span class="post-meta">@${API.escapeHtml(post.user_id)} · ${API.formatTime(post.created_at)}</span>
                     </div>
                 </div>
@@ -452,7 +782,16 @@ const CommentComponent = {
                 <div class="post-content" id="post-content-${post.id}">${API.escapeHtmlWithLineBreaks(post.content)}</div>
                 ${this.isLongText(post.content) ? `<button class="show-more-btn" onclick="CommentComponent.toggleText('post', ${post.id})">続きを見る</button>` : ''}
             </div>
-            ${post.image_url ? `<div class="post-image"><img src="${API.escapeHtml(post.image_url)}" style="width:100%; border-radius: 16px; margin-top: 12px;" alt="Post image"></div>` : ''}
+            ${post.image_url ? `<div class="post-image"><img src="${API.escapeHtml(post.image_url)}" style="width:100%; border-radius: 16px; margin-top: 12px;" alt="Post image" onclick="CommentComponent.openImageModal(['${API.escapeHtml(post.image_url)}'], 0)"></div>` : ''}
+            <div class="post-engagement">
+                <button class="engagement-btn" onclick="CommentComponent.handleLike(${post.id})">
+                    <i class="fas fa-heart ${post.is_liked_by_current_user ? 'liked' : ''}" id="like-icon-${post.id}"></i> 
+                    <span id="like-count-${post.id}">${post.likes_count || 0}</span>
+                </button>
+                <button class="engagement-btn" onclick="CommentComponent.sharePost(${post.id})">
+                    <i class="fas fa-share"></i> 共有
+                </button>
+            </div>
         `;
     },
 
@@ -471,7 +810,7 @@ const CommentComponent = {
                     <div class="comment-avatar"><i class="fas fa-user"></i></div>
                     <div class="comment-user-info">
                         <div class="comment-username">
-                            <span>${API.escapeHtml(comment.author_username)}</span>
+                            <span onclick="event.stopPropagation(); router.navigate('profile', ['${API.escapeHtml(comment.user_id)}'])">${API.escapeHtml(comment.author_username)}</span>
                             <span class="comment-time">@${API.escapeHtml(comment.user_id)} · ${API.formatTime(comment.created_at)}</span>
                         </div>
                     </div>
@@ -480,9 +819,15 @@ const CommentComponent = {
                     <div class="comment-content" id="comment-content-${comment.id}">${API.escapeHtmlWithLineBreaks(comment.content)}</div>
                     ${this.isLongText(comment.content) ? `<button class="show-more-btn" onclick="CommentComponent.toggleText('comment', ${comment.id})">続きを見る</button>` : ''}
                 </div>
+                ${comment.image_url ? `<div class="post-image"><img src="${API.escapeHtml(comment.image_url)}" style="width:100%; border-radius: 16px; margin-top: 12px;" alt="Comment image" onclick="CommentComponent.openImageModal(['${API.escapeHtml(comment.image_url)}'], 0)"></div>` : ''}
                 <div class="comment-actions">
-                    <button class="comment-action-btn"><i class="fas fa-heart"></i> 0</button>
-                    <button class="comment-action-btn"><i class="fas fa-comment"></i> 返信</button>
+                    <button class="comment-action-btn" onclick="CommentComponent.handleCommentLike(${comment.id})">
+                        <i class="fas fa-heart ${comment.is_liked_by_current_user ? 'liked' : ''}" id="comment-like-icon-${comment.id}"></i> 
+                        <span id="comment-like-count-${comment.id}">${comment.likes_count || 0}</span>
+                    </button>
+                    <button class="comment-action-btn" onclick="CommentComponent.shareComment(${comment.id})">
+                        <i class="fas fa-share"></i> 共有
+                    </button>
                 </div>
             </div>
         `).join('');
@@ -534,10 +879,530 @@ const CommentComponent = {
         }
     },
 
+    // いいね処理
+    async handleLike(postId) {
+        const token = API.getCookie('authToken');
+        if (!token) {
+            alert('いいねするにはログインしてください');
+            router.navigate('auth', ['login']);
+            return;
+        }
+
+        const post = this.state.currentPost;
+        if (!post || post.id !== postId) return;
+
+        const originalLikedState = post.is_liked_by_current_user;
+        const originalLikesCount = post.likes_count || 0;
+
+        // UIを即座に更新
+        post.is_liked_by_current_user = !originalLikedState;
+        post.likes_count = originalLikedState ? originalLikesCount - 1 : originalLikesCount + 1;
+        
+        const likeIcon = document.getElementById(`like-icon-${postId}`);
+        const likeCount = document.getElementById(`like-count-${postId}`);
+        
+        if (likeIcon) {
+            likeIcon.classList.toggle('liked', post.is_liked_by_current_user);
+        }
+        
+        if (likeCount) {
+            likeCount.textContent = post.likes_count;
+        }
+
+        try {
+            const result = post.is_liked_by_current_user ? 
+                await API.likePost(postId) : 
+                await API.unlikePost(postId);
+                
+            if (!result.success) {
+                // 失敗した場合は元に戻す
+                post.is_liked_by_current_user = originalLikedState;
+                post.likes_count = originalLikesCount;
+                
+                if (likeIcon) {
+                    likeIcon.classList.toggle('liked', originalLikedState);
+                }
+                
+                if (likeCount) {
+                    likeCount.textContent = originalLikesCount;
+                }
+                
+                alert(`エラー: ${result.error}`);
+            }
+        } catch (error) {
+            // 失敗した場合は元に戻す
+            post.is_liked_by_current_user = originalLikedState;
+            post.likes_count = originalLikesCount;
+            
+            if (likeIcon) {
+                likeIcon.classList.toggle('liked', originalLikedState);
+            }
+            
+            if (likeCount) {
+                likeCount.textContent = originalLikesCount;
+            }
+            
+            alert('いいねに失敗しました。');
+        }
+    },
+
+    // コメントのいいね処理
+    async handleCommentLike(commentId) {
+        const token = API.getCookie('authToken');
+        if (!token) {
+            alert('いいねするにはログインしてください');
+            router.navigate('auth', ['login']);
+            return;
+        }
+
+        const comment = this.state.comments.find(c => c.id === commentId);
+        if (!comment) return;
+
+        const originalLikedState = comment.is_liked_by_current_user;
+        const originalLikesCount = comment.likes_count || 0;
+
+        // UIを即座に更新
+        comment.is_liked_by_current_user = !originalLikedState;
+        comment.likes_count = originalLikedState ? originalLikesCount - 1 : originalLikesCount + 1;
+        
+        const likeIcon = document.getElementById(`comment-like-icon-${commentId}`);
+        const likeCount = document.getElementById(`comment-like-count-${commentId}`);
+        
+        if (likeIcon) {
+            likeIcon.classList.toggle('liked', comment.is_liked_by_current_user);
+        }
+        
+        if (likeCount) {
+            likeCount.textContent = comment.likes_count;
+        }
+
+        try {
+            // コメントのいいねAPIがあれば使用する
+            // 現在は投稿といいねAPIを共通で使用
+            const result = comment.is_liked_by_current_user ? 
+                await API.likePost(commentId) : 
+                await API.unlikePost(commentId);
+                
+            if (!result.success) {
+                // 失敗した場合は元に戻す
+                comment.is_liked_by_current_user = originalLikedState;
+                comment.likes_count = originalLikesCount;
+                
+                if (likeIcon) {
+                    likeIcon.classList.toggle('liked', originalLikedState);
+                }
+                
+                if (likeCount) {
+                    likeCount.textContent = originalLikesCount;
+                }
+                
+                alert(`エラー: ${result.error}`);
+            }
+        } catch (error) {
+            // 失敗した場合は元に戻す
+            comment.is_liked_by_current_user = originalLikedState;
+            comment.likes_count = originalLikesCount;
+            
+            if (likeIcon) {
+                likeIcon.classList.toggle('liked', originalLikedState);
+            }
+            
+            if (likeCount) {
+                likeCount.textContent = originalLikesCount;
+            }
+            
+            alert('いいねに失敗しました。');
+        }
+    },
+
+    // 投稿を共有
+    sharePost(postId) {
+        const post = this.state.currentPost;
+        if (!post || post.id !== postId) return;
+
+        // 現在のURLを取得
+        const currentUrl = window.location.href;
+        const shareUrl = `${window.location.origin}/#comment/${postId}`;
+        
+        // Web Share APIが利用可能かチェック
+        if (navigator.share) {
+            navigator.share({
+                title: `${post.author_username}さんの投稿`,
+                text: post.content,
+                url: shareUrl
+            }).catch(err => {
+                console.log('共有がキャンセルされました', err);
+                // フォールバックとしてクリップボードにコピー
+                this.copyToClipboard(shareUrl);
+            });
+        } else {
+            // フォールバックとしてクリップボードにコピー
+            this.copyToClipboard(shareUrl);
+        }
+    },
+
+    // コメントを共有
+    shareComment(commentId) {
+        const comment = this.state.comments.find(c => c.id === commentId);
+        if (!comment) return;
+
+        // 現在のURLを取得
+        const shareUrl = `${window.location.origin}/#comment/${this.state.currentPost.id}`;
+        
+        // Web Share APIが利用可能かチェック
+        if (navigator.share) {
+            navigator.share({
+                title: `${comment.author_username}さんのコメント`,
+                text: comment.content,
+                url: shareUrl
+            }).catch(err => {
+                console.log('共有がキャンセルされました', err);
+                // フォールバックとしてクリップボードにコピー
+                this.copyToClipboard(shareUrl);
+            });
+        } else {
+            // フォールバックとしてクリップボードにコピー
+            this.copyToClipboard(shareUrl);
+        }
+    },
+
+    // クリップボードにコピー
+    copyToClipboard(text) {
+        // テキストエリアを作成してコピー
+        const textarea = document.createElement('textarea');
+        textarea.value = text;
+        textarea.style.position = 'fixed'; // 画面外に配置
+        textarea.style.opacity = '0';
+        document.body.appendChild(textarea);
+        textarea.select();
+        
+        try {
+            const successful = document.execCommand('copy');
+            if (successful) {
+                alert('リンクをクリップボードにコピーしました');
+            } else {
+                alert('コピーに失敗しました');
+            }
+        } catch (err) {
+            console.error('コピーに失敗しました:', err);
+            alert('コピーに失敗しました');
+        }
+        
+        document.body.removeChild(textarea);
+    },
+
     // エラー表示
     renderError(message) {
         const contentArea = document.getElementById('contentArea');
         contentArea.innerHTML = `<div class="error">...</div>`;
+    },
+
+    // 画像モーダルのイベントリスナーを設定
+    setupImageModalListeners() {
+        const modal = document.getElementById('imageModal');
+        const closeBtn = document.getElementById('imageModalClose');
+        const prevBtn = document.getElementById('imageModalPrev');
+        const nextBtn = document.getElementById('imageModalNext');
+        const zoomInBtn = document.getElementById('imageModalZoomIn');
+        const zoomOutBtn = document.getElementById('imageModalZoomOut');
+        const zoomResetBtn = document.getElementById('imageModalZoomReset');
+        const imageContainer = document.getElementById('imageModalImageContainer');
+        const modalImage = document.getElementById('imageModalImage');
+
+        // 閉じるボタン
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => this.closeImageModal());
+        }
+
+        // モーダル背景クリックで閉じる
+        if (modal) {
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    this.closeImageModal();
+                }
+            });
+        }
+
+        // ESCキーで閉じる
+        document.addEventListener('keydown', (e) => {
+            if (e.key === 'Escape' && this.state.imageModal.isOpen) {
+                this.closeImageModal();
+            }
+        });
+
+        // ナビゲーションボタン
+        if (prevBtn) {
+            prevBtn.addEventListener('click', () => this.navigateImage(-1));
+        }
+
+        if (nextBtn) {
+            nextBtn.addEventListener('click', () => this.navigateImage(1));
+        }
+
+        // ズームボタン
+        if (zoomInBtn) {
+            zoomInBtn.addEventListener('click', () => this.zoomImage(0.2));
+        }
+
+        if (zoomOutBtn) {
+            zoomOutBtn.addEventListener('click', () => this.zoomImage(-0.2));
+        }
+
+        if (zoomResetBtn) {
+            zoomResetBtn.addEventListener('click', () => this.resetImageZoom());
+        }
+
+        // 画像のドラッグ機能
+        if (imageContainer && modalImage) {
+            let startX, startY, initialX, initialY;
+
+            const handleMouseDown = (e) => {
+                if (this.state.imageModal.zoom <= 1) return;
+                
+                this.state.imageModal.isDragging = true;
+                imageContainer.classList.add('dragging');
+                
+                startX = e.clientX;
+                startY = e.clientY;
+                initialX = this.state.imageModal.position.x;
+                initialY = this.state.imageModal.position.y;
+                
+                e.preventDefault();
+            };
+
+            const handleMouseMove = (e) => {
+                if (!this.state.imageModal.isDragging) return;
+                
+                const dx = e.clientX - startX;
+                const dy = e.clientY - startY;
+                
+                this.state.imageModal.position.x = initialX + dx;
+                this.state.imageModal.position.y = initialY + dy;
+                
+                this.updateImageTransform();
+            };
+
+            const handleMouseUp = () => {
+                this.state.imageModal.isDragging = false;
+                imageContainer.classList.remove('dragging');
+            };
+
+            // マウスイベント
+            imageContainer.addEventListener('mousedown', handleMouseDown);
+            document.addEventListener('mousemove', handleMouseMove);
+            document.addEventListener('mouseup', handleMouseUp);
+
+            // タッチイベント
+            imageContainer.addEventListener('touchstart', (e) => {
+                if (this.state.imageModal.zoom <= 1) return;
+                
+                const touch = e.touches[0];
+                handleMouseDown({ clientX: touch.clientX, clientY: touch.clientY, preventDefault: () => e.preventDefault() });
+            });
+
+            document.addEventListener('touchmove', (e) => {
+                if (!this.state.imageModal.isDragging) return;
+                
+                const touch = e.touches[0];
+                handleMouseMove({ clientX: touch.clientX, clientY: touch.clientY });
+            });
+
+            document.addEventListener('touchend', handleMouseUp);
+
+            // ダブルクリックでズーム
+            imageContainer.addEventListener('dblclick', () => {
+                if (this.state.imageModal.zoom === 1) {
+                    this.state.imageModal.zoom = 2;
+                } else {
+                    this.resetImageZoom();
+                }
+                this.updateImageTransform();
+            });
+
+            // マウスホイールでズーム
+            imageContainer.addEventListener('wheel', (e) => {
+                e.preventDefault();
+                const delta = e.deltaY > 0 ? -0.1 : 0.1;
+                this.zoomImage(delta);
+            });
+        }
+
+        // スワイプで画像切り替え
+        let touchStartX = 0;
+        let touchEndX = 0;
+
+        if (modal) {
+            modal.addEventListener('touchstart', (e) => {
+                touchStartX = e.changedTouches[0].screenX;
+            });
+
+            modal.addEventListener('touchend', (e) => {
+                touchEndX = e.changedTouches[0].screenX;
+                this.handleSwipe();
+            });
+        }
+    },
+
+    // スワイプ処理
+    handleSwipe() {
+        const swipeThreshold = 50;
+        const diff = this.touchStartX - this.touchEndX;
+        
+        if (Math.abs(diff) > swipeThreshold) {
+            if (diff > 0) {
+                // 左にスワイプ - 次の画像
+                this.navigateImage(1);
+            } else {
+                // 右にスワイプ - 前の画像
+                this.navigateImage(-1);
+            }
+        }
+    },
+
+    // 画像モーダルを開く
+    openImageModal(images, startIndex = 0) {
+        if (!images || images.length === 0) return;
+        
+        this.state.imageModal.images = images;
+        this.state.imageModal.currentIndex = startIndex;
+        this.state.imageModal.isOpen = true;
+        this.state.imageModal.zoom = 1;
+        this.state.imageModal.position = { x: 0, y: 0 };
+        
+        const modal = document.getElementById('imageModal');
+        const modalImage = document.getElementById('imageModalImage');
+        const loading = document.getElementById('imageModalLoading');
+        
+        if (modal && modalImage) {
+            // ローディング表示
+            if (loading) loading.style.display = 'block';
+            modalImage.style.opacity = '0';
+            
+            // 画像を読み込んで表示
+            modalImage.onload = () => {
+                if (loading) loading.style.display = 'none';
+                modalImage.style.opacity = '1';
+            };
+            
+            modalImage.onerror = () => {
+                if (loading) loading.style.display = 'none';
+                console.error('画像の読み込みに失敗しました');
+            };
+            
+            modalImage.src = images[startIndex];
+            
+            // モーダルを表示
+            modal.classList.add('show');
+            
+            // UIを更新
+            this.updateImageModalUI();
+            
+            // スクロールを無効化
+            document.body.style.overflow = 'hidden';
+        }
+    },
+
+    // 画像モーダルを閉じる
+    closeImageModal() {
+        const modal = document.getElementById('imageModal');
+        
+        if (modal) {
+            modal.classList.remove('show');
+            this.state.imageModal.isOpen = false;
+            
+            // スクロールを有効化
+            document.body.style.overflow = '';
+            
+            // 少し遅延して画像をクリア
+            setTimeout(() => {
+                const modalImage = document.getElementById('imageModalImage');
+                if (modalImage) {
+                    modalImage.src = '';
+                }
+            }, 300);
+        }
+    },
+
+    // 画像ナビゲーション
+    navigateImage(direction) {
+        const newIndex = this.state.imageModal.currentIndex + direction;
+        const images = this.state.imageModal.images;
+        
+        if (newIndex < 0 || newIndex >= images.length) return;
+        
+        this.state.imageModal.currentIndex = newIndex;
+        this.state.imageModal.zoom = 1;
+        this.state.imageModal.position = { x: 0, y: 0 };
+        
+        const modalImage = document.getElementById('imageModalImage');
+        const loading = document.getElementById('imageModalLoading');
+        
+        if (modalImage) {
+            // ローディング表示
+            if (loading) loading.style.display = 'block';
+            modalImage.style.opacity = '0';
+            
+            // 画像を読み込んで表示
+            modalImage.onload = () => {
+                if (loading) loading.style.display = 'none';
+                modalImage.style.opacity = '1';
+            };
+            
+            modalImage.onerror = () => {
+                if (loading) loading.style.display = 'none';
+                console.error('画像の読み込みに失敗しました');
+            };
+            
+            modalImage.src = images[newIndex];
+            this.updateImageTransform();
+        }
+        
+        this.updateImageModalUI();
+    },
+
+    // 画像ズーム
+    zoomImage(delta) {
+        const newZoom = Math.max(0.5, Math.min(5, this.state.imageModal.zoom + delta));
+        this.state.imageModal.zoom = newZoom;
+        this.updateImageTransform();
+    },
+
+    // 画像ズームリセット
+    resetImageZoom() {
+        this.state.imageModal.zoom = 1;
+        this.state.imageModal.position = { x: 0, y: 0 };
+        this.updateImageTransform();
+    },
+
+    // 画像の変換を更新
+    updateImageTransform() {
+        const modalImage = document.getElementById('imageModalImage');
+        if (modalImage) {
+            const { zoom, position } = this.state.imageModal;
+            modalImage.style.transform = `scale(${zoom}) translate(${position.x / zoom}px, ${position.y / zoom}px)`;
+        }
+    },
+
+    // 画像モーダルのUIを更新
+    updateImageModalUI() {
+        const { images, currentIndex } = this.state.imageModal;
+        const indicator = document.getElementById('imageModalIndicator');
+        const prevBtn = document.getElementById('imageModalPrev');
+        const nextBtn = document.getElementById('imageModalNext');
+        
+        // インジケーターを更新
+        if (indicator) {
+            indicator.textContent = `${currentIndex + 1} / ${images.length}`;
+        }
+        
+        // ナビゲーションボタンの状態を更新
+        if (prevBtn) {
+            prevBtn.classList.toggle('disabled', currentIndex === 0);
+        }
+        
+        if (nextBtn) {
+            nextBtn.classList.toggle('disabled', currentIndex === images.length - 1);
+        }
     }
 };
 
