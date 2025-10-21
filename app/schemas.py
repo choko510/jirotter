@@ -220,3 +220,57 @@ class VisitResponse(VisitBase):
 class VisitsResponse(BaseModel):
     visits: List[VisitResponse]
     total: int
+
+
+# Report Schemas
+class ReportBase(BaseModel):
+    reason: str
+    description: Optional[str] = None
+
+class ReportCreate(ReportBase):
+    @field_validator('reason')
+    @classmethod
+    def validate_reason(cls, v):
+        valid_reasons = [
+            "スパム・広告",
+            "過度な宣伝",
+            "繰り返し投稿",
+            "暴力的・グロテスクな内容",
+            "性的な内容",
+            "不快な表現",
+            "人種・民族差別",
+            "性差別",
+            "障害者差別",
+            "その他の差別",
+            "個人攻撃",
+            "脅迫",
+            "いじめ",
+            "ストーカー行為",
+            "デマ・偽情報",
+            "医療・健康に関する誤情報",
+            "政治に関する誤情報",
+            "無断転載",
+            "画像の無断使用",
+            "その他の著作権侵害",
+            "プライバシー侵害",
+            "自殺・自傷を助長する内容",
+            "その他"
+        ]
+        if v not in valid_reasons:
+            raise ValueError(f'通報理由は次の中から選択してください: {", ".join(valid_reasons)}')
+        return v
+    
+    @field_validator('description')
+    @classmethod
+    def validate_description_length(cls, v):
+        if v is not None and len(v) > 500:
+            raise ValueError('詳細は500文字以内で入力してください')
+        return v
+
+class ReportResponse(ReportBase):
+    model_config = ConfigDict(from_attributes=True)
+    
+    id: int
+    post_id: int
+    reporter_id: str
+    created_at: datetime

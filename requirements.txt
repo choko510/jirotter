@@ -9,3 +9,5 @@ python-dotenv
 pytest
 alembic
 pydantic[email]
+aiohttp
+openai

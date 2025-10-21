@@ -133,3 +133,18 @@ class Visit(Base):
     # Relationships
     user = relationship('User', backref='visits')
     shop = relationship('RamenShop', backref='visits')
+
+class Report(Base):
+    """通報モデル"""
+    __tablename__ = 'reports'
+    
+    id = Column(Integer, primary_key=True)
+    post_id = Column(Integer, ForeignKey('posts.id'), nullable=False)
+    reporter_id = Column(String(80), ForeignKey('users.id'), nullable=False)
+    reason = Column(String(255), nullable=False)
+    description = Column(Text)
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    post = relationship('Post', backref='reports')
+    reporter = relationship('User', backref='reports_made')

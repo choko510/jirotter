@@ -1,3 +1,56 @@
+// ユーティリティ関数
+const MapUtils = {
+    // 店名からブランドを判定する関数
+    determineBrand(shopName, brandConfig) {
+        for (const [brandKey, config] of Object.entries(brandConfig)) {
+            if (brandKey === 'other') continue;
+            
+            for (const keyword of config.keywords) {
+                if (shopName.includes(keyword)) {
+                    return brandKey;
+                }
+            }
+        }
+        return 'other';
+    },
+
+    // ブランドごとの店舗数をカウントする関数
+    countShopsByBrand(shops, brandConfig, determineBrandFunc) {
+        const counts = {};
+        
+        // すべてのブランドを初期化
+        for (const brandKey of Object.keys(brandConfig)) {
+            counts[brandKey] = 0;
+        }
+        
+        // 店舗をブランドごとにカウント
+        shops.forEach(shop => {
+            const brand = determineBrandFunc(shop.name, brandConfig);
+            counts[brand]++;
+        });
+        
+        return counts;
+    },
+
+    // 2点間の距離を計算（Haversine formula）
+    calculateDistance(lat1, lng1, lat2, lng2) {
+        const R = 6371; // 地球の半径（km）
+        const dLat = this.toRad(lat2 - lat1);
+        const dLng = this.toRad(lng2 - lng1);
+        const a =
+            Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.cos(this.toRad(lat1)) * Math.cos(this.toRad(lat2)) *
+            Math.sin(dLng/2) * Math.sin(dLng/2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        return R * c;
+    },
+
+    // 度数をラジアンに変換
+    toRad(deg) {
+        return deg * (Math.PI/180);
+    }
+};
+
 // MAPコンポーネント
 const MapComponent = {
     // ブランド設定
@@ -14,28 +67,35 @@ const MapComponent = {
 
     // 状態管理
     state: {
+        // マップ関連
         map: null,
-        markers: [],
         userLocation: null,
         isLoading: false,
         lastCenter: null,
         debounceTimer: null,
         moveThreshold: 0.02, // 緯度経度の変化閾値（約2km）
-        // キャッシュ関連
-        shopCache: new Map(), // 店舗データキャッシュ
-        cacheRadius: 30, // キャッシュ有効半径（km）
-        maxCacheSize: 1000, // 最大キャッシュ数
-        pendingRequests: new Map(), // 進行中のAPIリクエストを追跡
+        
         // マーカー管理関連
-        markerLayerGroup: null, // マーカーをグループ化して管理
-        visibleMarkers: new Set(), // 現在表示されているマーカー
-        markerVisibilityRadius: 50, // マーカー表示半径（km）
+        markers: new Map(), // <shopId, markerObject>
+        markerLayerGroup: null,
+        visibleMarkers: new Set(),
+        markerVisibilityRadius: 50,
+        
         // クラスタリング関連
         brandClusters: {}, // ブランドごとのクラスターグループ
-        clusterEnabled: true, // クラスタリング有効フラグ
-        // ブランドフィルター関連
-        activeFilters: new Set(), // 現在アクティブなフィルター
-        brandShopCounts: {} // ブランドごとの店舗数
+        clusterEnabled: true,
+        
+        // フィルター関連
+        activeFilters: new Set(),
+        brandShopCounts: {},
+        
+        // キャッシュ関連
+        cache: {
+            shopCache: new Map(),
+            cacheRadius: 30,
+            maxCacheSize: 1000,
+            pendingRequests: new Map()
+        }
     },
 
     // 初期化
@@ -59,20 +119,7 @@ const MapComponent = {
 
     // ブランドごとの店舗数をカウントする関数
     countShopsByBrand(shops) {
-        const counts = {};
-        
-        // すべてのブランドを初期化
-        for (const brandKey of Object.keys(this.BRAND_CONFIG)) {
-            counts[brandKey] = 0;
-        }
-        
-        // 店舗をブランドごとにカウント
-        shops.forEach(shop => {
-            const brand = this.determineBrand(shop.name);
-            counts[brand]++;
-        });
-        
-        return counts;
+        return MapUtils.countShopsByBrand(shops, this.BRAND_CONFIG, MapUtils.determineBrand);
     },
 
     // ブランドフィルターUIを生成する関数
@@ -125,600 +172,21 @@ const MapComponent = {
         const isHeaderVisible = mainHeader && mainHeader.style.display !== 'none';
         const mapHeight = isHeaderVisible ? 'calc(100vh - 60px)' : '100vh';
 
-        contentArea.innerHTML = `
-            <style>
-                .map-container {
-                    padding: 0;
-                    height: ${mapHeight};
-                    width: 100%;
-                    display: flex;
-                    flex-direction: column;
-                }
-                
-                .map-header {
-                    padding: 16px;
-                    background: white;
-                    border-bottom: 1px solid #e0e0e0;
-                    z-index: 1000;
-                    position: relative;
-                }
-                
-                .map-title {
-                    font-size: 20px;
-                    font-weight: bold;
-                    margin-bottom: 8px;
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                }
-                
-                .map-controls {
-                    display: flex;
-                    gap: 12px;
-                    margin-top: 12px;
-                }
-                
-                .map-search {
-                    flex: 1;
-                    position: relative;
-                }
-                
-                .map-search-input {
-                    width: 100%;
-                    padding: 8px 36px 8px 12px;
-                    border: 1px solid #e0e0e0;
-                    border-radius: 20px;
-                    font-size: 14px;
-                    outline: none;
-                    background: #f5f5f5;
-                }
-                
-                .map-search-input:focus {
-                    border-color: #d4a574;
-                    background: white;
-                }
-                
-                .map-search-btn {
-                    position: absolute;
-                    right: 8px;
-                    top: 50%;
-                    transform: translateY(-50%);
-                    background: transparent;
-                    border: none;
-                    color: #666;
-                    cursor: pointer;
-                    padding: 4px;
-                }
-                
-                .map-filter-btn {
-                    padding: 8px 16px;
-                    background: #f5f5f5;
-                    border: 1px solid #e0e0e0;
-                    border-radius: 20px;
-                    font-size: 14px;
-                    cursor: pointer;
-                    transition: all 0.2s;
-                    white-space: nowrap;
-                }
-                
-                .map-filter-btn:hover {
-                    background: #d4a574;
-                    border-color: #d4a574;
-                    color: white;
-                }
-                
-                .map-filter-btn.active {
-                    background: #d4a574;
-                    border-color: #d4a574;
-                    color: white;
-                }
-                
-                .brand-filters {
-                    padding: 12px 16px;
-                    background: #f9f9f9;
-                    border-bottom: 1px solid #e0e0e0;
-                }
-                
-                .filter-title {
-                    font-size: 14px;
-                    font-weight: bold;
-                    margin-bottom: 8px;
-                    color: #333;
-                }
-                
-                .filter-buttons {
-                    display: flex;
-                    flex-wrap: wrap;
-                    gap: 8px;
-                    margin-bottom: 12px;
-                }
-                
-                .filter-actions {
-                    display: flex;
-                    gap: 8px;
-                }
-                
-                .filter-action-btn {
-                    padding: 4px 12px;
-                    background: white;
-                    border: 1px solid #e0e0e0;
-                    border-radius: 16px;
-                    font-size: 12px;
-                    cursor: pointer;
-                    transition: all 0.2s;
-                }
-                
-                .filter-action-btn:hover {
-                    background: #f0f0f0;
-                }
-                
-                .map-content {
-                    flex: 1;
-                    position: relative;
-                    width: 100%;
-                }
-                
-                #map {
-                    width: 100%;
-                    height: 100%;
-                    min-height: 100%;
-                }
-                
-                .map-loading {
-                    position: absolute;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    background: white;
-                    padding: 20px;
-                    border-radius: 8px;
-                    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-                    text-align: center;
-                    z-index: 1000;
-                }
-                
-                .map-spinner {
-                    width: 32px;
-                    height: 32px;
-                    border: 3px solid #f3f3f3;
-                    border-top: 3px solid #d4a574;
-                    border-radius: 50%;
-                    animation: spin 1s linear infinite;
-                    margin: 0 auto 12px;
-                }
-                
-                @keyframes spin {
-                    0% { transform: rotate(0deg); }
-                    100% { transform: rotate(360deg); }
-                }
-                
-                .map-error {
-                    position: absolute;
-                    top: 50%;
-                    left: 50%;
-                    transform: translate(-50%, -50%);
-                    background: white;
-                    padding: 20px;
-                    border-radius: 8px;
-                    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-                    text-align: center;
-                    z-index: 1000;
-                    max-width: 300px;
-                }
-                
-                .map-error h3 {
-                    color: #d32f2f;
-                    margin-bottom: 8px;
-                }
-                
-                .map-error button {
-                    margin-top: 12px;
-                    padding: 8px 16px;
-                    background: #d4a574;
-                    color: white;
-                    border: none;
-                    border-radius: 4px;
-                    cursor: pointer;
-                }
-                
-                .map-legend {
-                    position: absolute;
-                    bottom: 20px;
-                    right: 20px;
-                    background: white;
-                    border-radius: 8px;
-                    padding: 12px;
-                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-                    z-index: 1000;
-                }
-                
-                .legend-title {
-                    font-weight: bold;
-                    margin-bottom: 8px;
-                    font-size: 14px;
-                }
-                
-                .legend-item {
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                    margin-bottom: 4px;
-                    font-size: 12px;
-                }
-                
-                .marker-icon {
-                    width: 16px;
-                    height: 16px;
-                    border-radius: 50%;
-                }
-                
-                @media (max-width: 768px) {
-                    .map-container {
-                        height: calc(100vh - 120px);
-                        width: 100vw;
-                        max-width: 100%;
-                    }
-                    
-                    .map-header {
-                        padding: 12px 16px;
-                    }
-                    
-                    .map-title {
-                        font-size: 18px;
-                    }
-                    
-                    .map-controls {
-                        flex-direction: column;
-                        gap: 8px;
-                    }
-                    
-                    .brand-filters {
-                        padding: 8px 12px;
-                    }
-                    
-                    .filter-buttons {
-                        gap: 6px;
-                    }
-                    
-                    .map-filter-btn {
-                        padding: 6px 12px;
-                        font-size: 12px;
-                    }
-                    
-                    .filter-actions {
-                        flex-wrap: wrap;
-                    }
-                    
-                    .filter-action-btn {
-                        font-size: 11px;
-                        padding: 3px 8px;
-                    }
-                    
-                    .map-legend {
-                        bottom: 10px;
-                        right: 10px;
-                        padding: 8px;
-                        font-size: 11px;
-                    }
-                    
-                    .legend-item {
-                        font-size: 11px;
-                    }
-                }
-
-                /* Dark Mode Overrides */
-                .dark-mode .map-header,
-                .dark-mode .map-loading,
-                .dark-mode .map-error,
-                .dark-mode .map-legend {
-                    background: #2a2a2a;
-                    border-color: #333;
-                }
-
-                .dark-mode .map-search-input {
-                    background: #1a1a1a;
-                    border-color: #333;
-                    color: #e0e0e0;
-                }
-                .dark-mode .map-search-input:focus {
-                    background: #2a2a2a;
-                }
-                .dark-mode .map-search-btn {
-                    color: #aaa;
-                }
-                .dark-mode .map-filter-btn {
-                    background: #1a1a1a;
-                    border-color: #333;
-                    color: #e0e0e0;
-                }
-                .dark-mode .map-filter-btn:hover {
-                    background: #d4a574;
-                    border-color: #d4a574;
-                    color: #1a1a1a;
-                }
-                .dark-mode .map-filter-btn.active {
-                    background: #d4a574;
-                    border-color: #d4a574;
-                    color: #1a1a1a;
-                }
-
-                .dark-mode .brand-filters {
-                    background: #2a2a2a;
-                    border-bottom-color: #333;
-                }
-
-                .dark-mode .filter-title {
-                    color: #e0e0e0;
-                }
-
-                .dark-mode .filter-action-btn {
-                    background: #1a1a1a;
-                    border-color: #333;
-                    color: #e0e0e0;
-                }
-
-                .dark-mode .filter-action-btn:hover {
-                    background: #333;
-                }
-
-                /* Shop Detail Panel */
-                .shop-detail-panel {
-                    position: absolute;
-                    top: 0;
-                    left: 0;
-                    width: 350px;
-                    height: 100%;
-                    background: white;
-                    z-index: 5; /* 非表示時は低いz-index */
-                    transform: translateX(-100%);
-                    transition: transform 0.3s ease-in-out, z-index 0.3s ease-in-out;
-                    box-shadow: 2px 0 10px rgba(0,0,0,0.1);
-                    overflow-y: auto;
-                    visibility: hidden; /* 非表示時は完全に見えなくする */
-                }
-
-                .shop-detail-panel.show {
-                    transform: translateX(0);
-                    z-index: 1010; /* 表示時は高いz-index */
-                    visibility: visible; /* 表示時は見えるようにする */
-                }
-
-                .dark-mode .shop-detail-panel {
-                    background: #2a2a2a;
-                    border-right: 1px solid #333;
-                }
-
-                @media (max-width: 768px) {
-                    .shop-detail-panel {
-                        width: 100%;
-                        height: 60%;
-                        bottom: 0;
-                        top: auto;
-                        left: 0;
-                        transform: translateY(100%);
-                        border-top: 1px solid #e0e0e0;
-                        visibility: hidden; /* 非表示時は完全に見えなくする */
-                    }
-
-                    .shop-detail-panel.show {
-                        transform: translateY(0);
-                        visibility: visible; /* 表示時は見えるようにする */
-                    }
-
-                    .dark-mode .shop-detail-panel {
-                         border-top: 1px solid #333;
-                         border-right: none;
-                    }
-               }
-
-               /* Marker Cluster Styles */
-               .marker-cluster {
-                   background: rgba(255, 255, 255, 0.8);
-                   border-radius: 50%;
-                   text-align: center;
-                   font-weight: bold;
-                   font-family: Arial, sans-serif;
-                   border: 2px solid rgba(0, 0, 0, 0.2);
-               }
-
-               .marker-cluster div {
-                   width: 30px;
-                   height: 30px;
-                   margin-left: 5px;
-                   margin-top: 5px;
-                   border-radius: 50%;
-                   text-align: center;
-                   line-height: 30px;
-               }
-
-               .marker-cluster span {
-                   line-height: 30px;
-               }
-
-               /* クラスターサイズ別スタイル */
-               .marker-cluster-small {
-                   background-color: rgba(181, 226, 140, 0.6);
-               }
-
-               .marker-cluster-small div {
-                   background-color: rgba(110, 204, 57, 0.6);
-               }
-
-               .marker-cluster-medium {
-                   background-color: rgba(241, 211, 87, 0.6);
-               }
-
-               .marker-cluster-medium div {
-                   background-color: rgba(240, 194, 12, 0.6);
-               }
-
-               .marker-cluster-large {
-                   background-color: rgba(253, 156, 115, 0.6);
-               }
-
-               .marker-cluster-large div {
-                   background-color: rgba(241, 128, 23, 0.6);
-               }
-
-               /* 豚山ブランド用のピンククラスタースタイル */
-               .marker-cluster-pink {
-                   background-color: rgba(252, 215, 0, 0.3) !important;
-                   border: 2px solid rgba(252, 215, 0, 0.8) !important;
-               }
-
-               .marker-cluster-pink div {
-                   background-color: rgba(252, 215, 0, 0.8) !important;
-                   color: black !important;
-               }
-
-               .marker-cluster-pink.marker-cluster-small {
-                   background-color: rgba(252, 215, 0, 0.3) !important;
-               }
-
-               .marker-cluster-pink.marker-cluster-small div {
-                   background-color: rgba(252, 215, 0, 0.6) !important;
-               }
-
-               .marker-cluster-pink.marker-cluster-medium {
-                   background-color: rgba(252, 215, 0, 0.4) !important;
-               }
-
-               .marker-cluster-pink.marker-cluster-medium div {
-                   background-color: rgba(252, 215, 0, 0.7) !important;
-               }
-
-               .marker-cluster-pink.marker-cluster-large {
-                   background-color: rgba(252, 215, 0, 0.5) !important;
-               }
-
-               .marker-cluster-pink.marker-cluster-large div {
-                   background-color: rgba(252, 215, 0, 0.9) !important;
-               }
-
-               /* 他のブランド用のクラスタースタイル */
-               .marker-cluster-ramenso {
-                   background-color: rgba(52, 152, 219, 0.3) !important;
-                   border: 2px solid rgba(52, 152, 219, 0.8) !important;
-               }
-
-               .marker-cluster-ramenso div {
-                   background-color: rgba(52, 152, 219, 0.8) !important;
-                   color: white !important;
-               }
-
-               .marker-cluster-rakeiko {
-                   background-color: rgba(46, 204, 113, 0.3) !important;
-                   border: 2px solid rgba(46, 204, 113, 0.8) !important;
-               }
-
-               .marker-cluster-rakeiko div {
-                   background-color: rgba(46, 204, 113, 0.8) !important;
-                   color: white !important;
-               }
-
-               .marker-cluster-ahare {
-                   background-color: rgba(231, 76, 60, 0.3) !important;
-                   border: 2px solid rgba(231, 76, 60, 0.8) !important;
-               }
-
-               .marker-cluster-ahare div {
-                   background-color: rgba(231, 76, 60, 0.8) !important;
-                   color: white !important;
-               }
-
-               .marker-cluster-tachikawa {
-                   background-color: rgba(155, 89, 182, 0.3) !important;
-                   border: 2px solid rgba(155, 89, 182, 0.8) !important;
-               }
-
-               .marker-cluster-tachikawa div {
-                   background-color: rgba(155, 89, 182, 0.8) !important;
-                   color: white !important;
-               }
-
-               .marker-cluster-tsukemensha {
-                   background-color: rgba(26, 188, 156, 0.3) !important;
-                   border: 2px solid rgba(26, 188, 156, 0.8) !important;
-               }
-
-               .marker-cluster-tsukemensha div {
-                   background-color: rgba(26, 188, 156, 0.8) !important;
-                   color: white !important;
-               }
-
-               .marker-cluster-jiro {
-                   background-color: rgba(212, 165, 116, 0.3) !important;
-                   border: 2px solid rgba(212, 165, 116, 0.8) !important;
-               }
-
-               .marker-cluster-jiro div {
-                   background-color: rgba(212, 165, 116, 0.8) !important;
-                   color: white !important;
-               }
-
-               .marker-cluster-other {
-                   background-color: rgba(149, 165, 166, 0.3) !important;
-                   border: 2px solid rgba(149, 165, 166, 0.8) !important;
-               }
-
-               .marker-cluster-other div {
-                   background-color: rgba(149, 165, 166, 0.8) !important;
-                   color: white !important;
-               }
-            </style>
-            
-            <div class="map-container">
-                <div class="map-header">
-                    <h1 class="map-title">
-                        <i class="fas fa-map-marked-alt"></i>
-                        店舗マップ
-                    </h1>
-                    
-                    <div class="map-controls">
-                        <div class="map-search">
-                            <input type="text" class="map-search-input" placeholder="店名や住所で検索..." id="mapSearchInput">
-                            <button class="map-search-btn" onclick="MapComponent.searchLocation()">
-                                <i class="fas fa-search"></i>
-                            </button>
-                        </div>
-                        <button class="map-filter-btn" onclick="MapComponent.getCurrentLocation()">
-                            <i class="fas fa-location-arrow"></i>
-                        </button>
-                    </div>
-                    
-                    <div class="brand-filters" id="brandFilters">
-                        <div class="filter-title">ブランドで絞り込み:</div>
-                        <div class="filter-buttons" id="filterButtons">
-                            <!-- ブランドフィルターボタンは動的に生成されます -->
-                        </div>
-                        <div class="filter-actions">
-                            <button class="filter-action-btn" onclick="MapComponent.selectAllBrands()">すべて選択</button>
-                            <button class="filter-action-btn" onclick="MapComponent.clearAllFilters()">クリア</button>
-                        </div>
-                    </div>
-                </div>
-                
-                <div class="map-content">
-                    <div id="map"></div>
-                    <div id="shopDetailPanel" class="shop-detail-panel"></div>
-                    
-                    <div class="map-loading" id="mapLoading" style="display: none;">
-                        <div class="map-spinner"></div>
-                        <p>読み込み中...</p>
-                    </div>
-                    
-                    <div class="map-error" id="mapError" style="display: none;">
-                        <h3>エラー</h3>
-                        <p id="mapErrorMessage">マップの読み込みに失敗しました</p>
-                        <button onclick="MapComponent.retryLoad()">再試行</button>
-                    </div>
-                    
-                    <div class="map-legend" id="mapLegend">
-                        <!-- 凡例は動的に生成されます -->
-                    </div>
-                </div>
-            </div>
-        `;
+        // DocumentFragmentを使用してDOMを効率的に構築
+        const fragment = document.createDocumentFragment();
+        
+        // スタイル要素を作成
+        const styleElement = document.createElement('style');
+        styleElement.textContent = this.getMapStyles(mapHeight);
+        fragment.appendChild(styleElement);
+        
+        // コンテナ要素を作成
+        const containerElement = this.getMapContainerElement();
+        fragment.appendChild(containerElement);
+        
+        // 一度にDOMに追加
+        contentArea.innerHTML = '';
+        contentArea.appendChild(fragment);
 
         // マップを初期化
         setTimeout(async () => {
@@ -726,6 +194,648 @@ const MapComponent = {
             // ブランドフィルターUIを初期化
             this.initializeBrandFilters();
         }, 100);
+    },
+
+    // マップのスタイルを取得
+    getMapStyles(mapHeight) {
+        return `
+            .map-container {
+                padding: 0;
+                height: ${mapHeight};
+                width: 100%;
+                display: flex;
+                flex-direction: column;
+            }
+            
+            .map-header {
+                padding: 16px;
+                background: white;
+                border-bottom: 1px solid #e0e0e0;
+                z-index: 1000;
+                position: relative;
+            }
+            
+            .map-title {
+                font-size: 20px;
+                font-weight: bold;
+                margin-bottom: 8px;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+            
+            .map-controls {
+                display: flex;
+                gap: 12px;
+                margin-top: 12px;
+            }
+            
+            .map-search {
+                flex: 1;
+                position: relative;
+            }
+            
+            .map-search-input {
+                width: 100%;
+                padding: 8px 36px 8px 12px;
+                border: 1px solid #e0e0e0;
+                border-radius: 20px;
+                font-size: 14px;
+                outline: none;
+                background: #f5f5f5;
+            }
+            
+            .map-search-input:focus {
+                border-color: #d4a574;
+                background: white;
+            }
+            
+            .map-search-btn {
+                position: absolute;
+                right: 8px;
+                top: 50%;
+                transform: translateY(-50%);
+                background: transparent;
+                border: none;
+                color: #666;
+                cursor: pointer;
+                padding: 4px;
+            }
+            
+            .map-filter-btn {
+                padding: 8px 16px;
+                background: #f5f5f5;
+                border: 1px solid #e0e0e0;
+                border-radius: 20px;
+                font-size: 14px;
+                cursor: pointer;
+                transition: all 0.2s;
+                white-space: nowrap;
+            }
+            
+            .map-filter-btn:hover {
+                background: #d4a574;
+                border-color: #d4a574;
+                color: white;
+            }
+            
+            .map-filter-btn.active {
+                background: #d4a574;
+                border-color: #d4a574;
+                color: white;
+            }
+            
+            .brand-filters {
+                padding: 12px 16px;
+                background: #f9f9f9;
+                border-bottom: 1px solid #e0e0e0;
+            }
+            
+            .filter-title {
+                font-size: 14px;
+                font-weight: bold;
+                margin-bottom: 8px;
+                color: #333;
+            }
+            
+            .filter-buttons {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                margin-bottom: 12px;
+            }
+            
+            .filter-actions {
+                display: flex;
+                gap: 8px;
+            }
+            
+            .filter-action-btn {
+                padding: 4px 12px;
+                background: white;
+                border: 1px solid #e0e0e0;
+                border-radius: 16px;
+                font-size: 12px;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+            
+            .filter-action-btn:hover {
+                background: #f0f0f0;
+            }
+            
+            .map-content {
+                flex: 1;
+                position: relative;
+                width: 100%;
+            }
+            
+            #map {
+                width: 100%;
+                height: 100%;
+                min-height: 100%;
+            }
+            
+            .map-loading {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: white;
+                padding: 20px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+                text-align: center;
+                z-index: 1000;
+            }
+            
+            .map-spinner {
+                width: 32px;
+                height: 32px;
+                border: 3px solid #f3f3f3;
+                border-top: 3px solid #d4a574;
+                border-radius: 50%;
+                animation: spin 1s linear infinite;
+                margin: 0 auto 12px;
+            }
+            
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+            
+            .map-error {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: white;
+                padding: 20px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+                text-align: center;
+                z-index: 1000;
+                max-width: 300px;
+            }
+            
+            .map-error h3 {
+                color: #d32f2f;
+                margin-bottom: 8px;
+            }
+            
+            .map-error button {
+                margin-top: 12px;
+                padding: 8px 16px;
+                background: #d4a574;
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+            }
+            
+            .map-legend {
+                position: absolute;
+                bottom: 20px;
+                right: 20px;
+                background: white;
+                border-radius: 8px;
+                padding: 12px;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+                z-index: 1000;
+            }
+            
+            .legend-title {
+                font-weight: bold;
+                margin-bottom: 8px;
+                font-size: 14px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                margin-bottom: 4px;
+                font-size: 12px;
+            }
+            
+            .marker-icon {
+                width: 16px;
+                height: 16px;
+                border-radius: 50%;
+            }
+            
+            @media (max-width: 768px) {
+                .map-container {
+                    height: calc(100vh - 120px);
+                    width: 100vw;
+                    max-width: 100%;
+                }
+                
+                .map-header {
+                    padding: 12px 16px;
+                }
+                
+                .map-title {
+                    font-size: 18px;
+                }
+                
+                .map-controls {
+                    flex-direction: column;
+                    gap: 8px;
+                }
+                
+                .brand-filters {
+                    padding: 8px 12px;
+                }
+                
+                .filter-buttons {
+                    gap: 6px;
+                }
+                
+                .map-filter-btn {
+                    padding: 6px 12px;
+                    font-size: 12px;
+                }
+                
+                .filter-actions {
+                    flex-wrap: wrap;
+                }
+                
+                .filter-action-btn {
+                    font-size: 11px;
+                    padding: 3px 8px;
+                }
+                
+                .map-legend {
+                    bottom: 10px;
+                    right: 10px;
+                    padding: 8px;
+                    font-size: 11px;
+                }
+                
+                .legend-item {
+                    font-size: 11px;
+                }
+            }
+
+            /* Dark Mode Overrides */
+            .dark-mode .map-header,
+            .dark-mode .map-loading,
+            .dark-mode .map-error,
+            .dark-mode .map-legend {
+                background: #2a2a2a;
+                border-color: #333;
+            }
+
+            .dark-mode .map-search-input {
+                background: #1a1a1a;
+                border-color: #333;
+                color: #e0e0e0;
+            }
+            .dark-mode .map-search-input:focus {
+                background: #2a2a2a;
+            }
+            .dark-mode .map-search-btn {
+                color: #aaa;
+            }
+            .dark-mode .map-filter-btn {
+                background: #1a1a1a;
+                border-color: #333;
+                color: #e0e0e0;
+            }
+            .dark-mode .map-filter-btn:hover {
+                background: #d4a574;
+                border-color: #d4a574;
+                color: #1a1a1a;
+            }
+            .dark-mode .map-filter-btn.active {
+                background: #d4a574;
+                border-color: #d4a574;
+                color: #1a1a1a;
+            }
+
+            .dark-mode .brand-filters {
+                background: #2a2a2a;
+                border-bottom-color: #333;
+            }
+
+            .dark-mode .filter-title {
+                color: #e0e0e0;
+            }
+
+            .dark-mode .filter-action-btn {
+                background: #1a1a1a;
+                border-color: #333;
+                color: #e0e0e0;
+            }
+
+            .dark-mode .filter-action-btn:hover {
+                background: #333;
+            }
+
+            /* Shop Detail Panel */
+            .shop-detail-panel {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 350px;
+                height: 100%;
+                background: white;
+                z-index: 5;
+                transform: translateX(-100%);
+                transition: transform 0.3s ease-in-out, z-index 0.3s ease-in-out;
+                box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+                overflow-y: auto;
+                visibility: hidden;
+            }
+
+            .shop-detail-panel.show {
+                transform: translateX(0);
+                z-index: 1010;
+                visibility: visible;
+            }
+
+            .dark-mode .shop-detail-panel {
+                background: #2a2a2a;
+                border-right: 1px solid #333;
+            }
+
+            @media (max-width: 768px) {
+                .shop-detail-panel {
+                    width: 100%;
+                    height: 60%;
+                    bottom: 0;
+                    top: auto;
+                    left: 0;
+                    transform: translateY(100%);
+                    border-top: 1px solid #e0e0e0;
+                    visibility: hidden;
+                }
+
+                .shop-detail-panel.show {
+                    transform: translateY(0);
+                    visibility: visible;
+                }
+
+                .dark-mode .shop-detail-panel {
+                    border-top: 1px solid #333;
+                    border-right: none;
+                }
+            }
+
+            /* Marker Cluster Styles */
+            .marker-cluster {
+                background: rgba(255, 255, 255, 0.8);
+                border-radius: 50%;
+                text-align: center;
+                font-weight: bold;
+                font-family: Arial, sans-serif;
+                border: 2px solid rgba(0, 0, 0, 0.2);
+            }
+            .marker-cluster div {
+                width: 30px;
+                height: 30px;
+                margin-left: 5px;
+                margin-top: 5px;
+                border-radius: 50%;
+                text-align: center;
+                line-height: 30px;
+            }
+            .marker-cluster span {
+                line-height: 30px;
+            }
+            /* クラスターサイズ別スタイル */
+            .marker-cluster-small {
+                background-color: rgba(181, 226, 140, 0.6);
+            }
+            .marker-cluster-small div {
+                background-color: rgba(110, 204, 57, 0.6);
+            }
+            .marker-cluster-medium {
+                background-color: rgba(241, 211, 87, 0.6);
+            }
+            .marker-cluster-medium div {
+                background-color: rgba(240, 194, 12, 0.6);
+            }
+            .marker-cluster-large {
+                background-color: rgba(253, 156, 115, 0.6);
+            }
+            .marker-cluster-large div {
+                background-color: rgba(241, 128, 23, 0.6);
+            }
+            /* 豚山ブランド用のピンククラスタースタイル */
+            .marker-cluster-pink {
+                background-color: rgba(252, 215, 0, 0.3) !important;
+                border: 2px solid rgba(252, 215, 0, 0.8) !important;
+            }
+            .marker-cluster-pink div {
+                background-color: rgba(252, 215, 0, 0.8) !important;
+                color: black !important;
+            }
+            .marker-cluster-pink.marker-cluster-small {
+                background-color: rgba(252, 215, 0, 0.3) !important;
+            }
+            .marker-cluster-pink.marker-cluster-small div {
+                background-color: rgba(252, 215, 0, 0.6) !important;
+            }
+            .marker-cluster-pink.marker-cluster-medium {
+                background-color: rgba(252, 215, 0, 0.4) !important;
+            }
+            .marker-cluster-pink.marker-cluster-medium div {
+                background-color: rgba(252, 215, 0, 0.7) !important;
+            }
+            .marker-cluster-pink.marker-cluster-large {
+                background-color: rgba(252, 215, 0, 0.5) !important;
+            }
+            .marker-cluster-pink.marker-cluster-large div {
+                background-color: rgba(252, 215, 0, 0.9) !important;
+            }
+            /* 他のブランド用のクラスタースタイル */
+            .marker-cluster-ramenso {
+                background-color: rgba(52, 152, 219, 0.3) !important;
+                border: 2px solid rgba(52, 152, 219, 0.8) !important;
+            }
+            .marker-cluster-ramenso div {
+                background-color: rgba(52, 152, 219, 0.8) !important;
+                color: white !important;
+            }
+            .marker-cluster-rakeiko {
+                background-color: rgba(46, 204, 113, 0.3) !important;
+                border: 2px solid rgba(46, 204, 113, 0.8) !important;
+            }
+            .marker-cluster-rakeiko div {
+                background-color: rgba(46, 204, 113, 0.8) !important;
+                color: white !important;
+            }
+            .marker-cluster-ahare {
+                background-color: rgba(231, 76, 60, 0.3) !important;
+                border: 2px solid rgba(231, 76, 60, 0.8) !important;
+            }
+            .marker-cluster-ahare div {
+                background-color: rgba(231, 76, 60, 0.8) !important;
+                color: white !important;
+            }
+            .marker-cluster-tachikawa {
+                background-color: rgba(155, 89, 182, 0.3) !important;
+                border: 2px solid rgba(155, 89, 182, 0.8) !important;
+            }
+            .marker-cluster-tachikawa div {
+                background-color: rgba(155, 89, 182, 0.8) !important;
+                color: white !important;
+            }
+            .marker-cluster-tsukemensha {
+                background-color: rgba(26, 188, 156, 0.3) !important;
+                border: 2px solid rgba(26, 188, 156, 0.8) !important;
+            }
+            .marker-cluster-tsukemensha div {
+                background-color: rgba(26, 188, 156, 0.8) !important;
+                color: white !important;
+            }
+            .marker-cluster-jiro {
+                background-color: rgba(212, 165, 116, 0.3) !important;
+                border: 2px solid rgba(212, 165, 116, 0.8) !important;
+            }
+            .marker-cluster-jiro div {
+                background-color: rgba(212, 165, 116, 0.8) !important;
+                color: white !important;
+            }
+            .marker-cluster-other {
+                background-color: rgba(149, 165, 166, 0.3) !important;
+                border: 2px solid rgba(149, 165, 166, 0.8) !important;
+            }
+            .marker-cluster-other div {
+                background-color: rgba(149, 165, 166, 0.8) !important;
+                color: white !important;
+            }
+        `;
+    },
+
+    // マップコンテナ要素を取得
+    getMapContainerElement() {
+        const container = document.createElement('div');
+        container.className = 'map-container';
+        
+        // ヘッダー要素
+        const header = document.createElement('div');
+        header.className = 'map-header';
+        
+        // タイトル
+        const title = document.createElement('h1');
+        title.className = 'map-title';
+        title.innerHTML = '<i class="fas fa-map-marked-alt"></i>店舗マップ';
+        header.appendChild(title);
+        
+        // コントロール
+        const controls = document.createElement('div');
+        controls.className = 'map-controls';
+        
+        // 検索
+        const search = document.createElement('div');
+        search.className = 'map-search';
+        
+        const searchInput = document.createElement('input');
+        searchInput.type = 'text';
+        searchInput.className = 'map-search-input';
+        searchInput.placeholder = '店名や住所で検索...';
+        searchInput.id = 'mapSearchInput';
+        
+        const searchBtn = document.createElement('button');
+        searchBtn.className = 'map-search-btn';
+        searchBtn.onclick = () => this.searchLocation();
+        searchBtn.innerHTML = '<i class="fas fa-search"></i>';
+        
+        search.appendChild(searchInput);
+        search.appendChild(searchBtn);
+        
+        // 現在地ボタン
+        const locationBtn = document.createElement('button');
+        locationBtn.className = 'map-filter-btn';
+        locationBtn.onclick = () => this.getCurrentLocation();
+        locationBtn.innerHTML = '<i class="fas fa-location-arrow"></i>';
+        
+        controls.appendChild(search);
+        controls.appendChild(locationBtn);
+        header.appendChild(controls);
+        
+        // ブランドフィルター
+        const brandFilters = document.createElement('div');
+        brandFilters.className = 'brand-filters';
+        brandFilters.id = 'brandFilters';
+        
+        const filterTitle = document.createElement('div');
+        filterTitle.className = 'filter-title';
+        filterTitle.textContent = 'ブランドで絞り込み:';
+        brandFilters.appendChild(filterTitle);
+        
+        const filterButtons = document.createElement('div');
+        filterButtons.className = 'filter-buttons';
+        filterButtons.id = 'filterButtons';
+        brandFilters.appendChild(filterButtons);
+        
+        const filterActions = document.createElement('div');
+        filterActions.className = 'filter-actions';
+        
+        const selectAllBtn = document.createElement('button');
+        selectAllBtn.className = 'filter-action-btn';
+        selectAllBtn.onclick = () => this.selectAllBrands();
+        selectAllBtn.textContent = 'すべて選択';
+        
+        const clearBtn = document.createElement('button');
+        clearBtn.className = 'filter-action-btn';
+        clearBtn.onclick = () => this.clearAllFilters();
+        clearBtn.textContent = 'クリア';
+        
+        filterActions.appendChild(selectAllBtn);
+        filterActions.appendChild(clearBtn);
+        brandFilters.appendChild(filterActions);
+        
+        header.appendChild(brandFilters);
+        container.appendChild(header);
+        
+        // コンテンツ
+        const content = document.createElement('div');
+        content.className = 'map-content';
+        
+        // マップ
+        const map = document.createElement('div');
+        map.id = 'map';
+        content.appendChild(map);
+        
+        // 店舗詳細パネル
+        const shopDetailPanel = document.createElement('div');
+        shopDetailPanel.id = 'shopDetailPanel';
+        shopDetailPanel.className = 'shop-detail-panel';
+        content.appendChild(shopDetailPanel);
+        
+        // ローディング
+        const loading = document.createElement('div');
+        loading.className = 'map-loading';
+        loading.id = 'mapLoading';
+        loading.style.display = 'none';
+        loading.innerHTML = '<div class="map-spinner"></div><p>読み込み中...</p>';
+        content.appendChild(loading);
+        
+        // エラー
+        const error = document.createElement('div');
+        error.className = 'map-error';
+        error.id = 'mapError';
+        error.style.display = 'none';
+        error.innerHTML = `
+            <h3>エラー</h3>
+            <p id="mapErrorMessage">マップの読み込みに失敗しました</p>
+            <button onclick="MapComponent.retryLoad()">再試行</button>
+        `;
+        content.appendChild(error);
+        
+        // 凡例
+        const legend = document.createElement('div');
+        legend.className = 'map-legend';
+        legend.id = 'mapLegend';
+        content.appendChild(legend);
+        
+        container.appendChild(content);
+        
+        return container;
     },
 
     // マップ初期化
@@ -894,22 +1004,24 @@ const MapComponent = {
 
     // キャッシュキーを生成
     generateCacheKey(lat, lng, radius) {
-        // 緯度経度を小数点第3位まで丸めてキーを生成（約100m単位）
-        const roundedLat = Math.round(lat * 1000) / 1000;
-        const roundedLng = Math.round(lng * 1000) / 1000;
-        return `${roundedLat},${roundedLng},${radius}`;
+        // 緯度経度を小数点第1位（約10km四方）で丸めてグリッドベースのキーを生成
+        const gridLat = Math.round(lat * 10) / 10;
+        const gridLng = Math.round(lng * 10) / 10;
+        return `${gridLat},${gridLng},${radius}`;
     },
 
     // キャッシュに店舗データを保存
     cacheShopData(key, data) {
+        const { shopCache, maxCacheSize } = this.state.cache;
+        
         // キャッシュサイズが上限に達した場合、最も古いエントリを削除
-        if (this.state.shopCache.size >= this.state.maxCacheSize) {
-            const firstKey = this.state.shopCache.keys().next().value;
-            this.state.shopCache.delete(firstKey);
+        if (shopCache.size >= maxCacheSize) {
+            const firstKey = shopCache.keys().next().value;
+            shopCache.delete(firstKey);
         }
         
         // タイムスタンプ付きでデータを保存
-        this.state.shopCache.set(key, {
+        shopCache.set(key, {
             data: data,
             timestamp: Date.now()
         });
@@ -917,13 +1029,14 @@ const MapComponent = {
 
     // キャッシュから店舗データを取得
     getCachedShopData(key) {
-        const cached = this.state.shopCache.get(key);
+        const { shopCache } = this.state.cache;
+        const cached = shopCache.get(key);
         if (!cached) return null;
         
         // 5分以上経過したキャッシュは無効
         const maxAge = 5 * 60 * 1000; // 5分
         if (Date.now() - cached.timestamp > maxAge) {
-            this.state.shopCache.delete(key);
+            shopCache.delete(key);
             return null;
         }
         
@@ -932,15 +1045,18 @@ const MapComponent = {
 
     // 近くのキャッシュエントリを検索
     findNearbyCacheEntry(lat, lng, radius) {
-        for (const [key, entry] of this.state.shopCache.entries()) {
-            const [cachedLat, cachedLng, cachedRadius] = key.split(',').map(Number);
+        const { shopCache } = this.state.cache;
+        
+        // グリッドベースのキャッシュキーを生成
+        const gridLat = Math.round(lat * 10) / 10;
+        const gridLng = Math.round(lng * 10) / 10;
+        
+        // 同じグリッド内のキャッシュを検索
+        for (const [key, entry] of shopCache.entries()) {
+            const [cachedGridLat, cachedGridLng, cachedRadius] = key.split(',').map(Number);
             
-            // 2点間の距離を計算（簡易計算）
-            const latDiff = Math.abs(lat - cachedLat);
-            const lngDiff = Math.abs(lng - cachedLng);
-            
-            // キャッシュの範囲内にあるかチェック
-            if (latDiff <= 0.01 && lngDiff <= 0.01 && cachedRadius >= radius) {
+            // 同じグリッド内で、より広い範囲のキャッシュがあれば使用
+            if (cachedGridLat === gridLat && cachedGridLng === gridLng && cachedRadius >= radius) {
                 return entry.data;
             }
         }
@@ -1114,9 +1230,11 @@ const MapComponent = {
                 
                 // 進行中の同じリクエストがあれば、それが完了するまで待つ
                 const pendingKey = `${lat},${lng},${radius}`;
-                if (this.state.pendingRequests.has(pendingKey)) {
+                const { pendingRequests } = this.state.cache;
+                
+                if (pendingRequests.has(pendingKey)) {
                     console.log(`進行中のリクエストを待機中... (範囲: ${radius}km)`);
-                    const existingRequest = this.state.pendingRequests.get(pendingKey);
+                    const existingRequest = pendingRequests.get(pendingKey);
                     const data = await existingRequest;
                     this.updateShopMarkers(data.shops);
                     
@@ -1144,7 +1262,7 @@ const MapComponent = {
                         this.updateShopMarkers(data.shops);
                         
                         // リクエスト完了後、pendingリストから削除
-                        this.state.pendingRequests.delete(pendingKey);
+                        this.state.cache.pendingRequests.delete(pendingKey);
                         
                         // 店舗数が10以下で、まだ最大検索範囲に達していない場合は次の範囲を試す
                         if (data.shops.length <= 10 && radius < maxRadius) {
@@ -1160,13 +1278,13 @@ const MapComponent = {
                         this.showError('ラーメン店データの取得に失敗しました: ' + error.message);
                         
                         // エラー時もpendingリストから削除
-                        this.state.pendingRequests.delete(pendingKey);
+                        this.state.cache.pendingRequests.delete(pendingKey);
                         
                         throw error;
                     });
                 
                 // 進行中のリクエストとして保存
-                this.state.pendingRequests.set(pendingKey, apiRequest);
+                this.state.cache.pendingRequests.set(pendingKey, apiRequest);
                 
                 // この範囲での検索を開始したので、ループを抜ける
                 break;
@@ -1181,7 +1299,7 @@ const MapComponent = {
     // 店舗マーカーをクリア
     clearShopMarkers() {
         // 既存の店舗マーカーを地図から削除
-        this.state.markers.forEach(marker => {
+        for (const [shopId, marker] of this.state.markers.entries()) {
             const brand = marker.brand || 'other';
             
             if (this.state.clusterEnabled && this.state.brandClusters[brand]) {
@@ -1195,10 +1313,10 @@ const MapComponent = {
                     this.state.markerLayerGroup.removeLayer(marker);
                 }
             }
-        });
+        }
         
         // マーカーリストと表示セットをクリア
-        this.state.markers = [];
+        this.state.markers.clear();
         this.state.visibleMarkers.clear();
     },
 
@@ -1217,24 +1335,68 @@ const MapComponent = {
     // フィルターボタンを更新する関数
     updateFilterButtons() {
         const filterButtonsContainer = document.getElementById('filterButtons');
-        if (filterButtonsContainer) {
-            filterButtonsContainer.innerHTML = this.generateBrandFilterButtons();
-            
-            // アクティブなフィルターのボタンをハイライト
-            this.state.activeFilters.forEach(brandKey => {
-                const button = filterButtonsContainer.querySelector(`[data-brand="${brandKey}"]`);
-                if (button) {
-                    button.classList.add('active');
-                }
-            });
+        if (!filterButtonsContainer) return;
+
+        // 既存のボタンを更新、なければ作成
+        for (const [brandKey, brandConfig] of Object.entries(this.BRAND_CONFIG)) {
+            if (brandKey === 'other') continue;
+
+            let button = filterButtonsContainer.querySelector(`[data-brand="${brandKey}"]`);
+            if (!button) {
+                button = document.createElement('button');
+                button.className = 'map-filter-btn';
+                button.dataset.brand = brandKey;
+                button.onclick = () => MapComponent.toggleFilter(brandKey);
+                filterButtonsContainer.appendChild(button);
+            }
+
+            const count = this.state.brandShopCounts[brandKey] || 0;
+            button.textContent = `${brandConfig.name} (${count})`;
+            button.title = `${brandConfig.name}: ${count}件`;
+
+            // classList を使ってアクティブ状態を管理
+            if (this.state.activeFilters.has(brandKey)) {
+                button.classList.add('active');
+            } else {
+                button.classList.remove('active');
+            }
         }
     },
 
     // 凡例を更新する関数
     updateLegend() {
         const legendContainer = document.getElementById('mapLegend');
-        if (legendContainer) {
-            legendContainer.innerHTML = this.generateLegend();
+        if (!legendContainer) return;
+
+        // 既存の凡例をクリア
+        while (legendContainer.firstChild) {
+            legendContainer.removeChild(legendContainer.firstChild);
+        }
+
+        // タイトルを追加
+        const titleElement = document.createElement('div');
+        titleElement.className = 'legend-title';
+        titleElement.textContent = 'ブランド';
+        legendContainer.appendChild(titleElement);
+
+        // ブランドごとの凡例項目を追加
+        for (const [brandKey, brandConfig] of Object.entries(this.BRAND_CONFIG)) {
+            const count = this.state.brandShopCounts[brandKey] || 0;
+            if (count > 0 || brandKey === 'other') {
+                const itemElement = document.createElement('div');
+                itemElement.className = 'legend-item';
+
+                const markerIcon = document.createElement('div');
+                markerIcon.className = 'marker-icon';
+                markerIcon.style.background = brandConfig.color;
+
+                const textSpan = document.createElement('span');
+                textSpan.textContent = `${brandConfig.name} (${count})`;
+
+                itemElement.appendChild(markerIcon);
+                itemElement.appendChild(textSpan);
+                legendContainer.appendChild(itemElement);
+            }
         }
     },
 
@@ -1250,12 +1412,12 @@ const MapComponent = {
         this.updateLegend();
 
         // 既存のマーカーをマップで管理
-        const existingMarkerIds = new Set();
+        const newShopIds = new Set();
         
         // 新しい店舗データでマーカーを更新または追加
         shops.forEach(shop => {
             // ブランドを判定
-            const brand = this.determineBrand(shop.name);
+            const brand = MapUtils.determineBrand(shop.name, this.BRAND_CONFIG);
             
             const shopData = {
                 id: shop.id,
@@ -1272,32 +1434,28 @@ const MapComponent = {
                 description: `${shop.address}<br>営業時間: ${shop.business_hours || '不明'}<br>定休日: ${shop.closed_day || '不明'}<br>距離: 約${shop.distance}km`
             };
             
-            // 既存のマーカーがあるかチェック
-            const existingMarkerIndex = this.state.markers.findIndex(marker =>
-                marker.shopId === shop.id
-            );
+            const shopId = shop.id;
+            newShopIds.add(shopId);
             
-            if (existingMarkerIndex !== -1) {
-                // 既存のマーカーを更新
-                existingMarkerIds.add(shop.id);
-                // 位置が変わっていれば更新
-                const marker = this.state.markers[existingMarkerIndex];
+            // findIndex の代わりに Map.has() を使用 (高速)
+            if (this.state.markers.has(shopId)) {
+                // 既存マーカーの更新
+                const marker = this.state.markers.get(shopId);
                 const currentPos = marker.getLatLng();
                 if (currentPos.lat !== shopData.lat || currentPos.lng !== shopData.lng) {
                     marker.setLatLng([shopData.lat, shopData.lng]);
                 }
-                // ブランド情報も更新
                 marker.brand = brand;
             } else {
-                // 新しいマーカーを追加
-                this.addShopMarker(shopData);
-                existingMarkerIds.add(shop.id);
+                // 新規マーカーの追加
+                const newMarker = this.addShopMarker(shopData); // addShopMarkerはmarkerオブジェクトを返すように変更
+                this.state.markers.set(shopId, newMarker);
             }
         });
         
         // 不要なマーカーを削除
-        this.state.markers = this.state.markers.filter(marker => {
-            if (!existingMarkerIds.has(marker.shopId)) {
+        for (const [shopId, marker] of this.state.markers.entries()) {
+            if (!newShopIds.has(shopId)) {
                 const brand = marker.brand || 'other';
                 
                 if (this.state.clusterEnabled && this.state.brandClusters[brand]) {
@@ -1311,11 +1469,10 @@ const MapComponent = {
                         this.state.markerLayerGroup.removeLayer(marker);
                     }
                 }
-                this.state.visibleMarkers.delete(marker.shopId);
-                return false;
+                this.state.visibleMarkers.delete(shopId);
+                this.state.markers.delete(shopId); // Mapから削除
             }
-            return true;
-        });
+        }
         
         // 表示範囲内のマーカーだけを表示
         this.updateMarkerVisibility();
@@ -1339,44 +1496,74 @@ const MapComponent = {
             visibilityRadius = 30; // 高ズームでは狭範囲を表示
         }
         
-        this.state.markers.forEach(marker => {
+        // フィルターが空の場合はすべてのブランドがアクティブ
+        const hasActiveFilters = this.state.activeFilters.size > 0;
+        
+        for (const [shopId, marker] of this.state.markers.entries()) {
             const markerPos = marker.getLatLng();
-            const distance = this.calculateDistance(center.lat, center.lng, markerPos.lat, markerPos.lng);
             const brand = marker.brand || 'other';
             
-            const isInBounds = bounds.contains(markerPos) && distance <= visibilityRadius;
-            const isActiveFilter = this.state.activeFilters.size === 0 || this.state.activeFilters.has(brand);
-            
-            if (isInBounds && isActiveFilter) {
-                // 表示範囲内かつフィルターに合致する場合、マーカーを表示
-                if (this.state.clusterEnabled && this.state.brandClusters[brand]) {
-                    // クラスタリングが有効な場合はクラスターグループに追加
-                    if (!this.state.brandClusters[brand].hasLayer(marker)) {
-                        this.state.brandClusters[brand].addLayer(marker);
-                    }
-                } else {
-                    // クラスタリングが無効な場合は通常のマーカーグループに追加
-                    if (!this.state.markerLayerGroup.hasLayer(marker)) {
-                        this.state.markerLayerGroup.addLayer(marker);
-                    }
-                }
-                this.state.visibleMarkers.add(marker.shopId);
-            } else {
+            // 早期フィルタリング：フィルターに合致しない場合はスキップ
+            if (hasActiveFilters && !this.state.activeFilters.has(brand)) {
                 // 表示範囲外またはフィルターに合致しない場合、マーカーを非表示
                 if (this.state.clusterEnabled && this.state.brandClusters[brand]) {
-                    // クラスタリングが有効な場合はクラスターグループから削除
                     if (this.state.brandClusters[brand].hasLayer(marker)) {
                         this.state.brandClusters[brand].removeLayer(marker);
                     }
                 } else {
-                    // クラスタリングが無効な場合は通常のマーカーグループから削除
                     if (this.state.markerLayerGroup.hasLayer(marker)) {
                         this.state.markerLayerGroup.removeLayer(marker);
                     }
                 }
-                this.state.visibleMarkers.delete(marker.shopId);
+                this.state.visibleMarkers.delete(shopId);
+                continue;
             }
-        });
+            
+            // 早期フィルタリング：表示範囲外の場合はスキップ
+            if (!bounds.contains(markerPos)) {
+                // 表示範囲外の場合、マーカーを非表示
+                if (this.state.clusterEnabled && this.state.brandClusters[brand]) {
+                    if (this.state.brandClusters[brand].hasLayer(marker)) {
+                        this.state.brandClusters[brand].removeLayer(marker);
+                    }
+                } else {
+                    if (this.state.markerLayerGroup.hasLayer(marker)) {
+                        this.state.markerLayerGroup.removeLayer(marker);
+                    }
+                }
+                this.state.visibleMarkers.delete(shopId);
+                continue;
+            }
+            
+            // 距離計算（範囲内のマーカーのみ）
+            const distance = MapUtils.calculateDistance(center.lat, center.lng, markerPos.lat, markerPos.lng);
+            
+            if (distance <= visibilityRadius) {
+                // 表示範囲内かつフィルターに合致する場合、マーカーを表示
+                if (this.state.clusterEnabled && this.state.brandClusters[brand]) {
+                    if (!this.state.brandClusters[brand].hasLayer(marker)) {
+                        this.state.brandClusters[brand].addLayer(marker);
+                    }
+                } else {
+                    if (!this.state.markerLayerGroup.hasLayer(marker)) {
+                        this.state.markerLayerGroup.addLayer(marker);
+                    }
+                }
+                this.state.visibleMarkers.add(shopId);
+            } else {
+                // 表示範囲外の場合、マーカーを非表示
+                if (this.state.clusterEnabled && this.state.brandClusters[brand]) {
+                    if (this.state.brandClusters[brand].hasLayer(marker)) {
+                        this.state.brandClusters[brand].removeLayer(marker);
+                    }
+                } else {
+                    if (this.state.markerLayerGroup.hasLayer(marker)) {
+                        this.state.markerLayerGroup.removeLayer(marker);
+                    }
+                }
+                this.state.visibleMarkers.delete(shopId);
+            }
+        }
     },
 
     // 2点間の距離を計算（Haversine formula）
@@ -1459,9 +1646,6 @@ const MapComponent = {
         marker.shopId = shop.id;
         marker.brand = brand;
         
-        // 最初はマーカーリストに追加
-        this.state.markers.push(marker);
-        
         // クラスタリングが有効な場合はブランドごとのクラスターグループに追加
         if (this.state.clusterEnabled && this.state.brandClusters[brand]) {
             this.state.brandClusters[brand].addLayer(marker);
@@ -1474,7 +1658,7 @@ const MapComponent = {
         if (this.state.map) {
             const bounds = this.state.map.getBounds();
             const center = this.state.map.getCenter();
-            const distance = this.calculateDistance(center.lat, center.lng, shop.lat, shop.lng);
+            const distance = MapUtils.calculateDistance(center.lat, center.lng, shop.lat, shop.lng);
             const zoom = this.state.map.getZoom();
             
             let visibilityRadius = this.state.markerVisibilityRadius;
@@ -1493,6 +1677,9 @@ const MapComponent = {
                 }
             }
         }
+        
+        // ここでマーカーを直接 state.markers に追加するのではなく、呼び出し元に返す
+        return marker;
     },
 
     // 現在位置を取得
@@ -1739,7 +1926,8 @@ const MapComponent = {
                 address: shop.address,
                 description: shop.address
             };
-            this.addShopMarker(shopData);
+            const newMarker = this.addShopMarker(shopData);
+            this.state.markers.set(shop.id, newMarker);
         });
 
         // 地図の表示範囲を調整

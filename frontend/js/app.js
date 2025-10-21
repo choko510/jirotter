@@ -488,6 +488,33 @@ const API = {
     escapeHtmlWithLineBreaks(text) {
         if (text === null || text === undefined) return '';
         return this.escapeHtml(text).replace(/\n/g, '<br>');
+    },
+
+    // 投稿を通報する
+    async reportPost(postId, reason) {
+        try {
+            const response = await fetch(`/api/v1/posts/${postId}/report`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...this.getAuthHeader()
+                },
+                body: JSON.stringify({
+                    reason: reason
+                })
+            });
+            
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || '通報に失敗しました');
+            }
+            
+            const data = await response.json();
+            return { success: true, report: data };
+        } catch (error) {
+            console.error('通報に失敗しました:', error);
+            return { success: false, error: error.message };
+        }
     }
 };
 

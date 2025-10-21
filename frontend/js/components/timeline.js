@@ -223,6 +223,126 @@ const TimelineComponent = {
                 .dark-mode .shop-reference { background: #333; }
                 .dark-mode .shop-reference:hover { background: #444; }
                 .dark-mode .shop-reference-content { color: #d4a574; }
+                
+                /* 通報モーダルスタイル */
+                .report-modal-overlay {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background: rgba(0, 0, 0, 0.5);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    z-index: 1000;
+                }
+                .report-modal {
+                    background: white;
+                    border-radius: 12px;
+                    width: 90%;
+                    max-width: 500px;
+                    max-height: 80vh;
+                    overflow: hidden;
+                    display: flex;
+                    flex-direction: column;
+                }
+                .report-modal-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 16px;
+                    border-bottom: 1px solid #e0e0e0;
+                }
+                .report-modal-header h3 {
+                    margin: 0;
+                }
+                .close-modal {
+                    background: none;
+                    border: none;
+                    font-size: 24px;
+                    cursor: pointer;
+                    color: #666;
+                }
+                .report-modal-content {
+                    padding: 16px;
+                    flex: 1;
+                    overflow-y: auto;
+                }
+                .report-reason {
+                    margin-bottom: 16px;
+                }
+                .report-reason label {
+                    display: block;
+                    margin-bottom: 8px;
+                    font-weight: bold;
+                }
+                .report-reason select {
+                    width: 100%;
+                    padding: 8px 12px;
+                    border: 1px solid #e0e0e0;
+                    border-radius: 8px;
+                    outline: none;
+                }
+                .report-description {
+                    margin-bottom: 16px;
+                }
+                .report-description label {
+                    display: block;
+                    margin-bottom: 8px;
+                    font-weight: bold;
+                }
+                .report-description textarea {
+                    width: 100%;
+                    padding: 8px 12px;
+                    border: 1px solid #e0e0e0;
+                    border-radius: 8px;
+                    outline: none;
+                    resize: vertical;
+                    min-height: 100px;
+                }
+                .report-modal-actions {
+                    display: flex;
+                    justify-content: flex-end;
+                    gap: 12px;
+                    padding: 16px;
+                    border-top: 1px solid #e0e0e0;
+                }
+                .report-btn {
+                    background: #d4a574;
+                    color: white;
+                    border: none;
+                    padding: 8px 16px;
+                    border-radius: 20px;
+                    cursor: pointer;
+                }
+                .cancel-btn {
+                    background: transparent;
+                    color: #666;
+                    border: 1px solid #e0e0e0;
+                    padding: 8px 16px;
+                    border-radius: 20px;
+                    cursor: pointer;
+                }
+                .dark-mode .report-modal {
+                    background: #2a2a2a;
+                    color: #e0e0e0;
+                }
+                .dark-mode .report-modal-header,
+                .dark-mode .report-modal-content,
+                .dark-mode .report-modal-actions {
+                    border-color: #333;
+                }
+                .dark-mode .report-reason select,
+                .dark-mode .report-description textarea {
+                    background: #333;
+                    border-color: #444;
+                    color: #e0e0e0;
+                }
+                .dark-mode .cancel-btn {
+                    border-color: #444;
+                    color: #aaa;
+                }
             </style>
             
             <div class="post-input-area">
@@ -394,6 +514,9 @@ const TimelineComponent = {
                     <button class="engagement-btn" onclick="event.stopPropagation(); TimelineComponent.openCommentModal(${post.id})"><i class="fas fa-comment"></i> ${post.engagement.comments}</button>
                     <button class="engagement-btn" onclick="event.stopPropagation(); TimelineComponent.handleLike(${post.id})">
                         <i class="fas fa-heart ${post.isLiked ? 'liked' : ''}"></i> <span>${post.engagement.likes}</span>
+                    </button>
+                    <button class="engagement-btn" onclick="event.stopPropagation(); TimelineComponent.openReportModal(${post.id})" title="通報">
+                        <i class="fas fa-flag"></i>
                     </button>
                 </div>
             </div>
@@ -955,7 +1078,7 @@ const TimelineComponent = {
             const postId = postCard.id.replace('post-', '');
             
             // いいねボタンのイベントリスナー
-            const likeButton = postCard.querySelector('.engagement-btn:nth-child(2)');
+            const likeButton = postCard.querySelector('.engagement-btn:nth-child(1)');
             if (likeButton) {
                 likeButton.onclick = (e) => {
                     e.stopPropagation();
@@ -963,15 +1086,122 @@ const TimelineComponent = {
                 };
             }
             
-            // コメントボタンのイベントリスナー
-            const commentButton = postCard.querySelector('.engagement-btn:nth-child(1)');
-            if (commentButton) {
-                commentButton.onclick = (e) => {
+            // 通報ボタンのイベントリスナー
+            const reportButton = postCard.querySelector('.engagement-btn:nth-child(2)');
+            if (reportButton) {
+                reportButton.onclick = (e) => {
                     e.stopPropagation();
-                    this.openCommentModal(parseInt(postId));
+                    this.openReportModal(parseInt(postId));
                 };
             }
         });
+    },
+
+    // 通報モーダルを開く
+    openReportModal(postId) {
+        // ログインチェック
+        const token = API.getCookie('authToken');
+        if (!token) {
+            alert('通報するにはログインしてください');
+            router.navigate('auth', ['login']);
+            return;
+        }
+
+        const modal = document.createElement('div');
+        modal.className = 'report-modal-overlay';
+        modal.innerHTML = `
+            <div class="report-modal">
+                <div class="report-modal-header">
+                    <h3>投稿を通報</h3>
+                    <button class="close-modal" onclick="TimelineComponent.closeReportModal()">&times;</button>
+                </div>
+                <div class="report-modal-content">
+                    <div class="report-reason">
+                        <label for="reportReason">通報理由</label>
+                        <select id="reportReason">
+                            <option value="">選択してください</option>
+                            <optgroup label="スパム・宣伝">
+                                <option value="スパム・広告">スパム・広告</option>
+                                <option value="過度な宣伝">過度な宣伝</option>
+                                <option value="繰り返し投稿">繰り返し投稿</option>
+                            </optgroup>
+                            <optgroup label="不適切な内容">
+                                <option value="暴力的・グロテスクな内容">暴力的・グロテスクな内容</option>
+                                <option value="性的な内容">性的な内容</option>
+                                <option value="不快な表現">不快な表現</option>
+                            </optgroup>
+                            <optgroup label="ヘイトスピーチ・差別">
+                                <option value="人種・民族差別">人種・民族差別</option>
+                                <option value="性差別">性差別</option>
+                                <option value="障害者差別">障害者差別</option>
+                                <option value="その他の差別">その他の差別</option>
+                            </optgroup>
+                            <optgroup label="ハラスメント">
+                                <option value="個人攻撃">個人攻撃</option>
+                                <option value="脅迫">脅迫</option>
+                                <option value="いじめ">いじめ</option>
+                                <option value="ストーカー行為">ストーカー行為</option>
+                            </optgroup>
+                            <optgroup label="偽情報">
+                                <option value="デマ・偽情報">デマ・偽情報</option>
+                                <option value="医療・健康に関する誤情報">医療・健康に関する誤情報</option>
+                                <option value="政治に関する誤情報">政治に関する誤情報</option>
+                            </optgroup>
+                            <optgroup label="著作権侵害">
+                                <option value="無断転載">無断転載</option>
+                                <option value="画像の無断使用">画像の無断使用</option>
+                                <option value="その他の著作権侵害">その他の著作権侵害</option>
+                            </optgroup>
+                            <optgroup label="その他">
+                                <option value="プライバシー侵害">プライバシー侵害</option>
+                                <option value="自殺・自傷を助長する内容">自殺・自傷を助長する内容</option>
+                                <option value="その他">その他</option>
+                            </optgroup>
+                        </select>
+                    </div>
+                </div>
+                <div class="report-modal-actions">
+                    <button class="cancel-btn" onclick="TimelineComponent.closeReportModal()">キャンセル</button>
+                    <button class="report-btn" onclick="TimelineComponent.submitReport(${postId})">通報する</button>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
+    },
+
+    // 通報モーダルを閉じる
+    closeReportModal() {
+        const modal = document.querySelector('.report-modal-overlay');
+        if (modal) {
+            modal.remove();
+        }
+    },
+
+    // 通報を送信
+    async submitReport(postId) {
+        const reasonSelect = document.getElementById('reportReason');
+        
+        const reason = reasonSelect.value;
+        
+        if (!reason) {
+            alert('通報理由を選択してください');
+            return;
+        }
+        
+        try {
+            const result = await API.reportPost(postId, reason);
+            
+            if (result.success) {
+                alert('通報を送信しました');
+                this.closeReportModal();
+            } else {
+                alert(`通報に失敗しました: ${result.error}`);
+            }
+        } catch (error) {
+            console.error('通報エラー:', error);
+            alert('通報に失敗しました');
+        }
     }
 };
 

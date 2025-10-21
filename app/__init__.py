@@ -15,6 +15,7 @@ from app.routes.ramen import router as ramen_router, load_ramen_data_on_startup
 from app.routes.users import router as users_router
 from app.routes.likes import router as likes_router
 from app.routes.replies import router as replies_router
+from app.routes.reports import router as reports_router
 
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
@@ -83,6 +84,7 @@ def create_app():
     app.include_router(users_router, prefix=settings.API_V1_STR)
     app.include_router(likes_router, prefix=settings.API_V1_STR)
     app.include_router(replies_router, prefix=settings.API_V1_STR)
+    app.include_router(reports_router, prefix=settings.API_V1_STR)
     
     @app.get("/", response_class=HTMLResponse)
     async def read_index():
