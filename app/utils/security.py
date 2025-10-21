@@ -53,6 +53,37 @@ def escape_html(text: str) -> str:
         return ""
     return html.escape(text, quote=True)
 
+def filter_allowed_characters(text: str) -> str:
+    """許可された文字のみを残すフィルタリング関数"""
+    if text is None:
+        return ""
+    
+    # 許可する文字：ひらがな、カタカナ、漢字、英数字、記号（一部）、絵文字
+    # Unicode範囲：
+    # \u3040-\u309F: ひらがな
+    # \u30A0-\u30FF: カタカナ
+    # \u4E00-\u9FAF: 漢字（主な範囲）
+    # \u3000-\u303F: 日本語の記号
+    # \uFF00-\uFFEF: 半角カタカナ、全角記号など
+    # \u2600-\u26FF: 各種記号
+    # \u2700-\u27BF: 補助記号
+    # \u1F600-\u1F64F: 絵文字（顔）
+    # \u1F300-\u1F5FF: 絵文字（記号）
+    # \u1F680-\u1F6FF: 絵文字（交通・記号）
+    # \u1F700-\u1F77F: 絵文字（絵文字文字）
+    # \u1F780-\u1F7FF: 絵文字（拡張）
+    # \u1F800-\u1F8FF: 絵文字（補助）
+    # \u1F900-\u1F9FF: 絵文字（補助記号）
+    # \u2000-\u206F: 一般句読点
+    # \u0020-\u007E: 基本ラテン文字（ASCII）
+    # \u00A0-\u00FF: ラテン文字補助
+    allowed_pattern = r'[^\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF\u3000-\u303F\uFF00-\uFFEF\u2600-\u26FF\u2700-\u27BF\u1F600-\u1F64F\u1F300-\u1F5FF\u1F680-\u1F6FF\u1F700-\u1F77F\u1F780-\u1F7FF\u1F800-\u1F8FF\u1F900-\u1F9FF\u2000-\u206F\u0020-\u007E\u00A0-\u00FF\s]'
+    
+    # 許可されていない文字を削除
+    filtered_text = re.sub(allowed_pattern, '', text)
+    
+    return filtered_text
+
 def sanitize_content(content: str) -> str:
     """投稿内容をサニタイズする"""
     if content is None:
@@ -89,6 +120,14 @@ def validate_post_content(content: str) -> dict:
         errors['content'] = '投稿内容は必須です'
         return errors, None
     
+    # 文字フィルタリング
+    filtered_content = filter_allowed_characters(content)
+    
+    # フィルタリング後に内容が変わった場合は警告
+    if filtered_content != content:
+        # 特にエラーは返さず、フィルタリングした内容を使用
+        content = filtered_content
+    
     # 長さチェック
     if len(content) > 200:
         errors['content'] = '投稿内容は200文字以内で入力してください'
@@ -111,6 +150,14 @@ def validate_reply_content(content: str) -> dict:
     if not content or not content.strip():
         errors['content'] = '返信内容は必須です'
         return errors, None
+    
+    # 文字フィルタリング
+    filtered_content = filter_allowed_characters(content)
+    
+    # フィルタリング後に内容が変わった場合は警告
+    if filtered_content != content:
+        # 特にエラーは返さず、フィルタリングした内容を使用
+        content = filtered_content
     
     # 長さチェック
     if len(content) > 200:

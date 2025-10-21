@@ -181,8 +181,21 @@ const TimelineComponent = {
                 .engagement-btn .liked { color: #e0245e; }
                 .image-preview { max-width: 100px; max-height: 100px; border-radius: 10px; margin-top: 10px; }
                 #timelineLoadingIndicator { text-align: center; padding: 20px; }
-                .post-content { line-height: 1.4; }
-                .post-content.collapsed { max-height: 4.2em; overflow: hidden; }
+                .post-content {
+                    line-height: 1.4;
+                    word-wrap: break-word;
+                    overflow-wrap: break-word;
+                    white-space: pre-wrap;
+                    max-width: 100%;
+                }
+                .post-content.collapsed {
+                    max-height: 4.2em;
+                    overflow: hidden;
+                    word-wrap: break-word;
+                    overflow-wrap: break-word;
+                    white-space: pre-wrap;
+                    max-width: 100%;
+                }
                 .show-more-btn { background: none; border: none; color: #d4a574; cursor: pointer; font-size: 14px; padding: 4px 0; }
                 .show-more-btn:hover { text-decoration: underline; }
                 .shop-reference { margin-top: 12px; padding: 12px; background: #f5f5f5; border-radius: 8px; cursor: pointer; transition: background 0.2s; }
@@ -253,6 +266,20 @@ const TimelineComponent = {
         const imageUpload = document.getElementById('imageUpload');
         
         textarea.addEventListener('input', () => {
+            // テキストをフィルタリング
+            const originalValue = textarea.value;
+            const filteredValue = this.filterText(originalValue);
+            
+            // フィルタリング後に内容が変わった場合は修正
+            if (filteredValue !== originalValue) {
+                const cursorPosition = textarea.selectionStart;
+                textarea.value = filteredValue;
+                
+                // カーソル位置を調整（削除された文字数を考慮）
+                const diff = originalValue.length - filteredValue.length;
+                textarea.setSelectionRange(Math.max(0, cursorPosition - diff), Math.max(0, cursorPosition - diff));
+            }
+            
             const length = textarea.value.length;
             const charCounter = document.getElementById('charCounter');
             charCounter.textContent = `${length}/200`;
@@ -351,7 +378,7 @@ const TimelineComponent = {
                     </div>
                 </div>
                 <div class="post-text" id="post-text-${post.id}">
-                    <div class="post-content" id="post-content-${post.id}">${API.escapeHtmlWithLineBreaks(post.text)}</div>
+                    <div class="post-content collapsed" id="post-content-${post.id}">${API.escapeHtmlWithLineBreaks(post.text)}</div>
                     ${this.isLongText(post.text) ? `<button class="show-more-btn" onclick="event.stopPropagation(); TimelineComponent.toggleText(${post.id})">続きを見る</button>` : ''}
                 </div>
                 ${post.shop_id ? `
@@ -395,6 +422,20 @@ const TimelineComponent = {
         document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
         tabElement.classList.add('active');
         this.state.currentTab = tabElement.dataset.tab;
+        
+        // フォロー中タブの場合、ログインチェック
+        if (this.state.currentTab === 'following') {
+            const token = API.getCookie('authToken');
+            if (!token) {
+                alert('フォロー中のタイムラインを表示するにはログインしてください');
+                // おすすめタブに戻す
+                document.querySelector('[data-tab="recommend"]').classList.add('active');
+                tabElement.classList.remove('active');
+                this.state.currentTab = 'recommend';
+                return;
+            }
+        }
+        
         this.loadInitialPosts();
         this.setupAutoRefresh(); // タブ切り替え時に自動更新を再設定
     },
@@ -447,13 +488,76 @@ const TimelineComponent = {
         likeCount.textContent = post.engagement.likes;
     },
 
+    // 通常で使われる文字のみを許可するフィルタリング関数
+    filterText(text) {
+        // 許可する文字：ひらがな、カタカナ、漢字、英数字、記号（一部）、絵文字
+        // Unicode範囲：
+        // \u3040-\u309F: ひらがな
+        // \u30A0-\u30FF: カタカナ
+        // \u4E00-\u9FAF: 漢字（主な範囲）
+        // \u3000-\u303F: 日本語の記号
+        // \uFF00-\uFFEF: 半角カタカナ、全角記号など
+        // \u2600-\u26FF: 各種記号
+        // \u2700-\u27BF: 補助記号
+        // \u1F600-\u1F64F: 絵文字（顔）
+        // \u1F300-\u1F5FF: 絵文字（記号）
+        // \u1F680-\u1F6FF: 絵文字（交通・記号）
+        // \u1F700-\u1F77F: 絵文字（絵文字文字）
+        // \u1F780-\u1F7FF: 絵文字（拡張）
+        // \u1F800-\u1F8FF: 絵文字（補助）
+        // \u1F900-\u1F9FF: 絵文字（補助記号）
+        // \u2000-\u206F: 一般句読点
+        // \u0020-\u007E: 基本ラテン文字（ASCII）
+        // \u00A0-\u00FF: ラテン文字補助
+        const allowedPattern = /^[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF\u3000-\u303F\uFF00-\uFFEF\u2600-\u26FF\u2700-\u27BF\u1F600-\u1F64F\u1F300-\u1F5FF\u1F680-\u1F6FF\u1F700-\u1F77F\u1F780-\u1F7FF\u1F800-\u1F8FF\u1F900-\u1F9FF\u2000-\u206F\u0020-\u007E\u00A0-\u00FF\s]+$/;
+        
+        // 改行と空白は許可
+        const cleanedText = text.replace(/\s+/g, ' ').trim();
+        
+        if (!allowedPattern.test(cleanedText)) {
+            // 許可されていない文字を削除
+            return cleanedText.replace(/[^\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF\u3000-\u303F\uFF00-\uFFEF\u2600-\u26FF\u2700-\u27BF\u1F600-\u1F64F\u1F300-\u1F5FF\u1F680-\u1F6FF\u1F700-\u1F77F\u1F780-\u1F7FF\u1F800-\u1F8FF\u1F900-\u1F9FF\u2000-\u206F\u0020-\u007E\u00A0-\u00FF\s]/g, '');
+        }
+        
+        return text;
+    },
+
     async postTweet() {
         const textarea = document.getElementById('postTextarea');
-        const content = textarea.value.trim();
+        let content = textarea.value.trim();
         const imageFile = this.state.selectedImage;
 
         if (!content && !imageFile && !this.state.selectedShop) {
             alert('投稿内容を入力するか、画像、または店舗を選択してください');
+            return;
+        }
+
+        // テキストをフィルタリング
+        const filteredContent = this.filterText(content);
+        
+        // フィルタリング後に内容が変わった場合は警告
+        if (filteredContent !== content) {
+            alert('使用できない文字が含まれていました。自動的に修正されました。');
+            content = filteredContent;
+            textarea.value = content;
+            
+            // 文字数カウンターを更新
+            const length = content.length;
+            const charCounter = document.getElementById('charCounter');
+            charCounter.textContent = `${length}/200`;
+            
+            // 文字数に応じて色を変更
+            charCounter.classList.remove('warning', 'error');
+            if (length > 180) {
+                charCounter.classList.add('error');
+            } else if (length > 150) {
+                charCounter.classList.add('warning');
+            }
+            
+            // ボタンの状態を更新
+            const tweetBtn = document.getElementById('tweetBtn');
+            tweetBtn.disabled = (!content.trim() && !this.state.selectedImage && !this.state.selectedShop) || length > 200;
+            
             return;
         }
 
@@ -492,8 +596,73 @@ const TimelineComponent = {
         }
     },
 
+    // IPアドレスから位置情報を取得
+    async getLocationFromIP() {
+        try {
+            // ipinfo.ioを使用してIPアドレスから位置情報を取得
+            const response = await fetch('https://ipinfo.io/json');
+            
+            if (!response.ok) {
+                throw new Error('位置情報の取得に失敗しました');
+            }
+            
+            const data = await response.json();
+            
+            // ipinfo.ioのレスポンス形式に対応
+            if (data.error) {
+                throw new Error(data.error.message || '位置情報の取得に失敗しました');
+            }
+            
+            // locフィールドから緯度経度を抽出
+            const [lat, lng] = data.loc ? data.loc.split(',').map(coord => parseFloat(coord)) : [null, null];
+            
+            if (!lat || !lng) {
+                throw new Error('位置情報の取得に失敗しました');
+            }
+            
+            return {
+                lat: lat,
+                lng: lng,
+                city: data.city || '',
+                country: data.country || '',
+                region: data.region || '',
+                postal: data.postal || '',
+                timezone: data.timezone || '',
+                org: data.org || ''
+            };
+            
+        } catch (error) {
+            console.error('IPベースの位置取得に失敗しました:', error);
+            
+            // デフォルト位置（東京）を返す
+            return {
+                lat: 35.6762,
+                lng: 139.6503,
+                city: '東京',
+                country: '日本'
+            };
+        }
+    },
+
+    // 最寄りのラーメン店を取得
+    async getNearbyShops(lat, lng, radius = 30) {
+        try {
+            const response = await fetch(`/api/v1/ramen/nearby?latitude=${lat}&longitude=${lng}&radius_km=${radius}`);
+            
+            if (!response.ok) {
+                throw new Error('最寄りの店舗情報の取得に失敗しました');
+            }
+            
+            const data = await response.json();
+            return data.shops || [];
+        } catch (error) {
+            console.error('最寄りの店舗情報の取得に失敗しました:', error);
+            return [];
+        }
+    },
+
     // 店舗選択モーダルを開く
-    openShopModal() {
+    async openShopModal() {
         const modal = document.createElement('div');
         modal.className = 'shop-modal-overlay';
         modal.innerHTML = `
@@ -507,7 +676,7 @@ const TimelineComponent = {
                     <button onclick="TimelineComponent.searchShops()"><i class="fas fa-search"></i></button>
                 </div>
                 <div class="shop-modal-results" id="shopSearchResults">
-                    <div class="loading">検索中...</div>
+                    <div class="loading">最寄りの店舗を検索中...</div>
                 </div>
             </div>
         `;
@@ -599,6 +768,11 @@ const TimelineComponent = {
                 font-size: 14px;
                 color: #666;
             }
+            .shop-result-distance {
+                font-size: 12px;
+                color: #d4a574;
+                margin-top: 4px;
+            }
             .no-shop-results {
                 padding: 20px;
                 text-align: center;
@@ -638,8 +812,35 @@ const TimelineComponent = {
             }, 500);
         });
         
-        // 初回検索を実行
-        this.searchShops();
+        // IPから位置情報を取得して最寄りの店舗を表示
+        try {
+            const location = await this.getLocationFromIP();
+            const nearbyShops = await this.getNearbyShops(location.lat, location.lng);
+            this.renderShopResults(nearbyShops);
+        } catch (error) {
+            console.error('最寄りの店舗の取得に失敗しました:', error);
+            // エラーの場合は通常の検索を実行
+            this.searchShops();
+        }
+    },
+
+    // 店舗検索結果をレンダリング
+    renderShopResults(shops) {
+        const resultsContainer = document.getElementById('shopSearchResults');
+        
+        if (shops.length === 0) {
+            resultsContainer.innerHTML = '<div class="no-shop-results">条件に一致する店舗が見つかりませんでした</div>';
+        } else {
+            resultsContainer.innerHTML = shops.map(shop => `
+                <div class="shop-result-item" onclick="TimelineComponent.selectShop(${shop.id})">
+                    <div class="shop-result-name">${shop.name}</div>
+                    <div class="shop-result-address">${shop.address}</div>
+                    ${shop.distance ? `<div class="shop-result-distance">約${shop.distance}km</div>` : ''}
+                </div>
+            `).join('');
+        }
+        
+        this.state.shopSearchResults = shops;
     },
 
     // 店舗検索
@@ -649,18 +850,7 @@ const TimelineComponent = {
         
         try {
             const shops = await API.getShops(this.state.shopSearchQuery, {});
-            this.state.shopSearchResults = shops;
-            
-            if (shops.length === 0) {
-                resultsContainer.innerHTML = '<div class="no-shop-results">条件に一致する店舗が見つかりませんでした</div>';
-            } else {
-                resultsContainer.innerHTML = shops.map(shop => `
-                    <div class="shop-result-item" onclick="TimelineComponent.selectShop(${shop.id})">
-                        <div class="shop-result-name">${shop.name}</div>
-                        <div class="shop-result-address">${shop.address}</div>
-                    </div>
-                `).join('');
-            }
+            this.renderShopResults(shops);
         } catch (error) {
             console.error('店舗検索に失敗しました:', error);
             resultsContainer.innerHTML = '<div class="no-shop-results">検索中にエラーが発生しました</div>';
@@ -734,44 +924,13 @@ const TimelineComponent = {
         
         if (content.classList.contains('collapsed')) {
             content.classList.remove('collapsed');
-            button.textContent = '閉じる';
+            button.textContent = '続きを見る';
         } else {
             content.classList.add('collapsed');
-            button.textContent = '続きを見る';
+            button.textContent = '閉じる';
         }
     },
     
-    // 投稿HTMLを作成する静的メソッド（他のコンポーネントから呼び出し用）
-    createPostHTML(post) {
-        // ユーザーハンドルの@を除去してエスケープ
-        const userHandle = post.user.handle ? post.user.handle.substring(1) : '';
-        const escapedUserHandle = API.escapeHtml(userHandle);
-        
-        return `
-            <div class="post-card" id="post-${post.id}" onclick="router.navigate('comment', [${post.id}])">
-                <div class="post-header" onclick="event.stopPropagation(); router.navigate('profile', ['${escapedUserHandle}'])">
-                    <div class="post-avatar">${post.user.avatar}</div>
-                    <div class="post-user-info">
-                        <div class="post-username">
-                            <span>${API.escapeHtml(post.user.name)}</span>
-                            <span class="post-meta">${API.escapeHtml(post.user.handle)} · ${API.escapeHtml(post.time)}</span>
-                        </div>
-                    </div>
-                </div>
-                <div class="post-text" id="post-text-${post.id}">
-                    <div class="post-content" id="post-content-${post.id}">${API.escapeHtmlWithLineBreaks(post.text)}</div>
-                    ${this.isLongText(post.text) ? `<button class="show-more-btn" onclick="event.stopPropagation(); TimelineComponent.toggleText(${post.id})">続きを見る</button>` : ''}
-                </div>
-                ${post.image ? `<div class="post-image"><img src="${API.escapeHtml(post.image)}" style="width:100%; border-radius: 16px; margin-top: 12px;" alt="Post image"></div>` : ''}
-                <div class="post-engagement">
-                    <button class="engagement-btn" onclick="event.stopPropagation(); TimelineComponent.openCommentModal(${post.id})"><i class="fas fa-comment"></i> ${post.engagement.comments}</button>
-                    <button class="engagement-btn" onclick="event.stopPropagation(); TimelineComponent.handleLike(${post.id})">
-                        <i class="fas fa-heart ${post.isLiked ? 'liked' : ''}"></i> <span>${post.engagement.likes}</span>
-                    </button>
-                </div>
-            </div>
-        `;
-    },
     
     // 店舗検索して移動
     async searchAndNavigateToShop(shopName) {

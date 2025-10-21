@@ -448,15 +448,18 @@ const MapComponent = {
                     width: 350px;
                     height: 100%;
                     background: white;
-                    z-index: 1010;
+                    z-index: 5; /* 非表示時は低いz-index */
                     transform: translateX(-100%);
-                    transition: transform 0.3s ease-in-out;
+                    transition: transform 0.3s ease-in-out, z-index 0.3s ease-in-out;
                     box-shadow: 2px 0 10px rgba(0,0,0,0.1);
                     overflow-y: auto;
+                    visibility: hidden; /* 非表示時は完全に見えなくする */
                 }
 
                 .shop-detail-panel.show {
                     transform: translateX(0);
+                    z-index: 1010; /* 表示時は高いz-index */
+                    visibility: visible; /* 表示時は見えるようにする */
                 }
 
                 .dark-mode .shop-detail-panel {
@@ -473,10 +476,12 @@ const MapComponent = {
                         left: 0;
                         transform: translateY(100%);
                         border-top: 1px solid #e0e0e0;
+                        visibility: hidden; /* 非表示時は完全に見えなくする */
                     }
 
                     .shop-detail-panel.show {
                         transform: translateY(0);
+                        visibility: visible; /* 表示時は見えるようにする */
                     }
 
                     .dark-mode .shop-detail-panel {

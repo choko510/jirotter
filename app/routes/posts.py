@@ -77,20 +77,53 @@ async def create_post(
 async def get_posts(
     page: int = Query(1, ge=1, description="ページ番号"),
     per_page: int = Query(20, ge=1, le=100, description="1ページあたりの投稿数"),
+    timeline_type: str = Query("recommend", description="タイムラインの種類: recommend または following"),
     current_user: Optional[User] = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
     """投稿一覧取得エンドポイント"""
     try:
-        total = db.query(Post).count()
-        pages = (total + per_page - 1) // per_page
+        # フォロー中のタイムラインを取得する場合
+        if timeline_type == "following":
+            if not current_user:
+                raise HTTPException(
+                    status_code=status.HTTP_401_UNAUTHORIZED,
+                    detail="フォロー中のタイムラインを表示するにはログインが必要です"
+                )
+            
+            # フォロー中のユーザーIDリストを取得
+            following_ids = db.query(Follow.followed_id).filter(
+                Follow.follower_id == current_user.id
+            ).all()
+            following_ids = [fid[0] for fid in following_ids]
+            
+            # 自分自身も含める
+            following_ids.append(current_user.id)
+            
+            # フォロー中のユーザーの投稿を取得
+            posts_query = db.query(Post).filter(
+                Post.user_id.in_(following_ids)
+            ).options(
+                joinedload(Post.author),
+                joinedload(Post.replies).joinedload(Reply.author),
+                joinedload(Post.shop)
+            )
+            
+            total = db.query(Post).filter(
+                Post.user_id.in_(following_ids)
+            ).count()
+        else:
+            # おすすめタイムライン（全投稿）
+            total = db.query(Post).count()
+            
+            # N+1問題を解決するためにeager loadingを使用
+            posts_query = db.query(Post).options(
+                joinedload(Post.author),
+                joinedload(Post.replies).joinedload(Reply.author),
+                joinedload(Post.shop)
+            )
         
-        # N+1問題を解決するためにeager loadingを使用
-        posts_query = db.query(Post).options(
-            joinedload(Post.author),
-            joinedload(Post.replies).joinedload(Reply.author),
-            joinedload(Post.shop)
-        )
+        pages = (total + per_page - 1) // per_page
 
         posts = posts_query.order_by(desc(Post.created_at)).offset(
             (page - 1) * per_page

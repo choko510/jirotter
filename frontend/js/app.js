@@ -24,7 +24,9 @@ const API = {
     // タイムライン取得
     async getTimeline(tab, page = 1) {
         try {
-            const response = await fetch(`/api/v1/posts?page=${page}&per_page=20`, {
+            // タブに応じてタイムラインの種類を指定
+            const timelineType = tab === 'following' ? 'following' : 'recommend';
+            const response = await fetch(`/api/v1/posts?page=${page}&per_page=20&timeline_type=${timelineType}`, {
                 headers: this.getAuthHeader()
             });
             
@@ -44,8 +46,11 @@ const API = {
                 text: post.content,
                 image: post.image_url,
                 time: this.formatTime(post.created_at),
+                shop_id: post.shop_id,
+                shop_name: post.shop_name,
+                shop_address: post.shop_address,
                 engagement: {
-                    comments: post.replies.length,
+                    comments: post.replies_count,
                     retweets: 0,
                     likes: post.likes_count,
                     shares: 0
@@ -137,8 +142,11 @@ const API = {
                 text: post.content,
                 image: post.image_url,
                 time: this.formatTime(post.created_at),
+                shop_id: post.shop_id,
+                shop_name: post.shop_name,
+                shop_address: post.shop_address,
                 engagement: {
-                    comments: post.replies.length,
+                    comments: post.replies_count,
                     retweets: 0,
                     likes: post.likes_count,
                     shares: 0
@@ -177,7 +185,29 @@ const API = {
             }
 
             const data = await response.json();
-            return { success: true, post: data };
+            // 新規投稿のデータも店舗情報を含めるように変換
+            const formattedPost = {
+                id: data.id,
+                user: {
+                    name: data.author_username,
+                    handle: `@${data.author_username}`,
+                    avatar: '<i class="fas fa-user"></i>'
+                },
+                text: data.content,
+                image: data.image_url,
+                time: this.formatTime(data.created_at),
+                shop_id: data.shop_id,
+                shop_name: data.shop_name,
+                shop_address: data.shop_address,
+                engagement: {
+                    comments: 0,
+                    retweets: 0,
+                    likes: 0,
+                    shares: 0
+                },
+                isLiked: false
+            };
+            return { success: true, post: formattedPost };
         } catch (error) {
             console.error('投稿に失敗しました:', error);
             return { success: false, error: error.message };
