@@ -98,6 +98,17 @@ const MapComponent = {
         }
     },
 
+    // フィルターエリアの開閉
+    toggleFilters() {
+        const container = document.getElementById('collapsible-filters');
+        const button = document.getElementById('toggle-filters-btn');
+        container.classList.toggle('collapsed');
+        button.classList.toggle('collapsed');
+
+        // CSSのtransform: rotateでアイコンの向きを制御するため、
+        // JavaScriptでのクラス切り替えは不要。
+    },
+
     // 初期化
     init() {
         // 初期化処理はrender内で行う
@@ -215,13 +226,43 @@ const MapComponent = {
                 position: relative;
             }
             
+            .map-title-container {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+
             .map-title {
                 font-size: 20px;
                 font-weight: bold;
-                margin-bottom: 8px;
+                margin: 0;
                 display: flex;
                 align-items: center;
                 gap: 8px;
+            }
+
+            .toggle-filters-btn {
+                background: transparent;
+                border: none;
+                font-size: 18px;
+                cursor: pointer;
+                padding: 4px;
+                transition: transform 0.3s ease;
+            }
+
+            .toggle-filters-btn.collapsed {
+                transform: rotate(180deg);
+            }
+
+            .collapsible-filters {
+                max-height: none; /* 高さ制限を解除し、すべてのフィルターが表示されるようにする */
+                overflow: hidden;
+                transition: max-height 0.5s ease-in-out;
+            }
+
+            .collapsible-filters.collapsed {
+                max-height: 0;
             }
             
             .map-controls {
@@ -719,12 +760,29 @@ const MapComponent = {
         const header = document.createElement('div');
         header.className = 'map-header';
         
-        // タイトル
+        // タイトルとトグルボタン
+        const titleContainer = document.createElement('div');
+        titleContainer.className = 'map-title-container';
+
         const title = document.createElement('h1');
         title.className = 'map-title';
         title.innerHTML = '<i class="fas fa-map-marked-alt"></i>店舗マップ';
-        header.appendChild(title);
-        
+
+        const toggleBtn = document.createElement('button');
+        toggleBtn.id = 'toggle-filters-btn';
+        toggleBtn.className = 'toggle-filters-btn';
+        toggleBtn.onclick = () => this.toggleFilters();
+        toggleBtn.innerHTML = '<i class="fas fa-chevron-up"></i>'; // 初期アイコン
+
+        titleContainer.appendChild(title);
+        titleContainer.appendChild(toggleBtn);
+        header.appendChild(titleContainer);
+
+        // 開閉可能なフィルターコンテナ
+        const collapsibleContainer = document.createElement('div');
+        collapsibleContainer.id = 'collapsible-filters';
+        collapsibleContainer.className = 'collapsible-filters';
+
         // コントロール
         const controls = document.createElement('div');
         controls.className = 'map-controls';
@@ -755,7 +813,7 @@ const MapComponent = {
         
         controls.appendChild(search);
         controls.appendChild(locationBtn);
-        header.appendChild(controls);
+        collapsibleContainer.appendChild(controls);
         
         // ブランドフィルター
         const brandFilters = document.createElement('div');
@@ -789,7 +847,8 @@ const MapComponent = {
         filterActions.appendChild(clearBtn);
         brandFilters.appendChild(filterActions);
         
-        header.appendChild(brandFilters);
+        collapsibleContainer.appendChild(brandFilters);
+        header.appendChild(collapsibleContainer);
         container.appendChild(header);
         
         // コンテンツ
