@@ -8,10 +8,13 @@ class User(Base):
     __tablename__ = 'users'
     
     id = Column(String(80), primary_key=True, unique=True, nullable=False)
+    username = Column(String(80), nullable=False, default='')
     email = Column(String(120), unique=True, nullable=False)
     password_hash = Column(String(128), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
-    
+    bio = Column(Text, nullable=True)
+    profile_image_url = Column(String(255), nullable=True)
+
     # Relationships
     posts = relationship('Post', backref='author', lazy=True, cascade='all, delete-orphan')
     likes = relationship('Like', backref='user', lazy=True, cascade='all, delete-orphan')
@@ -32,10 +35,6 @@ class User(Base):
         cascade='all, delete-orphan'
     )
     
-    @property
-    def username(self):
-        return self.id
-
     def set_password(self, password):
         from app.utils.auth import get_password_hash
         self.password_hash = get_password_hash(password)

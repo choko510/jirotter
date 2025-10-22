@@ -4,8 +4,8 @@ from typing import List
 
 from database import get_db
 from app.models import User, Follow
-from app.schemas import UserProfileResponse, UserResponse
-from app.utils.auth import get_current_user_optional
+from app.schemas import UserProfileResponse, UserResponse, UserUpdate
+from app.utils.auth import get_current_user, get_current_user_optional
 
 router = APIRouter(tags=["users"])
 
@@ -39,10 +39,47 @@ async def get_user_profile(
         username=user.username,
         email=user.email,
         created_at=user.created_at,
+        bio=user.bio,
+        profile_image_url=user.profile_image_url,
         followers_count=followers_count,
         following_count=following_count,
         posts_count=posts_count,
         is_following=is_following
+    )
+
+@router.put("/users/me", response_model=UserProfileResponse)
+async def update_user_profile(
+    user_update: UserUpdate,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """認証済みユーザーのプロフィールを更新する"""
+    if user_update.username is not None:
+        current_user.username = user_update.username
+    if user_update.bio is not None:
+        current_user.bio = user_update.bio
+    if user_update.profile_image_url is not None:
+        current_user.profile_image_url = user_update.profile_image_url
+
+    db.commit()
+    db.refresh(current_user)
+
+    # UserProfileResponseに必要な情報を再計算
+    followers_count = current_user.followers.count()
+    following_count = current_user.following.count()
+    posts_count = len(current_user.posts)
+
+    return UserProfileResponse(
+        id=current_user.id,
+        username=current_user.username,
+        email=current_user.email,
+        created_at=current_user.created_at,
+        bio=current_user.bio,
+        profile_image_url=current_user.profile_image_url,
+        followers_count=followers_count,
+        following_count=following_count,
+        posts_count=posts_count,
+        is_following=False # 自分自身なので常にFalse
     )
 
 @router.post("/users/{user_id}/follow", status_code=status.HTTP_204_NO_CONTENT)

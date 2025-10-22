@@ -37,8 +37,41 @@ class UserResponse(BaseModel):
     username: str
     email: EmailStr
     created_at: datetime
+    bio: Optional[str] = None
+    profile_image_url: Optional[str] = None
+
+class UserUpdate(BaseModel):
+    username: Optional[str] = None
+    bio: Optional[str] = None
+    profile_image_url: Optional[str] = None
+
+    @field_validator('username')
+    @classmethod
+    def validate_username_update(cls, v):
+        if v is not None:
+            if not re.match(r'^[a-zA-Z0-9_]{3,20}$', v):
+                raise ValueError('ユーザー名は3〜20文字の英数字とアンダースコア(_)のみ使用できます')
+        return v
+
+    @field_validator('bio')
+    @classmethod
+    def validate_bio_length(cls, v):
+        if v is not None and len(v) > 200:
+            raise ValueError('自己紹介は200文字以内で入力してください')
+        return v
+
+    @field_validator('profile_image_url')
+    @classmethod
+    def validate_url(cls, v):
+        if v is not None and v.strip() != '':
+            # 簡単なURL形式のチェック
+            if not re.match(r'^https?://[^\s/$.?#].[^\s]*$', v):
+                raise ValueError('有効なURLを入力してください')
+        return v
 
 class UserProfileResponse(UserResponse):
+    bio: Optional[str] = None
+    profile_image_url: Optional[str] = None
     followers_count: int
     following_count: int
     posts_count: int

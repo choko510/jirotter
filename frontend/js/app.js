@@ -515,6 +515,31 @@ const API = {
             console.error('通報に失敗しました:', error);
             return { success: false, error: error.message };
         }
+    },
+
+    // プロフィール更新
+    async updateUserProfile(updateData) {
+        try {
+            const response = await fetch('/api/v1/users/me', {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    ...this.getAuthHeader()
+                },
+                body: JSON.stringify(updateData)
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || 'プロフィールの更新に失敗しました');
+            }
+
+            const data = await response.json();
+            return { success: true, user: data };
+        } catch (error) {
+            console.error('プロフィールの更新に失敗しました:', error);
+            return { success: false, error: error.message };
+        }
     }
 };
 

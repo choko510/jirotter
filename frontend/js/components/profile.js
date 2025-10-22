@@ -41,6 +41,28 @@ const ProfileComponent = {
                 .dark-mode .profile-tabs { border-bottom-color: #333; }
                 .dark-mode .profile-post-item { border-color: #333; }
                 .dark-mode .profile-tab.active { color: #d4a574; }
+
+                /* Profile Edit Modal Styles */
+                .profile-edit-modal-overlay {
+                    position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+                    background: rgba(0,0,0,0.5); display: flex;
+                    justify-content: center; align-items: center; z-index: 1000;
+                }
+                .profile-edit-modal {
+                    background: #fff; padding: 20px; border-radius: 8px;
+                    width: 90%; max-width: 500px;
+                }
+                .dark-mode .profile-edit-modal { background: #2d2d2d; }
+                .profile-edit-modal h2 { margin-top: 0; }
+                .profile-edit-modal .form-group { margin-bottom: 15px; }
+                .profile-edit-modal label { display: block; margin-bottom: 5px; }
+                .profile-edit-modal input, .profile-edit-modal textarea {
+                    width: 100%; padding: 8px; border: 1px solid #ccc; border-radius: 4px;
+                }
+                .dark-mode .profile-edit-modal input, .dark-mode .profile-edit-modal textarea {
+                    background: #333; border-color: #555; color: #fff;
+                }
+                .profile-edit-modal .modal-actions { text-align: right; }
             </style>
             <div id="profileContainer">
                 <div class="loading">プロフィールを読み込み中...</div>
@@ -98,7 +120,7 @@ const ProfileComponent = {
 
             let actionButtonHtml = '';
             if (isOwnProfile) {
-                actionButtonHtml = `<button onclick="alert('プロフィール編集機能は現在実装中です。')" style="padding: 6px 12px; border-radius: 15px; cursor: pointer;">プロフィールを編集</button>`;
+                actionButtonHtml = `<button onclick="ProfileComponent.showEditModal()" style="padding: 6px 12px; border-radius: 15px; cursor: pointer;">プロフィールを編集</button>`;
             } else {
                 actionButtonHtml = `
                     <button id="followBtn" onclick="ProfileComponent.toggleFollow('${id}')" style="padding: 6px 12px; border-radius: 15px; cursor: pointer;">
@@ -121,13 +143,16 @@ const ProfileComponent = {
                 `;
             }
 
+            const avatarSrc = this.state.user.profile_image_url || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"></svg>';
+
             container.innerHTML = `
                 <div class="profile-page">
                     <div class="profile-header">
-                        <div class="profile-avatar"></div>
+                        <img src="${avatarSrc}" alt="${username}のアバター" class="profile-avatar">
                         <div>
                             <div class="profile-name">${username}</div>
                             <div class="profile-id">@${id}</div>
+                            <div class="profile-bio">${this.state.user.bio || ''}</div>
                             <div class="profile-stats">
                                 ${statsHtml}
                             </div>
@@ -288,6 +313,67 @@ const ProfileComponent = {
             if(followBtn) followBtn.textContent = this.state.user.is_following ? 'フォロー解除' : 'フォローする';
             if(followersCountEl) followersCountEl.textContent = this.state.user.followers_count;
             alert('フォロー/フォロー解除に失敗しました。');
+        }
+    },
+
+    showEditModal() {
+        if (!this.state.user) return;
+
+        const modalOverlay = document.createElement('div');
+        modalOverlay.className = 'profile-edit-modal-overlay';
+        modalOverlay.onclick = (e) => {
+            if (e.target === modalOverlay) {
+                document.body.removeChild(modalOverlay);
+            }
+        };
+
+        const modalContent = `
+            <div class="profile-edit-modal">
+                <h2>プロフィールを編集</h2>
+                <div class="form-group">
+                    <label for="username">ニックネーム</label>
+                    <input type="text" id="username" value="${this.state.user.username || ''}">
+                </div>
+                <div class="form-group">
+                    <label for="bio">自己紹介</label>
+                    <textarea id="bio" rows="4">${this.state.user.bio || ''}</textarea>
+                </div>
+                <div class="form-group">
+                    <label for="profileImageUrl">アイコンURL</label>
+                    <input type="text" id="profileImageUrl" value="${this.state.user.profile_image_url || ''}">
+                </div>
+                <div class="modal-actions">
+                    <button onclick="document.body.removeChild(document.querySelector('.profile-edit-modal-overlay'))">キャンセル</button>
+                    <button onclick="ProfileComponent.handleUpdateProfile()">保存</button>
+                </div>
+            </div>
+        `;
+
+        modalOverlay.innerHTML = modalContent;
+        document.body.appendChild(modalOverlay);
+    },
+
+    async handleUpdateProfile() {
+        const username = document.getElementById('username').value;
+        const bio = document.getElementById('bio').value;
+        const profileImageUrl = document.getElementById('profileImageUrl').value;
+
+        const updateData = {
+            username,
+            bio,
+            profile_image_url: profileImageUrl
+        };
+
+        const result = await API.updateUserProfile(updateData);
+
+        if (result.success) {
+            this.state.user = { ...this.state.user, ...result.user };
+            // 更新されたユーザー情報をクッキーに保存
+            API.setCookie('user', JSON.stringify(this.state.user));
+            this.updateDOM();
+            document.body.removeChild(document.querySelector('.profile-edit-modal-overlay'));
+        } else {
+            alert(`更新に失敗しました: ${result.error}`);
         }
     }
 };
