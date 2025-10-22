@@ -11,3 +11,4 @@ alembic
 pydantic[email]
 aiohttp
 openai
+pytest-playwright
