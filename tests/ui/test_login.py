@@ -24,6 +24,7 @@ def create_test_user():
     # 新しいユーザーを作成
     user = User(
         id=TEST_USER_ID,
+        username=TEST_USER_ID, # usernameを追加
         email=TEST_USER_EMAIL,
     )
     user.set_password(TEST_USER_PASSWORD)

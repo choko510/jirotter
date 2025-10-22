@@ -1490,7 +1490,7 @@ const MapComponent = {
                 closed_day: shop.closed_day,
                 seats: shop.seats,
                 distance: shop.distance,
-                description: `${shop.address}<br>営業時間: ${shop.business_hours || '不明'}<br>定休日: ${shop.closed_day || '不明'}<br>距離: 約${shop.distance}km`
+                description: `${shop.address}<br>営業時間: ${shop.business_hours || '不明'}<br>定休日: ${shop.closed_day || '不明'}${shop.distance !== undefined ? `<br>距離: 約${shop.distance}km` : ''}`
             };
             
             const shopId = shop.id;
@@ -1773,32 +1773,14 @@ const MapComponent = {
         if (!query) return;
         
         try {
-            // Nominatim APIを使用して地名検索
-            const response = await fetch(`https://nominatim.openstreetmap.org/search?format=json&q=${encodeURIComponent(query)}`);
+            // API.getShopsを使用して店舗を検索
+            const shops = await API.getShops(query);
             
-            if (!response.ok) {
-                throw new Error('検索に失敗しました');
-            }
-            
-            const data = await response.json();
-            
-            if (data && data.length > 0) {
-                const result = data[0];
-                const lat = parseFloat(result.lat);
-                const lng = parseFloat(result.lon);
-                
-                this.state.map.setView([lat, lng], 15);
-                
-                // 検索結果にマーカーを追加
-                L.marker([lat, lng])
-                    .addTo(this.state.map)
-                    .bindPopup(`<b>${result.display_name}</b>`)
-                    .openPopup();
-                
-                // 検索位置周辺のラーメン店を再取得
-                await this.addNearbyShops({ lat, lng });
+            if (shops && shops.length > 0) {
+                // 検索結果でマーカーを更新
+                this.updateMarkersWithSearchResults(shops);
             } else {
-                this.showError('場所が見つかりませんでした');
+                this.showError('店舗が見つかりませんでした');
             }
         } catch (error) {
             console.error('検索に失敗しました:', error);
@@ -1969,30 +1951,15 @@ const MapComponent = {
     updateMarkersWithSearchResults(shops) {
         if (!this.state.map) return;
 
-        if (shops.length === 0) {
-            this.clearShopMarkers();
-            return;
+        // 検索結果でマーカーを更新
+        this.updateShopMarkers(shops);
+
+        if (shops.length > 0) {
+            // 地図の表示範囲を調整
+            const latLngs = shops.map(s => [s.latitude, s.longitude]);
+            const bounds = L.latLngBounds(latLngs);
+            this.state.map.fitBounds(bounds, { padding: [50, 50] });
         }
-
-        // 新しいマーカーを追加
-        shops.forEach(shop => {
-            const shopData = {
-                id: shop.id,
-                name: shop.name,
-                type: 'jiro', // 仮
-                lat: shop.latitude,
-                lng: shop.longitude,
-                address: shop.address,
-                description: shop.address
-            };
-            const newMarker = this.addShopMarker(shopData);
-            this.state.markers.set(shop.id, newMarker);
-        });
-
-        // 地図の表示範囲を調整
-        const latLngs = shops.map(s => [s.latitude, s.longitude]);
-        const bounds = L.latLngBounds(latLngs);
-        this.state.map.fitBounds(bounds, { padding: [50, 50] });
     }
 };
 
