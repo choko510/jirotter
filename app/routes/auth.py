@@ -25,6 +25,7 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
     # ユーザー作成
     user = User(
         id=user_data.id,
+        username=user_data.id, # ユーザー名をIDと同じ値で初期化
         email=user_data.email
     )
     user.set_password(user_data.password)

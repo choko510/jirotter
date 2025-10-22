@@ -19,10 +19,23 @@ def validate_registration_data(data: dict, db: Session) -> dict:
     elif '@' not in data.get('email'):
         errors['email'] = '有効なメールアドレスを入力してください'
     
-    if not data.get('password'):
+    password = data.get('password', '')
+    if not password:
         errors['password'] = 'パスワードは必須です'
-    elif len(data.get('password')) < 6:
-        errors['password'] = 'パスワードは6文字以上で入力してください'
+    elif len(password) < 8:
+        errors['password'] = 'パスワードは8文字以上で入力してください'
+    else:
+        # 英字、数字、記号のチェック
+        char_types = 0
+        if re.search(r'[a-zA-Z]', password):
+            char_types += 1
+        if re.search(r'[0-9]', password):
+            char_types += 1
+        if re.search(r'[^a-zA-Z0-9]', password):
+            char_types += 1
+
+        if char_types < 2:
+            errors['password'] = 'パスワードには英字、数字、記号のうち少なくとも2種類を含めてください'
     
     # 既存ユーザーのチェック
     if db.query(User).filter(User.id == data.get('id')).first():
