@@ -143,7 +143,7 @@ const SearchComponent = {
             <div class="result-item" data-shop-id="${shop.id}">
                 <div class="shop-name">${shop.name}</div>
                 <div class="shop-address">${shop.address}</div>
-                ${shop.distance ? `<div class="shop-distance">約${shop.distance.toFixed(2)}km</div>` : ''}
+                ${shop.distance ? `<div class="shop-distance">約${Math.round(shop.distance)}km</div>` : ''}
             </div>
         `).join('');
 
