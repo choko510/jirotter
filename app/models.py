@@ -8,7 +8,7 @@ class User(Base):
     __tablename__ = 'users'
     
     id = Column(String(80), primary_key=True, unique=True, nullable=False)
-    username = Column(String(80), nullable=False, default='')
+    username = Column(String(80), unique=True, nullable=False, default='')
     email = Column(String(120), unique=True, nullable=False)
     password_hash = Column(String(128), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)

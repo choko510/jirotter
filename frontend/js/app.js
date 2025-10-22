@@ -618,12 +618,43 @@ const Utils = {
     logout() {
         API.setCookie('authToken', '', -1);
         API.setCookie('user', '', -1);
-        alert('ログアウトしました');
+        this.showNotification('ログアウトしました', 'success');
         router.navigate('auth', ['login']);
         this.updateUserProfileUI();
     },
 
-    // ... (その他のUtils関数は変更なし)
+    // 通知表示
+    showNotification(message, type = 'info', duration = 3000) {
+        let container = document.getElementById('notification-container');
+        if (!container) {
+            container = document.createElement('div');
+            container.id = 'notification-container';
+            container.className = 'notification-container';
+            document.body.appendChild(container);
+        }
+
+        const notification = document.createElement('div');
+        notification.className = `notification ${type}`;
+        notification.textContent = message;
+
+        container.appendChild(notification);
+
+        // Show notification
+        setTimeout(() => {
+            notification.classList.add('show');
+        }, 10); // Short delay to allow CSS transition
+
+        // Hide and remove notification
+        setTimeout(() => {
+            notification.classList.remove('show');
+            notification.addEventListener('transitionend', () => {
+                container.removeChild(notification);
+                if (container.childElementCount === 0) {
+                    document.body.removeChild(container);
+                }
+            });
+        }, duration);
+    }
 };
 
 // グローバル関数（HTMLからの呼び出し用）

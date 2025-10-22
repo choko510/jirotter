@@ -55,7 +55,15 @@ async def update_user_profile(
 ):
     """認証済みユーザーのプロフィールを更新する"""
     if user_update.username is not None:
+        # ユーザー名の重複チェック
+        existing_user = db.query(User).filter(User.username == user_update.username).first()
+        if existing_user and existing_user.id != current_user.id:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="このニックネームは既に使用されています"
+            )
         current_user.username = user_update.username
+
     if user_update.bio is not None:
         current_user.bio = user_update.bio
     if user_update.profile_image_url is not None:
