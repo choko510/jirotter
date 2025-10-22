@@ -258,7 +258,7 @@ const MapComponent = {
             }
 
             .collapsible-filters {
-                max-height: 500px; /* 十分な高さを確保 */
+                max-height: none; /* 高さ制限を解除し、すべてのフィルターが表示されるようにする */
                 overflow: hidden;
                 transition: max-height 0.5s ease-in-out;
             }
