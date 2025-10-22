@@ -102,8 +102,6 @@ const MapComponent = {
     toggleFilters() {
         const container = document.getElementById('collapsible-filters');
         const button = document.getElementById('toggle-filters-btn');
-        const icon = button.querySelector('i');
-
         container.classList.toggle('collapsed');
         button.classList.toggle('collapsed');
 
