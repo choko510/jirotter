@@ -788,30 +788,18 @@ const MapComponent = {
         controls.className = 'map-controls';
         
         // 検索
-        const search = document.createElement('div');
-        search.className = 'map-search';
-        
-        const searchInput = document.createElement('input');
-        searchInput.type = 'text';
-        searchInput.className = 'map-search-input';
-        searchInput.placeholder = '店名や住所で検索...';
-        searchInput.id = 'mapSearchInput';
-        
         const searchBtn = document.createElement('button');
-        searchBtn.className = 'map-search-btn';
-        searchBtn.onclick = () => this.searchLocation();
-        searchBtn.innerHTML = '<i class="fas fa-search"></i>';
-        
-        search.appendChild(searchInput);
-        search.appendChild(searchBtn);
+        searchBtn.className = 'map-filter-btn';
+        searchBtn.onclick = () => this.openSearchModal();
+        searchBtn.innerHTML = '<i class="fas fa-search"></i> 検索';
         
         // 現在地ボタン
         const locationBtn = document.createElement('button');
         locationBtn.className = 'map-filter-btn';
         locationBtn.onclick = () => this.getCurrentLocation();
-        locationBtn.innerHTML = '<i class="fas fa-location-arrow"></i>';
+        locationBtn.innerHTML = '<i class="fas fa-location-arrow"></i> 現在地';
         
-        controls.appendChild(search);
+        controls.appendChild(searchBtn);
         controls.appendChild(locationBtn);
         collapsibleContainer.appendChild(controls);
         
@@ -1765,26 +1753,16 @@ const MapComponent = {
         }
     },
 
-    // 位置検索
-    async searchLocation() {
-        const searchInput = document.getElementById('mapSearchInput');
-        const query = searchInput.value.trim();
-        
-        if (!query) return;
-        
-        try {
-            // API.getShopsを使用して店舗を検索
-            const shops = await API.getShops(query);
-            
-            if (shops && shops.length > 0) {
-                // 検索結果でマーカーを更新
-                this.updateMarkersWithSearchResults(shops);
-            } else {
-                this.showError('店舗が見つかりませんでした');
-            }
-        } catch (error) {
-            console.error('検索に失敗しました:', error);
-            this.showError('検索に失敗しました');
+    // 検索モーダルを開く
+    openSearchModal() {
+        SearchComponent.openModal(this.handleShopSelection.bind(this));
+    },
+
+    // 店舗選択ハンドラ
+    handleShopSelection(shop) {
+        if (shop && shop.latitude && shop.longitude) {
+            this.state.map.setView([shop.latitude, shop.longitude], 16);
+            this.showShopDetails(shop.id);
         }
     },
 

@@ -16,9 +16,7 @@ const TimelineComponent = {
         selectedImage: null,
         autoRefreshInterval: null,
         lastRefreshTime: null,
-        selectedShop: null,
-        shopSearchQuery: '',
-        shopSearchResults: []
+        selectedShop: null
     },
 
     init() {
@@ -785,208 +783,15 @@ const TimelineComponent = {
     },
 
     // 店舗選択モーダルを開く
-    async openShopModal() {
-        const modal = document.createElement('div');
-        modal.className = 'shop-modal-overlay';
-        modal.innerHTML = `
-            <div class="shop-modal">
-                <div class="shop-modal-header">
-                    <h3>店舗を選択</h3>
-                    <button class="close-modal" onclick="TimelineComponent.closeShopModal()">&times;</button>
-                </div>
-                <div class="shop-modal-search">
-                    <input type="text" id="shopSearchInput" placeholder="店名や住所を検索..." value="${this.state.shopSearchQuery}">
-                    <button onclick="TimelineComponent.searchShops()"><i class="fas fa-search"></i></button>
-                </div>
-                <div class="shop-modal-results" id="shopSearchResults">
-                    <div class="loading">最寄りの店舗を検索中...</div>
-                </div>
-            </div>
-        `;
-        
-        // モーダルのスタイルを追加
-        const style = document.createElement('style');
-        style.textContent = `
-            .shop-modal-overlay {
-                position: fixed;
-                top: 0;
-                left: 0;
-                right: 0;
-                bottom: 0;
-                background: rgba(0, 0, 0, 0.5);
-                display: flex;
-                align-items: center;
-                justify-content: center;
-                z-index: 1000;
-            }
-            .shop-modal {
-                background: white;
-                border-radius: 12px;
-                width: 90%;
-                max-width: 500px;
-                max-height: 80vh;
-                overflow: hidden;
-                display: flex;
-                flex-direction: column;
-            }
-            .shop-modal-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                padding: 16px;
-                border-bottom: 1px solid #e0e0e0;
-            }
-            .shop-modal-header h3 {
-                margin: 0;
-            }
-            .close-modal {
-                background: none;
-                border: none;
-                font-size: 24px;
-                cursor: pointer;
-                color: #666;
-            }
-            .shop-modal-search {
-                display: flex;
-                padding: 16px;
-                border-bottom: 1px solid #e0e0e0;
-            }
-            .shop-modal-search input {
-                flex: 1;
-                padding: 8px 12px;
-                border: 1px solid #e0e0e0;
-                border-radius: 20px;
-                outline: none;
-            }
-            .shop-modal-search button {
-                background: #d4a574;
-                color: white;
-                border: none;
-                border-radius: 50%;
-                width: 36px;
-                height: 36px;
-                margin-left: 8px;
-                cursor: pointer;
-            }
-            .shop-modal-results {
-                flex: 1;
-                overflow-y: auto;
-                padding: 8px;
-            }
-            .shop-result-item {
-                padding: 12px;
-                border-radius: 8px;
-                cursor: pointer;
-                margin-bottom: 8px;
-                border: 1px solid #e0e0e0;
-            }
-            .shop-result-item:hover {
-                background: #f5f5f5;
-            }
-            .shop-result-name {
-                font-weight: bold;
-                margin-bottom: 4px;
-            }
-            .shop-result-address {
-                font-size: 14px;
-                color: #666;
-            }
-            .shop-result-distance {
-                font-size: 12px;
-                color: #d4a574;
-                margin-top: 4px;
-            }
-            .no-shop-results {
-                padding: 20px;
-                text-align: center;
-                color: #666;
-            }
-            .dark-mode .shop-modal {
-                background: #2a2a2a;
-                color: #e0e0e0;
-            }
-            .dark-mode .shop-modal-header,
-            .dark-mode .shop-modal-search {
-                border-bottom-color: #333;
-            }
-            .dark-mode .shop-modal-search input {
-                background: #333;
-                border-color: #444;
-                color: #e0e0e0;
-            }
-            .dark-mode .shop-result-item {
-                border-color: #333;
-            }
-            .dark-mode .shop-result-item:hover {
-                background: #333;
-            }
-        `;
-        document.head.appendChild(style);
-        document.body.appendChild(modal);
-        
-        // 検索入力イベント
-        const searchInput = document.getElementById('shopSearchInput');
-        searchInput.addEventListener('input', (e) => {
-            this.state.shopSearchQuery = e.target.value;
-            // デバウンス処理
-            clearTimeout(this.shopSearchTimeout);
-            this.shopSearchTimeout = setTimeout(() => {
-                this.searchShops();
-            }, 500);
-        });
-        
-        // IPから位置情報を取得して最寄りの店舗を表示
-        try {
-            const location = await this.getLocationFromIP();
-            const nearbyShops = await this.getNearbyShops(location.lat, location.lng);
-            this.renderShopResults(nearbyShops);
-        } catch (error) {
-            console.error('最寄りの店舗の取得に失敗しました:', error);
-            // エラーの場合は通常の検索を実行
-            this.searchShops();
-        }
-    },
-
-    // 店舗検索結果をレンダリング
-    renderShopResults(shops) {
-        const resultsContainer = document.getElementById('shopSearchResults');
-        
-        if (shops.length === 0) {
-            resultsContainer.innerHTML = '<div class="no-shop-results">条件に一致する店舗が見つかりませんでした</div>';
-        } else {
-            resultsContainer.innerHTML = shops.map(shop => `
-                <div class="shop-result-item" onclick="TimelineComponent.selectShop(${shop.id})">
-                    <div class="shop-result-name">${shop.name}</div>
-                    <div class="shop-result-address">${shop.address}</div>
-                    ${shop.distance ? `<div class="shop-result-distance">約${shop.distance}km</div>` : ''}
-                </div>
-            `).join('');
-        }
-        
-        this.state.shopSearchResults = shops;
-    },
-
-    // 店舗検索
-    async searchShops() {
-        const resultsContainer = document.getElementById('shopSearchResults');
-        resultsContainer.innerHTML = '<div class="loading">検索中...</div>';
-        
-        try {
-            const shops = await API.getShops(this.state.shopSearchQuery, {});
-            this.renderShopResults(shops);
-        } catch (error) {
-            console.error('店舗検索に失敗しました:', error);
-            resultsContainer.innerHTML = '<div class="no-shop-results">検索中にエラーが発生しました</div>';
-        }
+    openShopModal() {
+        SearchComponent.openModal(this.selectShop.bind(this));
     },
 
     // 店舗を選択
-    selectShop(shopId) {
-        const shop = this.state.shopSearchResults.find(s => s.id === shopId);
+    selectShop(shop) {
         if (shop) {
             this.state.selectedShop = shop;
             this.renderShopPreview();
-            this.closeShopModal();
             document.getElementById('tweetBtn').disabled = false;
         }
     },
@@ -1020,14 +825,6 @@ const TimelineComponent = {
         const textarea = document.getElementById('postTextarea');
         const tweetBtn = document.getElementById('tweetBtn');
         tweetBtn.disabled = (!textarea.value.trim() && !this.state.selectedImage) || textarea.value.length > 200;
-    },
-
-    // 店舗モーダルを閉じる
-    closeShopModal() {
-        const modal = document.querySelector('.shop-modal-overlay');
-        if (modal) {
-            modal.remove();
-        }
     },
 
     openCommentModal(postId) {
