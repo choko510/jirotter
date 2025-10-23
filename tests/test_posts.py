@@ -7,7 +7,7 @@ def test_create_post_authenticated(test_client, test_db):
     user_data = {
         "id": "testuser",
         "email": "test@example.com",
-        "password": "password123"
+        "password": "password123!"
     }
     response = test_client.post("/api/v1/auth/register", json=user_data)
     token = response.json()["access_token"]
@@ -17,20 +17,20 @@ def test_create_post_authenticated(test_client, test_db):
     }
     
     post_data = {
-        "content": "これはテスト投稿です"
+        "content": "This is a test post."
     }
     
     response = test_client.post("/api/v1/posts", data=post_data, headers=headers)
     data = response.json()
     
     assert response.status_code == 201
-    assert data["content"] == "これはテスト投稿です"
+    assert data["content"] == "This is a test post."
     assert data["author_username"] == "testuser"
 
 def test_create_post_unauthenticated(test_client):
     """未認証ユーザーによる投稿作成テスト"""
     post_data = {
-        "content": "これはテスト投稿です"
+        "content": "This is a test post."
     }
     
     response = test_client.post("/api/v1/posts", data=post_data)
@@ -43,7 +43,7 @@ def test_create_post_empty_content(test_client, test_db):
     user_data = {
         "id": "testuser",
         "email": "test@example.com",
-        "password": "password123"
+        "password": "password123!"
     }
     response = test_client.post("/api/v1/auth/register", json=user_data)
     token = response.json()["access_token"]
@@ -66,7 +66,7 @@ def test_create_post_with_invalid_shop_id(test_client, test_db):
     user_data = {
         "id": "invalidshopuser",
         "email": "invalidshop@example.com",
-        "password": "password123"
+        "password": "password123!"
     }
     response = test_client.post("/api/v1/auth/register", json=user_data)
     token = response.json()["access_token"]
@@ -77,7 +77,7 @@ def test_create_post_with_invalid_shop_id(test_client, test_db):
 
     post_data = {
         "content": "店舗が存在しない場合のテスト投稿",
-        "shop_id": 999999
+        "shop_id": "999999" # フォームデータとして送信するため文字列に
     }
 
     response = test_client.post("/api/v1/posts", data=post_data, headers=headers)
@@ -92,7 +92,7 @@ def test_get_all_posts(test_client, test_db):
     user_data = {
         "id": "testuser",
         "email": "test@example.com",
-        "password": "password123"
+        "password": "password123!"
     }
     response = test_client.post("/api/v1/auth/register", json=user_data)
     token = response.json()["access_token"]
@@ -103,9 +103,10 @@ def test_get_all_posts(test_client, test_db):
     
     # 投稿作成
     post_data = {
-        "content": "これはテスト投稿です"
+        "content": "This is a test post."
     }
-    test_client.post("/api/v1/posts", data=post_data, headers=headers)
+    response = test_client.post("/api/v1/posts", data=post_data, headers=headers)
+    assert response.status_code == 201
     
     # 投稿一覧取得
     response = test_client.get("/api/v1/posts")
@@ -121,7 +122,7 @@ def test_get_single_post(test_client, test_db):
     user_data = {
         "id": "testuser",
         "email": "test@example.com",
-        "password": "password123"
+        "password": "password123!"
     }
     response = test_client.post("/api/v1/auth/register", json=user_data)
     token = response.json()["access_token"]
@@ -132,7 +133,7 @@ def test_get_single_post(test_client, test_db):
     
     # 投稿作成
     post_data = {
-        "content": "これはテスト投稿です"
+        "content": "This is a test post."
     }
     response = test_client.post("/api/v1/posts", data=post_data, headers=headers)
     created_post = response.json()
@@ -143,7 +144,7 @@ def test_get_single_post(test_client, test_db):
     
     assert response.status_code == 200
     assert data["id"] == created_post["id"]
-    assert data["content"] == "これはテスト投稿です"
+    assert data["content"] == "This is a test post."
 
 def test_get_nonexistent_post(test_client):
     """存在しない投稿取得テスト"""
@@ -157,9 +158,14 @@ def test_delete_post_owner(test_client, test_db):
     user_data = {
         "id": "testuser",
         "email": "test@example.com",
-        "password": "password123"
+        "password": "password123!"
     }
-    response = test_client.post("/api/v1/auth/register", json=user_data)
+    # 既存のユーザーでログインを試みる
+    login_data = {"id": "testuser", "password": "password123!"}
+    response = test_client.post("/api/v1/auth/login", json=login_data)
+    if response.status_code != 200:
+        response = test_client.post("/api/v1/auth/register", json=user_data)
+
     token = response.json()["access_token"]
 
     headers = {
