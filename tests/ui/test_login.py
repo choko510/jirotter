@@ -8,7 +8,7 @@ from app.models import User
 # テスト用のユーザー情報
 TEST_USER_ID = "testuser"
 TEST_USER_EMAIL = "testuser@example.com"
-TEST_USER_PASSWORD = "password"
+TEST_USER_PASSWORD = "password123!"
 
 @pytest.fixture(scope="module", autouse=True)
 def create_test_user():
@@ -58,6 +58,7 @@ def test_login_and_logout(page: Page):
     page.click("#authSubmitBtn")
 
     # 5. タイムラインにリダイレクトされることを確認
+    page.wait_for_load_state("networkidle")
     page.wait_for_url("http://localhost:8000/#timeline")
     expect(page).to_have_url("http://localhost:8000/#timeline")
 

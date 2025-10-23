@@ -1,123 +1,103 @@
-# SNS Backend API
+# RameN-Social: ラーメンファンのためのソーシャルネットワーキングサービス
 
-FastAPIを使用して構築されたSNSバックエンドAPIです。
+RameN-Socialは、ラーメン愛好家が自分のお気に入りのラーメン店について語り合ったり、新しいお店を発見したりできる、コミュニティ指向のWebアプリケーションです。
 
-## 機能
+[デモ](http://ramen-social.example.com) (リンクはダミーです)
 
-- ユーザー認証（登録、ログイン、JWTトークン認証）
-- 投稿機能（作成、取得、削除）
-- ユーザープロフィール管理
-- RESTful API設計
-- 自動APIドキュメント生成（Swagger UI）
+![スクリーンショット](https://i.imgur.com/example.png) (画像はダミーです)
 
-## 技術スタック
+## 🍜 主な機能
 
-- **バックエンド**: FastAPI
-- **データベース**: SQLite（開発用） / PostgreSQL（本番用推奨）
-- **ORM**: SQLAlchemy
-- **認証**: JWT（JSON Web Tokens）
-- **パスワードハッシュ化**: bcrypt
-- **APIドキュメント**: FastAPI自動生成（Swagger UI / ReDoc）
+- **タイムライン**: ユーザーの投稿を時系列で表示し、他のユーザーの発見を追体験できます。
+- **インタラクティブマップ**: 地図上でお近くのラーメン店を視覚的に検索できます。
+- **投稿と共有**: お気に入りの一杯やお店のレビューを写真付きで簡単に投稿できます。
+- **ユーザープロフィール**: 自己紹介や過去の投稿一覧をカスタマイズできます。
+- **フォロー機能**: 気になるユーザーをフォローして、その活動をタイムラインでチェックできます。
+- **いいね・返信**: 投稿に対して「いいね」をしたり、返信をしたりして、他のユーザーと交流できます。
 
-## セットアップ
+## 🛠️ 技術スタック
 
-1. 仮想環境を作成してアクティベート：
+本プロジェクトは、モダンな技術スタックで構築されており、高いパフォーマンスと拡張性を目指しています。
+
+- **バックエンド**:
+  - **フレームワーク**: [FastAPI](https://fastapi.tiangolo.com/)
+  - **データベース**: [SQLite](https://www.sqlite.org/index.html) (開発用) / [PostgreSQL](https://www.postgresql.org/) (本番推奨)
+  - **ORM**: [SQLAlchemy](https://www.sqlalchemy.org/)
+  - **認証**: JWT (JSON Web Tokens)
+- **フロントエンド**:
+  - **言語**: JavaScript (ES6+)
+  - **ライブラリ**: [Leaflet.js](https://leafletjs.com/) (地図), [MapLibre GL JS](https://maplibre.org/maplibre-gl-js/docs/)
+  - **アーキテクチャ**: Vanilla JSによるコンポーネントベースのSPA
+- **テスト**:
+  - **バックエンド**: [Pytest](https://docs.pytest.org/en/stable/)
+  - **フロントエンド (UI)**: [Playwright](https://playwright.dev/)
+
+## 🚀 セットアップと実行
+
+### 1. 前提条件
+
+- [Python 3.10](https://www.python.org/downloads/release/python-3100/) 以降
+- [Node.js](https://nodejs.org/ja/) (Playwrightの依存関係で必要)
+- [Poetry](https://python-poetry.org/) (推奨: 依存関係管理)
+
+### 2. インストール
+
+リポジトリをクローンし、必要な依存関係をインストールします。
+
 ```bash
-python -m venv venv
-source venv/bin/activate  # Linux/Mac
-# または
-venv\Scripts\activate  # Windows
-```
+# リポジトリをクローン
+git clone https://github.com/your-username/ramen-social.git
+cd ramen-social
 
-2. 依存関係をインストール：
-```bash
+# Pythonの依存関係をインストール
 pip install -r requirements.txt
+
+# Playwrightのブラウザ依存関係をインストール
+playwright install --with-deps
 ```
 
-3. 環境変数を設定（.envファイルを作成）：
-```
-SECRET_KEY=your-secret-key-here
-DATABASE_URL=sqlite:///./sns.db
-```
+### 3. アプリケーションの実行
 
-4. アプリケーションを実行：
+以下のコマンドでバックエンドサーバーを起動します。
+
 ```bash
 python run.py
 ```
 
-アプリケーションは http://localhost:8000 で実行されます。
+サーバーが起動したら、ブラウザで [http://localhost:8000](http://localhost:8000) にアクセスしてください。
 
-## APIドキュメント
+## ✅ テストの実行
 
-- **Swagger UI**: http://localhost:8000/docs
-- **ReDoc**: http://localhost:8000/redoc
+プロジェクト全体の品質を保証するため、以下のコマンドで全てのテストを実行できます。
 
-## APIエンドポイント
-
-### 認証
-- `POST /api/v1/auth/register` - ユーザー登録
-- `POST /api/v1/auth/login` - ユーザーログイン
-- `GET /api/v1/auth/profile` - ユーザープロフィール取得（認証済み）
-
-### 投稿
-- `POST /api/v1/posts` - 投稿作成（認証済み）
-- `GET /api/v1/posts` - 投稿一覧取得
-- `GET /api/v1/posts/{post_id}` - 特定の投稿取得
-- `DELETE /api/v1/posts/{post_id}` - 投稿削除（認証済み、所有者のみ）
-
-## テスト
-
-テストを実行するには：
 ```bash
-pytest
+# PYTHONPATHを設定してPytestを実行
+PYTHONPATH=. python -m pytest
 ```
 
-## プロジェクト構造
+## 📂 プロジェクト構造
 
 ```
 .
-├── app/
-│   ├── __init__.py          # FastAPIアプリケーションファクトリー
-│   ├── models.py            # SQLAlchemyモデル
-│   ├── schemas.py           # Pydanticモデル
-│   ├── routes/              # APIルート
-│   │   ├── auth.py          # 認証関連エンドポイント
-│   │   └── posts.py         # 投稿関連エンドポイント
-│   └── utils/               # ユーティリティ
-│       ├── auth.py          # 認証関連ユーティリティ
-│       └── security.py      # セキュリティ関連ユーティリティ
-├── js/                      # フロントエンドJavaScript
-├── tests/                   # テストファイル
-├── database.py              # データベース設定
-├── config.py                # 設定
-├── run.py                   # アプリケーションエントリーポイント
-└── requirements.txt         # 依存関係
+├── app/                  # FastAPIバックエンド
+│   ├── routes/           # APIルーター
+│   ├── models.py         # SQLAlchemyモデル
+│   └── schemas.py        # Pydanticスキーマ
+├── frontend/             # Vanilla JSフロントエンド
+│   ├── js/
+│   │   └── components/   # 各UIコンポーネント
+│   └── static/           # CSS, 画像など
+├── tests/                # Pytestによるテストコード
+│   └── ui/               # PlaywrightによるUIテスト
+├── run.py                # アプリケーション起動スクリプト
+├── requirements.txt      # Python依存ライブラリ
+└── README.md
 ```
 
-## 開発
+## 🤝 貢献
 
-### データベースマイグレーション
+バグ報告、機能改善の提案など、あらゆるコントリビューションを歓迎します。Issueを作成するか、プルリクエストを送ってください。
 
-本番環境ではAlembicを使用してデータベースマイグレーションを管理してください：
+## 📄 ライセンス
 
-```bash
-# マイグレーション初期化
-alembic init alembic
-
-# マイグレーション作成
-alembic revision --autogenerate -m "Initial migration"
-
-# マイグレーション適用
-alembic upgrade head
-```
-
-### コーディング規約
-
-- Python: PEP 8
-- 型ヒントを使用
-- 適切なエラーハンドリング
-- テストカバレッジを維持
-
-## ライセンス
-
-MIT License
+このプロジェクトは[MITライセンス](LICENSE)のもとで公開されています。
