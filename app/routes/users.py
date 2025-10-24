@@ -163,3 +163,55 @@ async def get_following(user_id: str, db: Session = Depends(get_db)):
 
     following = [UserResponse.model_validate(f.followed) for f in user.following]
     return following
+
+@router.delete("/users/me", status_code=status.HTTP_204_NO_CONTENT)
+async def delete_user_account(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """認証済みユーザーのアカウントを削除する"""
+    try:
+        # ユーザーに関連するデータを削除
+        # 1. フォロー関係を削除
+        db.query(Follow).filter(
+            Follow.follower_id == current_user.id
+        ).delete()
+        
+        db.query(Follow).filter(
+            Follow.followed_id == current_user.id
+        ).delete()
+        
+        # 2. ユーザーの投稿を削除
+        for post in current_user.posts:
+            # 投稿へのいいねを削除
+            for like in post.likes:
+                db.delete(like)
+            # 投稿への返信を削除
+            for reply in post.replies:
+                db.delete(reply)
+            # 投稿自体を削除
+            db.delete(post)
+        
+        # 3. ユーザーがいいねした投稿のいいねを削除
+        for like in current_user.likes:
+            db.delete(like)
+        
+        # 4. ユーザーが作成した返信を削除
+        for reply in current_user.replies:
+            db.delete(reply)
+        
+        # 5. ユーザーが作成した通報を削除
+        for report in current_user.reports:
+            db.delete(report)
+        
+        # 6. 最後にユーザー自身を削除
+        db.delete(current_user)
+        
+        db.commit()
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="アカウントの削除に失敗しました"
+        )

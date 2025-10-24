@@ -570,10 +570,265 @@ const SettingsComponent = {
         if (!this.isAuthenticated()) {
             return;
         }
-        if (confirm('本当にアカウントを削除しますか？この操作は元に戻せません。')) {
-            if (confirm('最終確認：すべてのデータが削除されます。よろしいですか？')) {
-                alert('アカウント削除機能は現在開発中です');
-                // 実際の実装ではAPIを呼び出してアカウントを削除
+        
+        // カスタム確認ダイアログを表示
+        this.showDeleteAccountDialog();
+    },
+
+    // アカウント削除ダイアログ表示
+    showDeleteAccountDialog() {
+        const contentArea = document.getElementById('contentArea');
+        
+        // ダイアログのHTMLを作成
+        const dialogHtml = `
+            <div class="delete-account-dialog-overlay" id="deleteAccountDialog">
+                <div class="delete-account-dialog">
+                    <div class="dialog-header">
+                        <h3>アカウント削除の確認</h3>
+                        <button class="close-button" onclick="SettingsComponent.closeDeleteAccountDialog()">×</button>
+                    </div>
+                    <div class="dialog-content">
+                        <div class="warning-icon">⚠️</div>
+                        <p class="warning-text">アカウントを削除すると、以下のデータが完全に削除され、復元できなくなります。</p>
+                        <ul class="warning-list">
+                            <li>プロフィール情報</li>
+                            <li>投稿したすべての内容</li>
+                            <li>いいねと返信</li>
+                            <li>フォロー関係</li>
+                        </ul>
+                        <p class="final-warning">この操作は元に戻せません。</p>
+                        <div class="confirmation-input">
+                            <label for="deleteConfirmation">「削除します」と入力して確認：</label>
+                            <input type="text" id="deleteConfirmation" placeholder="削除します">
+                        </div>
+                    </div>
+                    <div class="dialog-actions">
+                        <button class="cancel-button" onclick="SettingsComponent.closeDeleteAccountDialog()">キャンセル</button>
+                        <button class="delete-button" id="confirmDeleteButton" disabled onclick="SettingsComponent.executeDeleteAccount()">アカウントを削除</button>
+                    </div>
+                </div>
+            </div>
+            <style>
+                .delete-account-dialog-overlay {
+                    position: fixed;
+                    top: 0;
+                    left: 0;
+                    right: 0;
+                    bottom: 0;
+                    background-color: rgba(0, 0, 0, 0.5);
+                    display: flex;
+                    justify-content: center;
+                    align-items: center;
+                    z-index: 1000;
+                }
+                
+                .delete-account-dialog {
+                    background: white;
+                    border-radius: 12px;
+                    width: 90%;
+                    max-width: 500px;
+                    max-height: 80vh;
+                    overflow-y: auto;
+                    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.3);
+                }
+                
+                .dialog-header {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    padding: 20px;
+                    border-bottom: 1px solid #e0e0e0;
+                }
+                
+                .dialog-header h3 {
+                    margin: 0;
+                    color: #333;
+                }
+                
+                .close-button {
+                    background: none;
+                    border: none;
+                    font-size: 24px;
+                    cursor: pointer;
+                    color: #666;
+                }
+                
+                .dialog-content {
+                    padding: 20px;
+                }
+                
+                .warning-icon {
+                    font-size: 48px;
+                    text-align: center;
+                    margin-bottom: 16px;
+                }
+                
+                .warning-text {
+                    margin-bottom: 16px;
+                    line-height: 1.5;
+                }
+                
+                .warning-list {
+                    margin: 16px 0;
+                    padding-left: 20px;
+                }
+                
+                .warning-list li {
+                    margin-bottom: 8px;
+                }
+                
+                .final-warning {
+                    font-weight: bold;
+                    color: #d32f2f;
+                    margin: 16px 0;
+                }
+                
+                .confirmation-input {
+                    margin: 20px 0;
+                }
+                
+                .confirmation-input label {
+                    display: block;
+                    margin-bottom: 8px;
+                    font-weight: bold;
+                }
+                
+                .confirmation-input input {
+                    width: 100%;
+                    padding: 12px;
+                    border: 1px solid #e0e0e0;
+                    border-radius: 4px;
+                    font-size: 16px;
+                }
+                
+                .dialog-actions {
+                    display: flex;
+                    justify-content: flex-end;
+                    gap: 12px;
+                    padding: 20px;
+                    border-top: 1px solid #e0e0e0;
+                }
+                
+                .cancel-button {
+                    background: #f5f5f5;
+                    color: #333;
+                    border: 1px solid #e0e0e0;
+                    padding: 10px 20px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                }
+                
+                .delete-button {
+                    background: #d32f2f;
+                    color: white;
+                    border: none;
+                    padding: 10px 20px;
+                    border-radius: 4px;
+                    cursor: pointer;
+                }
+                
+                .delete-button:disabled {
+                    background: #ccc;
+                    cursor: not-allowed;
+                }
+                
+                /* ダークモード対応 */
+                .dark-mode .delete-account-dialog {
+                    background: #2a2a2a;
+                    color: #fff;
+                }
+                
+                .dark-mode .dialog-header {
+                    border-bottom-color: #333;
+                }
+                
+                .dark-mode .dialog-header h3 {
+                    color: #fff;
+                }
+                
+                .dark-mode .close-button {
+                    color: #aaa;
+                }
+                
+                .dark-mode .confirmation-input input {
+                    background: #333;
+                    border-color: #444;
+                    color: #fff;
+                }
+                
+                .dark-mode .dialog-actions {
+                    border-top-color: #333;
+                }
+                
+                .dark-mode .cancel-button {
+                    background: #333;
+                    color: #fff;
+                    border-color: #444;
+                }
+            </style>
+        `;
+        
+        // ダイアログを追加
+        const dialogContainer = document.createElement('div');
+        dialogContainer.innerHTML = dialogHtml;
+        contentArea.appendChild(dialogContainer.firstElementChild);
+        
+        // 入力フィールドのイベントリスナーを設定
+        const confirmationInput = document.getElementById('deleteConfirmation');
+        const confirmButton = document.getElementById('confirmDeleteButton');
+        
+        confirmationInput.addEventListener('input', function() {
+            confirmButton.disabled = this.value !== '削除します';
+        });
+    },
+
+    // アカウント削除ダイアログを閉じる
+    closeDeleteAccountDialog() {
+        const dialog = document.getElementById('deleteAccountDialog');
+        if (dialog) {
+            dialog.remove();
+        }
+    },
+
+    // アカウント削除実行
+    async executeDeleteAccount() {
+        if (!this.isAuthenticated()) {
+            return;
+        }
+        
+        try {
+            // ローディング表示
+            const confirmButton = document.getElementById('confirmDeleteButton');
+            const originalText = confirmButton.textContent;
+            confirmButton.textContent = '削除中...';
+            confirmButton.disabled = true;
+            
+            // API呼び出し
+            const result = await API.deleteAccount();
+            
+            if (result.success) {
+                // 成功した場合
+                this.closeDeleteAccountDialog();
+                Utils.showNotification('アカウントが正常に削除されました', 'success');
+                
+                // ログアウト処理
+                setTimeout(() => {
+                    Utils.logout();
+                }, 2000);
+            } else {
+                // 失敗した場合
+                Utils.showNotification(`アカウント削除に失敗しました: ${result.error}`, 'error');
+                confirmButton.textContent = originalText;
+                confirmButton.disabled = false;
+            }
+        } catch (error) {
+            console.error('アカウント削除エラー:', error);
+            Utils.showNotification('アカウント削除中にエラーが発生しました', 'error');
+            
+            const confirmButton = document.getElementById('confirmDeleteButton');
+            if (confirmButton) {
+                confirmButton.textContent = 'アカウントを削除';
+                confirmButton.disabled = false;
             }
         }
     }

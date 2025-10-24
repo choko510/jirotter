@@ -546,6 +546,26 @@ const API = {
             console.error('プロフィールの更新に失敗しました:', error);
             return { success: false, error: error.message };
         }
+    },
+
+    // アカウント削除
+    async deleteAccount() {
+        try {
+            const response = await fetch('/api/v1/users/me', {
+                method: 'DELETE',
+                headers: this.getAuthHeader()
+            });
+
+            if (!response.ok) {
+                const errorData = await response.json();
+                throw new Error(errorData.detail || 'アカウントの削除に失敗しました');
+            }
+
+            return { success: true };
+        } catch (error) {
+            console.error('アカウントの削除に失敗しました:', error);
+            return { success: false, error: error.message };
+        }
     }
 };
 
