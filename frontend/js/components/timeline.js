@@ -154,6 +154,10 @@ const TimelineComponent = {
     render(params = []) {
         this.state.selectedImage = null;
         const contentArea = document.getElementById('contentArea');
+        
+        // ログイン状態をチェック
+        const isLoggedIn = !!API.getCookie('authToken');
+        
         contentArea.innerHTML = `
             <style>
                 /* ... styles ... */
@@ -203,6 +207,32 @@ const TimelineComponent = {
                 .shop-reference:hover { background: #e8e8e8; }
                 .shop-reference-content { display: flex; align-items: center; color: #d4a574; }
                 .shop-reference-content i { margin-right: 8px; }
+                
+                /* ログイン促しエリアのスタイル */
+                .login-prompt-area {
+                    padding: 20px;
+                    border-bottom: 1px solid #e0e0e0;
+                    text-align: center;
+                    background: #f9f9f9;
+                }
+                .login-prompt-text {
+                    margin-bottom: 16px;
+                    color: #666;
+                    font-size: 16px;
+                }
+                .login-btn {
+                    background: #d4a574;
+                    color: white;
+                    border: none;
+                    padding: 10px 24px;
+                    border-radius: 20px;
+                    font-weight: bold;
+                    cursor: pointer;
+                    font-size: 16px;
+                }
+                .login-btn:hover {
+                    background: #c19660;
+                }
 
                 /* Dark Mode Overrides */
                 .dark-mode .post-input-area,
@@ -224,6 +254,8 @@ const TimelineComponent = {
                 .dark-mode .shop-reference { background: #333; }
                 .dark-mode .shop-reference:hover { background: #444; }
                 .dark-mode .shop-reference-content { color: #d4a574; }
+                .dark-mode .login-prompt-area { background: #2a2a2a; }
+                .dark-mode .login-prompt-text { color: #aaa; }
                 
                 /* 通報モーダルスタイル */
                 .report-modal-overlay {
@@ -346,6 +378,7 @@ const TimelineComponent = {
                 }
             </style>
             
+            ${isLoggedIn ? `
             <div class="post-input-area">
                 <div class="post-input-wrapper">
                     <div class="post-avatar"></div>
@@ -367,6 +400,12 @@ const TimelineComponent = {
                     </div>
                 </div>
             </div>
+            ` : `
+            <div class="login-prompt-area">
+                <div class="login-prompt-text">ログインして二郎を共有しよう</div>
+                <button class="login-btn" onclick="router.navigate('auth', ['login'])">ログイン</button>
+            </div>
+            `}
 
             <div class="timeline-container" id="timelineContainer">
                 <div class="timeline" id="timeline"></div>
@@ -383,42 +422,49 @@ const TimelineComponent = {
 
     setupEventListeners() {
         const timelineContainer = document.getElementById('timelineContainer');
-        timelineContainer.onscroll = this.debounce(this.handleScroll.bind(this), 100);
+        if (timelineContainer) {
+            timelineContainer.onscroll = this.debounce(this.handleScroll.bind(this), 100);
+        }
 
         const textarea = document.getElementById('postTextarea');
         const tweetBtn = document.getElementById('tweetBtn');
         const imageUpload = document.getElementById('imageUpload');
         
-        textarea.addEventListener('input', () => {
-            // テキストをフィルタリング
-            const originalValue = textarea.value;
-            const filteredValue = this.filterText(originalValue);
-            
-            // フィルタリング後に内容が変わった場合は修正
-            if (filteredValue !== originalValue) {
-                const cursorPosition = textarea.selectionStart;
-                textarea.value = filteredValue;
+        // ログインしている場合のみイベントリスナーを設定
+        if (textarea && tweetBtn && imageUpload) {
+            textarea.addEventListener('input', () => {
+                // テキストをフィルタリング
+                const originalValue = textarea.value;
+                const filteredValue = this.filterText(originalValue);
                 
-                // カーソル位置を調整（削除された文字数を考慮）
-                const diff = originalValue.length - filteredValue.length;
-                textarea.setSelectionRange(Math.max(0, cursorPosition - diff), Math.max(0, cursorPosition - diff));
-            }
-            
-            const length = textarea.value.length;
-            const charCounter = document.getElementById('charCounter');
-            charCounter.textContent = `${length}/200`;
-            
-            // 文字数に応じて色を変更
-            charCounter.classList.remove('warning', 'error');
-            if (length > 180) {
-                charCounter.classList.add('error');
-            } else if (length > 150) {
-                charCounter.classList.add('warning');
-            }
-            
-            tweetBtn.disabled = (!textarea.value.trim() && !this.state.selectedImage && !this.state.selectedShop) || length > 200;
-        });
-        imageUpload.addEventListener('change', (event) => this.handleImageSelect(event));
+                // フィルタリング後に内容が変わった場合は修正
+                if (filteredValue !== originalValue) {
+                    const cursorPosition = textarea.selectionStart;
+                    textarea.value = filteredValue;
+                    
+                    // カーソル位置を調整（削除された文字数を考慮）
+                    const diff = originalValue.length - filteredValue.length;
+                    textarea.setSelectionRange(Math.max(0, cursorPosition - diff), Math.max(0, cursorPosition - diff));
+                }
+                
+                const length = textarea.value.length;
+                const charCounter = document.getElementById('charCounter');
+                if (charCounter) {
+                    charCounter.textContent = `${length}/200`;
+                    
+                    // 文字数に応じて色を変更
+                    charCounter.classList.remove('warning', 'error');
+                    if (length > 180) {
+                        charCounter.classList.add('error');
+                    } else if (length > 150) {
+                        charCounter.classList.add('warning');
+                    }
+                }
+                
+                tweetBtn.disabled = (!textarea.value.trim() && !this.state.selectedImage && !this.state.selectedShop) || length > 200;
+            });
+            imageUpload.addEventListener('change', (event) => this.handleImageSelect(event));
+        }
         
         // GPS権限を確認
         this.checkGPSPermission();

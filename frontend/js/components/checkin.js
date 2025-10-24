@@ -297,13 +297,20 @@ const CheckinComponent = {
             // デバイス情報を取得
             const deviceInfo = this.getDeviceInfo();
             
+            // 位置情報ソースをサーバーが期待する値に変換
+            let locationSource = this.state.checkinMethod;
+            if (locationSource === 'manual') {
+                locationSource = 'gps'; // 手動選択の場合もgpsとして扱う
+            }
+            
             // チェックインデータを作成
             const checkinData = {
                 shop_id: shopId,
                 latitude: position ? position.latitude : null,
                 longitude: position ? position.longitude : null,
-                location_source: this.state.checkinMethod,
+                location_source: locationSource,
                 location_accuracy: position ? position.accuracy : null,
+                checkin_date: new Date().toISOString(), // 現在の日時をISO形式で追加
                 user_agent: deviceInfo.userAgent,
                 device_type: deviceInfo.deviceType,
                 is_mobile_network: deviceInfo.isMobileNetwork,
@@ -325,7 +332,19 @@ const CheckinComponent = {
 
             if (!response.ok) {
                 const errorData = await response.json();
-                throw new Error(errorData.detail || 'チェックインに失敗しました');
+                let errorMessage = 'チェックインに失敗しました';
+                
+                // エラーメッセージを整形
+                if (errorData.detail) {
+                    if (Array.isArray(errorData.detail)) {
+                        // 複数のエラーがある場合は最初のエラーを表示
+                        errorMessage = errorData.detail[0].msg || errorMessage;
+                    } else if (typeof errorData.detail === 'string') {
+                        errorMessage = errorData.detail;
+                    }
+                }
+                
+                throw new Error(errorMessage);
             }
 
             const checkinResult = await response.json();
@@ -453,11 +472,18 @@ const CheckinComponent = {
     // デバイス情報を取得
     getDeviceInfo() {
         const userAgent = navigator.userAgent;
-        const ua = user_agents.parse(userAgent);
+        
+        // ユーザーエージェント文字列からデバイスタイプを判定
+        let deviceType = 'desktop';
+        if (/Mobile|Android|iP(hone|od)|IEMobile|BlackBerry|Kindle|Silk-Accelerated|(hpw|web)OS|Opera M(obi|ini)/.test(userAgent)) {
+            deviceType = 'mobile';
+        } else if (/Tablet|iPad|(android(?!.*Mobile))|Silk-Accelerated/.test(userAgent)) {
+            deviceType = 'tablet';
+        }
         
         return {
             userAgent: userAgent,
-            deviceType: ua.is_mobile ? 'mobile' : (ua.is_tablet ? 'tablet' : 'desktop'),
+            deviceType: deviceType,
             isMobileNetwork: this.isMobileNetwork()
         };
     },
@@ -557,12 +583,46 @@ const CheckinComponent = {
 
     // チェックイン成功表示
     showCheckinSuccess(checkinData) {
+        // ローディングモーダルを閉じる
+        const loadingModal = document.querySelector('.checkin-modal-overlay');
+        if (loadingModal) {
+            loadingModal.remove();
+        }
+        
         Utils.showNotification(`${checkinData.shop_name}にチェックインしました！`, 'success');
     },
 
     // チェックインエラー表示
     showCheckinError(message) {
-        Utils.showNotification(message, 'error');
+        // ローディングモーダルを閉じる
+        const loadingModal = document.querySelector('.checkin-modal-overlay');
+        if (loadingModal) {
+            loadingModal.remove();
+        }
+        
+        // エラーモーダルを表示
+        const modal = document.createElement('div');
+        modal.className = 'checkin-modal-overlay';
+        modal.innerHTML = `
+            <div class="checkin-modal">
+                <div class="checkin-modal-header">
+                    <h3>エラー</h3>
+                    <button class="checkin-modal-close">&times;</button>
+                </div>
+                <div class="checkin-modal-content">
+                    <div class="checkin-error">
+                        <p>${message}</p>
+                    </div>
+                    <div class="checkin-actions">
+                        <button class="checkin-cancel-btn" onclick="CheckinComponent.closeCheckinModal()">
+                            閉じる
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+        
+        document.body.appendChild(modal);
     },
 
     // 近隣店舗がない場合の表示

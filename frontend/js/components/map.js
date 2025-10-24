@@ -1011,7 +1011,7 @@ const MapComponent = {
             this.state.map.on('zoomend', () => {
                 const currentZoom = this.state.map.getZoom();
                 const searchRadius = this.calculateSearchRadius(currentZoom);
-                console.log(`ズームレベル変更: ${currentZoom}, 検索範囲を ${searchRadius}km に調整`);
+                //console.log(`ズームレベル変更: ${currentZoom}, 検索範囲を ${searchRadius}km に調整`);
                 
                 // ズームレベルが大きく変更された場合は再検索
                 const center = this.state.map.getCenter();
@@ -1123,7 +1123,6 @@ const MapComponent = {
                 
                 // 閾値以下の移動ならAPIを呼ばない
                 if (latDiff < this.state.moveThreshold && lngDiff < this.state.moveThreshold) {
-                    console.log('移動距離が閾値以下のため、APIを呼びません');
                     // マーカーの表示範囲だけ更新
                     this.updateMarkerVisibility();
                     return;
@@ -1135,7 +1134,7 @@ const MapComponent = {
             
             // ズームレベルに応じて検索範囲を計算
             const searchRadius = this.calculateSearchRadius(currentZoom);
-            console.log(`マップ移動: ズームレベル ${currentZoom}, 検索範囲 ${searchRadius}km`);
+            //console.log(`マップ移動: ズームレベル ${currentZoom}, 検索範囲 ${searchRadius}km`);
             
             // APIを呼び出して近くの店舗を取得
             await this.addNearbyShops({ lat, lng }, null);
@@ -1296,22 +1295,22 @@ const MapComponent = {
         
         if (zoomLevel <= 6) {
             // 日本全土が見えるような非常に広い範囲
-            return 2000;
+            return 700;
         } else if (zoomLevel <= 8) {
             // 広域（地方レベル）
-            return 1000;
+            return 350;
         } else if(zoomLevel <=9){
             // 中域（県レベル）
-            return 600;
+            return 150;
         } else if (zoomLevel <= 10) {
             // 中域（県レベル）
-            return 300;
+            return 80;
         } else if (zoomLevel <= 12) {
             // やや広域（市レベル）
-            return 100;
+            return 40;
         } else if (zoomLevel <= 14) {
             // 標準（地域レベル）
-            return 60;
+            return 30;
         } else if (zoomLevel <= 16) {
             // やや狭域（近隣レベル）
             return 20;
@@ -1493,6 +1492,9 @@ const MapComponent = {
         const filterButtonsContainer = document.getElementById('filterButtons');
         if (!filterButtonsContainer) return;
 
+        // フィルターが適用されているかどうかをチェック
+        const hasActiveFilters = this.state.activeFilters.size > 0;
+
         // 既存のボタンを更新、なければ作成
         for (const [brandKey, brandConfig] of Object.entries(this.BRAND_CONFIG)) {
             if (brandKey === 'other') continue;
@@ -1509,6 +1511,13 @@ const MapComponent = {
             const count = this.state.brandShopCounts[brandKey] || 0;
             button.textContent = `${brandConfig.name} (${count})`;
             button.title = `${brandConfig.name}: ${count}件`;
+
+            // ブランドで絞り込みをしていないかつ、マップ内に対象がなかったらボタンを非表示にする
+            if (!hasActiveFilters && count === 0) {
+                button.style.display = 'none';
+            } else {
+                button.style.display = '';
+            }
 
             // classList を使ってアクティブ状態を管理
             if (this.state.activeFilters.has(brandKey)) {

@@ -99,6 +99,25 @@ def verify_checkin_location(
     verification_score = 0
     verification_method = request.location_source
     
+    # 位置情報がない場合の処理
+    if request.latitude is None or request.longitude is None:
+        warnings.append("位置情報がありません。手動チェックインとして処理します。")
+        verification_score = 40  # 手動チェックインは中程度のスコア
+        
+        # デバイスタイプによる検証
+        if request.device_type == 'desktop':
+            warnings.append("PCからの手動チェックインを検出しました。")
+            verification_score -= 10
+            
+        return CheckinVerificationResponse(
+            is_valid=True,
+            verification_score=verification_score,
+            verification_method=verification_method,
+            verification_level="medium" if verification_score >= 40 else "low",
+            warnings=warnings,
+            errors=errors
+        )
+    
     # 店舗との距離を計算
     distance = haversine_distance(
         request.latitude, request.longitude,
@@ -338,16 +357,22 @@ async def create_checkin(
     )
     
     db.add(checkin)
+    db.commit()  # チェックインを先にコミットしてIDを取得
+    db.refresh(checkin)
     
     # 検証ログを保存
+    distance_to_shop = None
+    if checkin_data.latitude is not None and checkin_data.longitude is not None:
+        distance_to_shop = haversine_distance(
+            checkin_data.latitude, checkin_data.longitude,
+            shop.latitude, shop.longitude
+        )
+    
     verification_log = CheckinVerification(
         checkin_id=checkin.id,
         verification_type='location',
         verification_data={
-            'distance_to_shop': haversine_distance(
-                checkin_data.latitude, checkin_data.longitude,
-                shop.latitude, shop.longitude
-            ),
+            'distance_to_shop': distance_to_shop,
             'warnings': verification_result.warnings,
             'errors': verification_result.errors
         },
@@ -362,10 +387,35 @@ async def create_checkin(
         shop.wait_time = checkin_data.wait_time_reported
         shop.last_update = datetime.utcnow()
     
-    db.commit()
-    db.refresh(checkin)
+    db.commit()  # 検証ログと店舗情報をコミット
     
-    return CheckinResponse.model_validate(checkin)
+    # レスポンスを作成するために必要な情報を追加
+    checkin_dict = {
+        'id': checkin.id,
+        'user_id': checkin.user_id,
+        'shop_id': checkin.shop_id,
+        'checkin_date': checkin.checkin_date,
+        'latitude': checkin.latitude,
+        'longitude': checkin.longitude,
+        'location_source': checkin.location_source,
+        'location_accuracy': checkin.location_accuracy,
+        'user_agent': checkin.user_agent,
+        'device_type': checkin.device_type,
+        'is_mobile_network': checkin.is_mobile_network,
+        'verification_method': checkin.verification_method,
+        'verification_score': checkin.verification_score,
+        'is_verified': checkin.is_verified,
+        'verification_level': 'high' if checkin.verification_score >= 80 else ('medium' if checkin.verification_score >= 40 else 'low'),
+        'wait_time_reported': checkin.wait_time_reported,
+        'wait_time_confidence': checkin.wait_time_confidence,
+        'checkin_note': checkin.checkin_note,
+        'extra_data': checkin.extra_data,
+        'shop_name': shop.name,
+        'shop_address': shop.address,
+        'author_username': current_user.username
+    }
+    
+    return CheckinResponse.model_validate(checkin_dict)
 
 @router.get("/users/{user_id}/checkins", response_model=CheckinsResponse)
 async def get_user_checkins(
@@ -387,20 +437,51 @@ async def get_user_checkins(
     
     # チェックイン履歴を取得
     checkins_query = (
-        db.query(Checkin)
+        db.query(Checkin, RamenShop, User)
+        .join(RamenShop, Checkin.shop_id == RamenShop.id)
+        .join(User, Checkin.user_id == User.id)
         .filter(Checkin.user_id == user_id)
         .order_by(desc(Checkin.checkin_date))
         .offset(offset)
         .limit(per_page)
     )
     
-    checkins = checkins_query.all()
+    checkins_data = checkins_query.all()
     
     # 総数を取得
     total = db.query(Checkin).filter(Checkin.user_id == user_id).count()
     
+    # レスポンスを作成
+    checkin_responses = []
+    for checkin, shop, user in checkins_data:
+        checkin_dict = {
+            'id': checkin.id,
+            'user_id': checkin.user_id,
+            'shop_id': checkin.shop_id,
+            'checkin_date': checkin.checkin_date,
+            'latitude': checkin.latitude,
+            'longitude': checkin.longitude,
+            'location_source': checkin.location_source,
+            'location_accuracy': checkin.location_accuracy,
+            'user_agent': checkin.user_agent,
+            'device_type': checkin.device_type,
+            'is_mobile_network': checkin.is_mobile_network,
+            'verification_method': checkin.verification_method,
+            'verification_score': checkin.verification_score,
+            'is_verified': checkin.is_verified,
+            'verification_level': 'high' if checkin.verification_score >= 80 else ('medium' if checkin.verification_score >= 40 else 'low'),
+            'wait_time_reported': checkin.wait_time_reported,
+            'wait_time_confidence': checkin.wait_time_confidence,
+            'checkin_note': checkin.checkin_note,
+            'extra_data': checkin.extra_data,
+            'shop_name': shop.name,
+            'shop_address': shop.address,
+            'author_username': user.username
+        }
+        checkin_responses.append(CheckinResponse.model_validate(checkin_dict))
+    
     return CheckinsResponse(
-        checkins=[CheckinResponse.model_validate(checkin) for checkin in checkins],
+        checkins=checkin_responses,
         total=total
     )
 

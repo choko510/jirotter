@@ -395,8 +395,8 @@ class CheckinsResponse(BaseModel):
     total: int
 
 class CheckinVerificationRequest(BaseModel):
-    latitude: float
-    longitude: float
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
     shop_id: int
     location_source: str = 'gps'
     location_accuracy: Optional[float] = None
