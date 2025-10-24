@@ -45,11 +45,7 @@ const RightSidebar = {
     // fetchRanking: 週間チェックインランキングを取得
     async fetchRanking() {
         try {
-            const response = await fetch('/api/v1/ramen/ranking');
-            if (!response.ok) {
-                throw new Error('ランキングの取得に失敗しました。');
-            }
-            const data = await response.json();
+            const data = await API.request('/api/v1/ramen/ranking', { includeAuth: false });
             this.state.rankingShops = data.shops;
             this.renderRanking();
         } catch (error) {
@@ -84,8 +80,8 @@ const RightSidebar = {
             }
             shopList.innerHTML = this.state.rankingShops.map(shop => `
                 <div class="result-item" onclick="router.navigate('shop', [${shop.id}])">
-                    <div class="shop-name">${shop.name}</div>
-                    <div class="shop-address">${shop.address}</div>
+                    <div class="shop-name">${API.escapeHtml(shop.name)}</div>
+                    <div class="shop-address">${API.escapeHtml(shop.address)}</div>
                 </div>
             `).join('');
         }
@@ -106,8 +102,8 @@ const RightSidebar = {
             }
             shopList.innerHTML = this.state.searchResults.map(shop => `
                 <div class="result-item" onclick="router.navigate('shop', [${shop.id}])">
-                    <div class="shop-name">${shop.name}</div>
-                    <div class="shop-address">${shop.address}</div>
+                    <div class="shop-name">${API.escapeHtml(shop.name)}</div>
+                    <div class="shop-address">${API.escapeHtml(shop.address)}</div>
                 </div>
             `).join('');
         }

@@ -4,6 +4,8 @@ from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.gzip import GZipMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
+from starlette.middleware.sessions import SessionMiddleware
+from starlette_csrf import CSRFMiddleware
 from contextlib import asynccontextmanager
 from database import engine, Base, SessionLocal
 from config import settings
@@ -26,11 +28,11 @@ class SecurityHeadersMiddleware(BaseHTTPMiddleware):
         # Content Security Policyヘッダーを設定
         csp = (
             "default-src 'self'; "
-            "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://unpkg.com; "
-            "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://unpkg.com; "
+            "script-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://unpkg.com https://cdn.jsdelivr.net; "
+            "style-src 'self' 'unsafe-inline' https://cdnjs.cloudflare.com https://unpkg.com https://cdn.jsdelivr.net https://fonts.googleapis.com; "
             "img-src 'self' data: https:; "
-            "font-src 'self' https://cdnjs.cloudflare.com; "
-            "connect-src 'self'; "
+            "font-src 'self' https://cdnjs.cloudflare.com https://fonts.gstatic.com; "
+            "connect-src 'self' https://ipinfo.io; "
             "frame-ancestors 'none'; "
             "base-uri 'self'; "
             "form-action 'self';"
@@ -66,6 +68,12 @@ def create_app():
         lifespan=lifespan
     )
     
+    # Add SessionMiddleware
+    app.add_middleware(SessionMiddleware, secret_key=settings.SESSION_SECRET_KEY)
+
+    # Add CSRFMiddleware
+    app.add_middleware(CSRFMiddleware, secret=settings.SESSION_SECRET_KEY)
+
     # CORSミドルウェアの設定
     app.add_middleware(
         CORSMiddleware,

@@ -17,15 +17,9 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
     # バリデーション
     validation_errors = validate_registration_data(user_data.model_dump(), db)
     if validation_errors:
-        # エラーメッセージを文字列に変換
-        error_messages = []
-        for field, message in validation_errors.items():
-            error_messages.append(f"{field}: {message}")
-        error_message = " ".join(error_messages)
-        
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
-            detail=error_message
+            detail=validation_errors
         )
     
     # ユーザー作成

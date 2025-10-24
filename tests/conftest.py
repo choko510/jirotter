@@ -74,7 +74,7 @@ def test_client(test_db: Session):
 
     app.dependency_overrides[get_db] = override_get_db
 
-    with TestClient(app) as client:
+    with TestClient(app, base_url="https://testserver") as client:
         yield client
     
     app.dependency_overrides.clear()

@@ -825,9 +825,7 @@ const StampRallyComponent = {
                 this.state.shops = shopsResponse;
                 this.state.checkins = checkinsResponse;
             } else {
-                const progressResponse = await fetch('/api/v1/stamps/progress', { headers: API.getAuthHeader() });
-                if (!progressResponse.ok) throw new Error('Failed to fetch progress');
-                const data = await progressResponse.json();
+                const data = await API.request('/api/v1/stamps/progress');
                 this.state.progress = data.progress;
             }
             this.state.isLoading = false;
@@ -846,13 +844,7 @@ const StampRallyComponent = {
             if (prefecture && prefecture !== 'all') {
                 url += `&prefecture=${encodeURIComponent(prefecture)}`;
             }
-            const response = await fetch(url);
-            
-            if (!response.ok) {
-                throw new Error('店舗データの取得に失敗しました');
-            }
-            
-            const data = await response.json();
+            const data = await API.request(url, { includeAuth: false });
             return data.shops || [];
         } catch (error) {
             console.error('店舗データ読み込みエラー:', error);
@@ -869,15 +861,7 @@ const StampRallyComponent = {
             }
             
             const user = JSON.parse(decodeURIComponent(API.getCookie('user')));
-            const response = await fetch(`/api/v1/users/${user.id}/checkins`, {
-                headers: API.getAuthHeader()
-            });
-            
-            if (!response.ok) {
-                throw new Error('チェックインデータの取得に失敗しました');
-            }
-            
-            const data = await response.json();
+            const data = await API.request(`/api/v1/users/${user.id}/checkins`);
             return data.checkins || [];
         } catch (error) {
             console.error('チェックインデータ読み込みエラー:', error);

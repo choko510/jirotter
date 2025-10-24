@@ -3,6 +3,9 @@
 
 // API通信
 const API = {
+    defaultTimeout: 10000,
+    _escapeElement: document.createElement('textarea'),
+
     // Cookie管理
     getCookie(name) {
         const value = `; ${document.cookie}`;
@@ -12,7 +15,13 @@ const API = {
 
     setCookie(name, value, days = 7) {
         const expires = new Date(Date.now() + days * 864e5).toUTCString();
-        document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/`;
+        const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+        document.cookie = `${name}=${encodeURIComponent(value)}; expires=${expires}; path=/; SameSite=Strict${secure}`;
+    },
+
+    deleteCookie(name) {
+        const secure = window.location.protocol === 'https:' ? '; Secure' : '';
+        document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Strict${secure}`;
     },
 
     // 認証トークンを取得
@@ -21,20 +30,98 @@ const API = {
         return token ? { 'Authorization': `Bearer ${token}` } : {};
     },
 
+    async request(url, {
+        method = 'GET',
+        headers = {},
+        body = undefined,
+        includeAuth = true,
+        timeoutMs = this.defaultTimeout,
+        parseJson = true,
+        credentials = 'same-origin'
+    } = {}) {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), timeoutMs);
+
+        const authHeaders = includeAuth ? this.getAuthHeader() : {};
+        const combinedHeaders = new Headers({
+            Accept: 'application/json',
+            ...authHeaders,
+            ...headers
+        });
+
+        // Add CSRF token for state-changing methods
+        if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method.toUpperCase())) {
+            const csrfToken = this.getCookie('csrftoken');
+            if (csrfToken) {
+                combinedHeaders.set('X-CSRF-Token', csrfToken);
+            }
+        }
+
+        let requestBody = body;
+        const hasJsonContentType = combinedHeaders.has('Content-Type') && combinedHeaders.get('Content-Type').includes('application/json');
+
+        if (body && !(body instanceof FormData)) {
+            if (hasJsonContentType) {
+                requestBody = typeof body === 'string' ? body : JSON.stringify(body);
+            } else if (!combinedHeaders.has('Content-Type') && method !== 'GET' && method !== 'HEAD') {
+                combinedHeaders.set('Content-Type', 'application/json');
+                requestBody = typeof body === 'string' ? body : JSON.stringify(body);
+            }
+        }
+
+        try {
+            const response = await fetch(url, {
+                method,
+                headers: Object.fromEntries(combinedHeaders.entries()),
+                body: requestBody,
+                signal: controller.signal,
+                credentials
+            });
+
+            if (!response.ok) {
+                let errorMessage = `HTTP error! status: ${response.status}`;
+                const contentType = response.headers.get('content-type') || '';
+                if (contentType.includes('application/json')) {
+                    try {
+                        const errorData = await response.json();
+                        errorMessage = errorData.detail?.[0]?.msg || errorData.detail || errorData.message || errorMessage;
+                    } catch {
+                        // ignore JSON parse errors and fall back to default message
+                    }
+                }
+                throw new Error(errorMessage);
+            }
+
+            if (!parseJson) {
+                return response;
+            }
+
+            if (response.status === 204) {
+                return null;
+            }
+
+            const contentType = response.headers.get('content-type') || '';
+            if (contentType.includes('application/json')) {
+                return await response.json();
+            }
+
+            return null;
+        } catch (error) {
+            if (error.name === 'AbortError') {
+                throw new Error('リクエストがタイムアウトしました');
+            }
+            throw error;
+        } finally {
+            clearTimeout(timeoutId);
+        }
+    },
+
     // タイムライン取得
     async getTimeline(tab, page = 1) {
         try {
             // タブに応じてタイムラインの種類を指定
             const timelineType = tab === 'following' ? 'following' : 'recommend';
-            const response = await fetch(`/api/v1/posts?page=${page}&per_page=20&timeline_type=${timelineType}`, {
-                headers: this.getAuthHeader()
-            });
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const data = await response.json();
+            const data = await this.request(`/api/v1/posts?page=${page}&per_page=20&timeline_type=${timelineType}`);
             
             const formattedPosts = data.posts.map(post => ({
                 id: post.id,
@@ -75,15 +162,7 @@ const API = {
     async getShops(query, filters) {
         try {
             const url = query ? `/api/v1/ramen?keyword=${encodeURIComponent(query)}` : '/api/v1/ramen';
-            const response = await fetch(url, {
-                headers: this.getAuthHeader()
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const data = await response.json();
+            const data = await this.request(url);
             return data.shops.map(shop => ({
                 id: shop.id,
                 name: shop.name,
@@ -103,15 +182,7 @@ const API = {
     // 店舗詳細取得
     async getShopDetail(shopId) {
         try {
-            const response = await fetch(`/api/v1/ramen/${shopId}`, {
-                headers: this.getAuthHeader()
-            });
-
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const data = await response.json();
+            const data = await this.request(`/api/v1/ramen/${shopId}`);
             return { success: true, shop: data };
         } catch (error) {
             console.error('店舗詳細の取得に失敗しました:', error);
@@ -122,16 +193,8 @@ const API = {
     // 店舗IDで投稿を取得
     async getPostsByShopId(shopId) {
         try {
-            const response = await fetch(`/api/v1/posts?shop_id=${shopId}`, {
-                headers: this.getAuthHeader()
-            });
+            const data = await this.request(`/api/v1/posts?shop_id=${shopId}`);
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const data = await response.json();
-            
             // 投稿データをフォーマット
             const formattedPosts = data.posts.map(post => ({
                 id: post.id,
@@ -174,16 +237,8 @@ const API = {
     async getShopPosts(shopName) {
         try {
             // 店舗名を含む投稿を検索
-            const response = await fetch(`/api/v1/posts?keyword=${encodeURIComponent(shopName)}`, {
-                headers: this.getAuthHeader()
-            });
+            const data = await this.request(`/api/v1/posts?keyword=${encodeURIComponent(shopName)}`);
 
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-
-            const data = await response.json();
-            
             // 投稿データをフォーマット
             const formattedPosts = data.posts.map(post => ({
                 id: post.id,
@@ -228,18 +283,10 @@ const API = {
                 formData.append('shop_id', shopId);
             }
 
-            const response = await fetch('/api/v1/posts', {
+            const data = await this.request('/api/v1/posts', {
                 method: 'POST',
-                headers: this.getAuthHeader(),
                 body: formData
             });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.detail || '投稿に失敗しました');
-            }
-
-            const data = await response.json();
             // 新規投稿のデータも店舗情報を含めるように変換
             const formattedPost = {
                 id: data.id,
@@ -274,13 +321,7 @@ const API = {
     // 単一投稿取得
     async getPost(postId) {
         try {
-            const response = await fetch(`/api/v1/posts/${postId}`, {
-                headers: this.getAuthHeader()
-            });
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const data = await response.json();
+            const data = await this.request(`/api/v1/posts/${postId}`);
             return { success: true, post: data };
         } catch (error) {
             console.error('投稿の取得に失敗しました:', error);
@@ -291,13 +332,7 @@ const API = {
     // 返信一覧取得
     async getRepliesForPost(postId) {
         try {
-            const response = await fetch(`/api/v1/posts/${postId}/replies`, {
-                headers: this.getAuthHeader()
-            });
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const data = await response.json();
+            const data = await this.request(`/api/v1/posts/${postId}/replies`);
             return { success: true, replies: data };
         } catch (error) {
             console.error('返信の取得に失敗しました:', error);
@@ -308,19 +343,10 @@ const API = {
     // 返信投稿
     async postReply(postId, content) {
         try {
-            const response = await fetch(`/api/v1/posts/${postId}/replies`, {
+            const data = await this.request(`/api/v1/posts/${postId}/replies`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...this.getAuthHeader()
-                },
-                body: JSON.stringify({ content: content })
+                body: { content }
             });
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.detail || '返信に失敗しました');
-            }
-            const data = await response.json();
             return { success: true, reply: data };
         } catch (error) {
             console.error('返信に失敗しました:', error);
@@ -331,14 +357,10 @@ const API = {
     // いいねする
     async likePost(postId) {
         try {
-            const response = await fetch(`/api/v1/posts/${postId}/like`, {
+            await this.request(`/api/v1/posts/${postId}/like`, {
                 method: 'POST',
-                headers: this.getAuthHeader()
+                parseJson: false
             });
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.detail || 'いいねに失敗しました');
-            }
             return { success: true };
         } catch (error) {
             console.error('いいねに失敗しました:', error);
@@ -349,14 +371,10 @@ const API = {
     // いいねを取り消す
     async unlikePost(postId) {
         try {
-            const response = await fetch(`/api/v1/posts/${postId}/like`, {
+            await this.request(`/api/v1/posts/${postId}/like`, {
                 method: 'DELETE',
-                headers: this.getAuthHeader()
+                parseJson: false
             });
-            if (response.status !== 204) { // No content on success
-                const errorData = await response.json();
-                throw new Error(errorData.detail || 'いいねの取り消しに失敗しました');
-            }
             return { success: true };
         } catch (error) {
             console.error('いいねの取り消しに失敗しました:', error);
@@ -367,21 +385,11 @@ const API = {
     // ユーザー登録
     async register(id, email, password) {
         try {
-            const response = await fetch('/api/v1/auth/register', {
+            const data = await this.request('/api/v1/auth/register', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ id, email, password })
+                body: { id, email, password },
+                includeAuth: false
             });
-            
-            if (!response.ok) {
-                const errorData = await response.json();
-                const errorMessage = errorData.detail?.[0]?.msg || errorData.detail || '登録に失敗しました';
-                throw new Error(errorMessage);
-            }
-            
-            const data = await response.json();
             return { success: true, token: data };
         } catch (error) {
             console.error('登録に失敗しました:', error);
@@ -392,20 +400,11 @@ const API = {
     // ログイン
     async login(id, password) {
         try {
-            const response = await fetch('/api/v1/auth/login', {
+            const data = await this.request('/api/v1/auth/login', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({ id, password })
+                body: { id, password },
+                includeAuth: false
             });
-            
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.detail || 'ログインに失敗しました');
-            }
-            
-            const data = await response.json();
             return { success: true, token: data };
         } catch (error) {
             console.error('ログインに失敗しました:', error);
@@ -416,13 +415,7 @@ const API = {
     // ユーザープロフィール取得
     async getUserProfile(userId) {
         try {
-            const response = await fetch(`/api/v1/users/${userId}`, {
-                headers: this.getAuthHeader()
-            });
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const data = await response.json();
+            const data = await this.request(`/api/v1/users/${userId}`);
             return { success: true, user: data };
         } catch (error) {
             console.error('プロフィールの取得に失敗しました:', error);
@@ -433,14 +426,10 @@ const API = {
     // ユーザーをフォローする
     async followUser(userId) {
         try {
-            const response = await fetch(`/api/v1/users/${userId}/follow`, {
+            await this.request(`/api/v1/users/${userId}/follow`, {
                 method: 'POST',
-                headers: this.getAuthHeader()
+                parseJson: false
             });
-            if (response.status !== 204) {
-                const errorData = await response.json();
-                throw new Error(errorData.detail || 'フォローに失敗しました');
-            }
             return { success: true };
         } catch (error) {
             console.error('フォローに失敗しました:', error);
@@ -451,14 +440,10 @@ const API = {
     // ユーザーのフォローを解除する
     async unfollowUser(userId) {
         try {
-            const response = await fetch(`/api/v1/users/${userId}/unfollow`, {
+            await this.request(`/api/v1/users/${userId}/unfollow`, {
                 method: 'POST',
-                headers: this.getAuthHeader()
+                parseJson: false
             });
-            if (response.status !== 204) {
-                const errorData = await response.json();
-                throw new Error(errorData.detail || 'フォロー解除に失敗しました');
-            }
             return { success: true };
         } catch (error) {
             console.error('フォロー解除に失敗しました:', error);
@@ -469,13 +454,7 @@ const API = {
     // ユーザーの投稿一覧取得
     async getUserPosts(userId) {
         try {
-            const response = await fetch(`/api/v1/posts/user/${userId}`, {
-                headers: this.getAuthHeader()
-            });
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const data = await response.json();
+            const data = await this.request(`/api/v1/posts/user/${userId}`);
             return { success: true, posts: data.posts };
         } catch (error) {
             console.error('ユーザー投稿の取得に失敗しました:', error);
@@ -486,13 +465,7 @@ const API = {
     // ユーザーのフォロワー一覧取得
     async getFollowers(userId) {
         try {
-            const response = await fetch(`/api/v1/users/${userId}/followers`, {
-                headers: this.getAuthHeader()
-            });
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const data = await response.json();
+            const data = await this.request(`/api/v1/users/${userId}/followers`);
             return { success: true, users: data };
         } catch (error) {
             console.error('フォロワーの取得に失敗しました:', error);
@@ -503,13 +476,7 @@ const API = {
     // ユーザーのフォロー中一覧取得
     async getFollowing(userId) {
         try {
-            const response = await fetch(`/api/v1/users/${userId}/following`, {
-                headers: this.getAuthHeader()
-            });
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            const data = await response.json();
+            const data = await this.request(`/api/v1/users/${userId}/following`);
             return { success: true, users: data };
         } catch (error) {
             console.error('フォロー中の取得に失敗しました:', error);
@@ -536,9 +503,8 @@ const API = {
     // HTMLエスケープ処理
     escapeHtml(text) {
         if (text === null || text === undefined) return '';
-        const div = document.createElement('div');
-        div.textContent = text;
-        return div.innerHTML;
+        this._escapeElement.textContent = text;
+        return this._escapeElement.innerHTML;
     },
 
     // テキスト内の改行を<br>タグに変換（XSS対策済み）
@@ -550,23 +516,10 @@ const API = {
     // 投稿を通報する
     async reportPost(postId, reason) {
         try {
-            const response = await fetch(`/api/v1/posts/${postId}/report`, {
+            const data = await this.request(`/api/v1/posts/${postId}/report`, {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...this.getAuthHeader()
-                },
-                body: JSON.stringify({
-                    reason: reason
-                })
+                body: { reason }
             });
-            
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.detail || '通報に失敗しました');
-            }
-            
-            const data = await response.json();
             return { success: true, report: data };
         } catch (error) {
             console.error('通報に失敗しました:', error);
@@ -577,21 +530,10 @@ const API = {
     // プロフィール更新
     async updateUserProfile(updateData) {
         try {
-            const response = await fetch('/api/v1/users/me', {
+            const data = await this.request('/api/v1/users/me', {
                 method: 'PUT',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...this.getAuthHeader()
-                },
-                body: JSON.stringify(updateData)
+                body: updateData
             });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.detail || 'プロフィールの更新に失敗しました');
-            }
-
-            const data = await response.json();
             return { success: true, user: data };
         } catch (error) {
             console.error('プロフィールの更新に失敗しました:', error);
@@ -602,16 +544,10 @@ const API = {
     // アカウント削除
     async deleteAccount() {
         try {
-            const response = await fetch('/api/v1/users/me', {
+            await this.request('/api/v1/users/me', {
                 method: 'DELETE',
-                headers: this.getAuthHeader()
+                parseJson: false
             });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                throw new Error(errorData.detail || 'アカウントの削除に失敗しました');
-            }
-
             return { success: true };
         } catch (error) {
             console.error('アカウントの削除に失敗しました:', error);
@@ -693,8 +629,8 @@ const Utils = {
 
     // ログアウト処理
     logout() {
-        API.setCookie('authToken', '', -1);
-        API.setCookie('user', '', -1);
+        API.deleteCookie('authToken');
+        API.deleteCookie('user');
         this.showNotification('ログアウトしました', 'success');
         router.navigate('auth', ['login']);
         this.updateUserProfileUI();
@@ -776,15 +712,8 @@ const Theme = {
 
 window.Theme = Theme; // グローバルに公開
 
-// イベントリスナーの設定
-document.addEventListener('DOMContentLoaded', function() {
-    // ユーザープロフィールUIの初期化
-    Utils.updateUserProfileUI();
-});
-
 // アプリケーションの初期化
 document.addEventListener('DOMContentLoaded', function() {
     Theme.init(); // テーマの初期化
-    // ユーザープロフィールUIの初期化
     Utils.updateUserProfileUI();
 });

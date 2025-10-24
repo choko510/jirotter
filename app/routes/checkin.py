@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from sqlalchemy import func, desc
 from typing import List, Optional, Dict, Any
+import ipaddress
 import math
 import re
 import user_agents
@@ -59,6 +60,22 @@ def is_mobile_network(request: Request) -> bool:
     mobile_keywords = ['mobile', 'android', 'iphone', 'ipad', 'tablet']
     return any(keyword in user_agent for keyword in mobile_keywords)
 
+def _is_public_ip(value: str) -> bool:
+    """公開IPアドレスのみ許可する"""
+    try:
+        ip_obj = ipaddress.ip_address(value)
+    except ValueError:
+        return False
+
+    return not (
+        ip_obj.is_private
+        or ip_obj.is_loopback
+        or ip_obj.is_link_local
+        or ip_obj.is_reserved
+        or ip_obj.is_multicast
+    )
+
+
 def get_ip_location(request: Request) -> Optional[Dict[str, Any]]:
     """IPアドレスから位置情報を取得"""
     try:
@@ -68,10 +85,18 @@ def get_ip_location(request: Request) -> Optional[Dict[str, Any]]:
             ip = forwarded_for.split(",")[0].strip()
         else:
             ip = request.client.host
-        
+
+        if not ip or not _is_public_ip(ip):
+            return None
+
         # ipinfo.ioを使用して位置情報を取得
         import httpx
-        response = httpx.get(f"https://ipinfo.io/{ip}/json")
+
+        response = httpx.get(
+            f"https://ipinfo.io/{ip}/json",
+            timeout=httpx.Timeout(2.0, connect=2.0),
+            follow_redirects=False,
+        )
         if response.status_code == 200:
             data = response.json()
             if 'loc' in data:
@@ -85,7 +110,7 @@ def get_ip_location(request: Request) -> Optional[Dict[str, Any]]:
                 }
     except Exception as e:
         print(f"IP位置情報取得エラー: {e}")
-    
+
     return None
 
 def verify_checkin_location(

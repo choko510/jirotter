@@ -388,15 +388,7 @@ const WaittimeComponent = {
         
         try {
             // APIからデータを取得
-            const response = await fetch('/api/v1/ramen/waittime', {
-                headers: API.getAuthHeader()
-            });
-            
-            if (!response.ok) {
-                throw new Error(`HTTP error! status: ${response.status}`);
-            }
-            
-            const data = await response.json();
+            const data = await API.request('/api/v1/ramen/waittime');
             
             // 取得したデータを状態に保存
             this.state.shops = data.shops.map(shop => ({

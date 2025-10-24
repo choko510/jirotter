@@ -1587,40 +1587,31 @@ const MapComponent = {
                 }
                 
                 // APIリクエストを作成
-                const apiRequest = fetch(`/api/v1/ramen/nearby?latitude=${lat}&longitude=${lng}&radius_km=${radius}`)
-                    .then(response => {
-                        if (!response.ok) {
-                            throw new Error('ラーメン店データの取得に失敗しました');
-                        }
-                        return response.json();
-                    })
+                const apiRequest = API.request(`/api/v1/ramen/nearby?latitude=${lat}&longitude=${lng}&radius_km=${radius}`)
                     .then(data => {
                         // 取得したデータをキャッシュに保存
                         this.cacheShopData(cacheKey, data);
-                        
+
                         // 取得した店舗データでマーカーを更新
                         this.updateShopMarkers(data.shops);
-                        
-                        // リクエスト完了後、pendingリストから削除
-                        this.state.cache.pendingRequests.delete(pendingKey);
-                        
+
                         // 店舗数が10以下で、まだ最大検索範囲に達していない場合は次の範囲を試す
                         if (data.shops.length <= 10 && radius < maxRadius) {
                             console.log(`店舗数が${data.shops.length}件のため、検索範囲を広げます`);
                             // 次の範囲で再検索
                             this.addNearbyShops(centerLocation, radiusSteps[i + 1]);
                         }
-                        
+
                         return data;
                     })
                     .catch(error => {
                         console.error('ラーメン店データの取得に失敗しました:', error);
                         this.showError('ラーメン店データの取得に失敗しました: ' + error.message);
-                        
-                        // エラー時もpendingリストから削除
-                        this.state.cache.pendingRequests.delete(pendingKey);
-                        
                         throw error;
+                    })
+                    .finally(() => {
+                        // リクエスト完了後、pendingリストから削除
+                        this.state.cache.pendingRequests.delete(pendingKey);
                     });
                 
                 // 進行中のリクエストとして保存
@@ -2305,11 +2296,7 @@ const MapComponent = {
         panel.classList.add('show');
 
         try {
-            const response = await fetch(`/api/v1/ramen/${shopId}`);
-            if (!response.ok) {
-                throw new Error('店舗情報の取得に失敗しました');
-            }
-            const shop = await response.json();
+            const shop = await API.request(`/api/v1/ramen/${shopId}`, { includeAuth: false });
 
             const brandInfo = this.getBrandInfo(shop.name);
             const waitTimeText = this.formatWaitTime(shop.wait_time);

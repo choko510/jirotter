@@ -199,6 +199,9 @@ class Checkin(Base):
     @property
     def verification_level(self):
         """検証レベルを返す"""
+        if self.verification_score is None:
+            return 'unknown'
+
         if self.verification_score >= 90:
             return 'high'
         elif self.verification_score >= 60:
