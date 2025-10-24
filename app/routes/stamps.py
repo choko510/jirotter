@@ -29,39 +29,35 @@ async def get_stamp_rally_progress(
     都道府県ごとのスタンプラリーの進捗状況を取得する。
     """
     try:
-        # 1. 各都道府県の総店舗数を計算
-        total_shops_by_prefecture = {}
-        for pref in PREFECTURES:
-            count = db.query(RamenShop).filter(RamenShop.address.like(f"%{pref}%")).count()
-            if count > 0:
-                total_shops_by_prefecture[pref] = count
+        # 1. 全店舗のIDと住所を取得
+        all_shops = db.query(RamenShop.id, RamenShop.address).all()
 
-        # 2. ユーザーがチェックインした店舗を都道府県ごとに集計
-        checked_in_shops_by_prefecture = {}
-        checked_in_shops = (
-            db.query(RamenShop.address)
-            .join(Checkin, Checkin.shop_id == RamenShop.id)
-            .filter(Checkin.user_id == current_user.id)
-            .distinct()
-            .all()
-        )
+        # 2. ユーザーがチェックインした店舗IDのセットを取得
+        visited_shop_ids = {
+            row[0] for row in db.query(Checkin.shop_id).filter(Checkin.user_id == current_user.id).distinct().all()
+        }
 
-        for address_tuple in checked_in_shops:
-            address = address_tuple[0]
+        # 3. Python側で集計
+        total_shops_map = {pref: 0 for pref in PREFECTURES}
+        visited_shops_map = {pref: 0 for pref in PREFECTURES}
+
+        for shop_id, address in all_shops:
             for pref in PREFECTURES:
                 if pref in address:
-                    checked_in_shops_by_prefecture[pref] = checked_in_shops_by_prefecture.get(pref, 0) + 1
+                    total_shops_map[pref] += 1
+                    if shop_id in visited_shop_ids:
+                        visited_shops_map[pref] += 1
                     break
 
-        # 3. レスポンスデータを構築
+        # 4. レスポンスデータを構築
         progress_data = []
-        for pref, total in total_shops_by_prefecture.items():
-            checked_in = checked_in_shops_by_prefecture.get(pref, 0)
-            progress_data.append({
-                "prefecture": pref,
-                "total_shops": total,
-                "visited_shops": checked_in
-            })
+        for pref in PREFECTURES:
+            if total_shops_map[pref] > 0:
+                progress_data.append({
+                    "prefecture": pref,
+                    "total_shops": total_shops_map[pref],
+                    "visited_shops": visited_shops_map[pref]
+                })
 
         # 訪問済み店舗が多い順、次に総店舗数が多い順でソート
         progress_data.sort(key=lambda x: (x['visited_shops'], x['total_shops']), reverse=True)

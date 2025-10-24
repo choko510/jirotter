@@ -148,15 +148,27 @@ const StampRallyComponent = {
                 }
                 
                 .prefecture-filters {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-                    gap: 8px;
-                    margin-bottom: 20px;
-                    max-height: 200px;
-                    overflow-y: auto;
-                    padding: 10px;
                     background: #f9f9f9;
                     border-radius: 8px;
+                    padding: 10px;
+                    margin-bottom: 20px;
+                }
+
+                .region-details {
+                    margin-bottom: 5px;
+                }
+
+                .region-summary {
+                    font-weight: bold;
+                    cursor: pointer;
+                    padding: 5px;
+                }
+
+                .prefecture-buttons {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 8px;
+                    padding: 10px;
                 }
                 
                 .brand-filter-btn,
@@ -638,26 +650,39 @@ const StampRallyComponent = {
 
     // 都道府県フィルターをレンダリング
     renderPrefectureFilters() {
-        const prefectures = [
-            '北海道', '青森県', '岩手県', '宮城県', '秋田県', '山形県', '福島県',
-            '茨城県', '栃木県', '群馬県', '埼玉県', '千葉県', '東京都', '神奈川県',
-            '新潟県', '富山県', '石川県', '福井県', '山梨県', '長野県', '岐阜県', '静岡県', '愛知県',
-            '三重県', '滋賀県', '京都府', '大阪府', '兵庫県', '奈良県', '和歌山県',
-            '鳥取県', '島根県', '岡山県', '広島県', '山口県', '徳島県', '香川県', '愛媛県', '高知県',
-            '福岡県', '佐賀県', '長崎県', '熊本県', '大分県', '宮崎県', '鹿児島県', '沖縄県'
-        ];
-        
+        const regions = {
+            '北海道': ['北海道'],
+            '東北': ['青森県', '岩手県', '宮城県', '秋田県', '山形県', '福島県'],
+            '関東': ['茨城県', '栃木県', '群馬県', '埼玉県', '千葉県', '東京都', '神奈川県'],
+            '中部': ['新潟県', '富山県', '石川県', '福井県', '山梨県', '長野県', '岐阜県', '静岡県', '愛知県'],
+            '近畿': ['三重県', '滋賀県', '京都府', '大阪府', '兵庫県', '奈良県', '和歌山県'],
+            '中国': ['鳥取県', '島根県', '岡山県', '広島県', '山口県'],
+            '四国': ['徳島県', '香川県', '愛媛県', '高知県'],
+            '九州・沖縄': ['福岡県', '佐賀県', '長崎県', '熊本県', '大分県', '宮崎県', '鹿児島県', '沖縄県']
+        };
+
         let buttonsHtml = `
             <button class="prefecture-filter-btn ${this.state.selectedPrefecture === 'all' ? 'active' : ''}" data-prefecture="all">
                 全国
             </button>
         `;
 
-        for (const prefecture of prefectures) {
+        for (const region in regions) {
             buttonsHtml += `
-                <button class="prefecture-filter-btn ${this.state.selectedPrefecture === prefecture ? 'active' : ''}" data-prefecture="${prefecture}">
-                    ${prefecture}
-                </button>
+                <details class="region-details">
+                    <summary class="region-summary">${region}</summary>
+                    <div class="prefecture-buttons">
+            `;
+            regions[region].forEach(prefecture => {
+                buttonsHtml += `
+                    <button class="prefecture-filter-btn ${this.state.selectedPrefecture === prefecture ? 'active' : ''}" data-prefecture="${prefecture}">
+                        ${prefecture}
+                    </button>
+                `;
+            });
+            buttonsHtml += `
+                    </div>
+                </details>
             `;
         }
 
