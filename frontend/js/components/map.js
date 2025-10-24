@@ -686,9 +686,8 @@ const MapComponent = {
             @media (max-width: 768px) {
                 .shop-detail-panel {
                     width: 100%;
-                    height: 60%;
-                    bottom: 0;
-                    top: auto;
+                    top: 40%; /* Start from 40% from the top */
+                    bottom: 0; /* Go all the way to the bottom */
                     left: 0;
                     transform: translateY(100%);
                     border-top: 1px solid #e0e0e0;
