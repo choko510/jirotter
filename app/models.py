@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Float, Boolean, JSON
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Float, Boolean, JSON, Index
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
@@ -51,7 +51,9 @@ class Post(Base):
     id = Column(Integer, primary_key=True)
     content = Column(Text, nullable=False)
     user_id = Column(String(80), ForeignKey('users.id'), nullable=False)
-    image_url = Column(String(255), nullable=True)
+    image_url = Column(String(255), nullable=True)  # 後方互換性のために残す
+    thumbnail_url = Column(String(255), nullable=True)  # 低画質画像URL
+    original_image_url = Column(String(255), nullable=True)  # 通常画質画像URL
     shop_id = Column(Integer, ForeignKey('ramen_shops.id'), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -106,6 +108,9 @@ class Reply(Base):
 class RamenShop(Base):
     """ラーメン店モデル"""
     __tablename__ = 'ramen_shops'
+    __table_args__ = (
+        Index('ix_ramen_shops_lat_lon', 'latitude', 'longitude'),
+    )
     
     id = Column(Integer, primary_key=True)
     name = Column(String(255), nullable=False)
@@ -113,8 +118,8 @@ class RamenShop(Base):
     business_hours = Column(String(255))
     closed_day = Column(String(255))
     seats = Column(String(255))
-    latitude = Column(Float, nullable=False)
-    longitude = Column(Float, nullable=False)
+    latitude = Column(Float, nullable=False, index=True)
+    longitude = Column(Float, nullable=False, index=True)
     wait_time = Column(Integer, default=0)  # 待ち時間（分）
     last_update = Column(DateTime, default=datetime.utcnow)  # 最終更新時間
 
@@ -154,11 +159,14 @@ class Report(Base):
 class Checkin(Base):
     """チェックインモデル"""
     __tablename__ = 'checkins'
+    __table_args__ = (
+        Index('ix_checkins_shop_date', 'shop_id', 'checkin_date'),
+    )
     
     id = Column(Integer, primary_key=True)
     user_id = Column(String(80), ForeignKey('users.id'), nullable=False)
-    shop_id = Column(Integer, ForeignKey('ramen_shops.id'), nullable=False)
-    checkin_date = Column(DateTime, nullable=False, default=datetime.utcnow)
+    shop_id = Column(Integer, ForeignKey('ramen_shops.id'), nullable=False, index=True)
+    checkin_date = Column(DateTime, nullable=False, default=datetime.utcnow, index=True)
     
     # 位置情報
     latitude = Column(Float, nullable=True)  # GPSまたはEXIFから取得

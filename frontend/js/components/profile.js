@@ -241,11 +241,30 @@ const ProfileComponent = {
             this.state.posts.forEach(post => {
                 const item = document.createElement('div');
                 item.className = 'profile-post-item';
-                if (post.image_url) {
+                if (post.image_url || post.thumbnail_url) {
+                    const picture = document.createElement('picture');
+                    
+                    // source要素（通常画質）
+                    if (post.original_image_url) {
+                        const source = document.createElement('source');
+                        source.srcset = post.original_image_url;
+                        source.media = '(min-width: 768px)';
+                        picture.appendChild(source);
+                    }
+                    
+                    // img要素（低画質）
                     const img = document.createElement('img');
-                    img.src = post.image_url;
+                    img.src = post.thumbnail_url || post.image_url;
                     img.alt = '投稿画像';
-                    item.appendChild(img);
+                    img.loading = 'lazy';
+                    
+                    // 通常画質画像をdata-srcに設定
+                    if (post.original_image_url) {
+                        img.dataset.src = post.original_image_url;
+                    }
+                    
+                    picture.appendChild(img);
+                    item.appendChild(picture);
                 }
                 const p = document.createElement('p');
                 p.textContent = post.content;
@@ -253,6 +272,11 @@ const ProfileComponent = {
                 grid.appendChild(item);
             });
             content.appendChild(grid);
+            
+            // 遅延読み込みを設定
+            setTimeout(() => {
+                this.setupLazyLoading();
+            }, 100);
         } else if (tabName === 'followers') {
             this.showFollowers();
         } else if (tabName === 'following') {
@@ -450,6 +474,92 @@ const ProfileComponent = {
             console.error('Update failed:', result.error);
             Utils.showNotification('プロフィールの更新に失敗しました。入力内容を確認してください。', 'error');
         }
+    },
+
+    // 遅延読み込みの設定
+    setupLazyLoading() {
+        const images = document.querySelectorAll('.profile-post-item img[data-src]');
+        
+        if ('IntersectionObserver' in window) {
+            const imageObserver = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const img = entry.target;
+                        
+                        // ネットワーク状況に応じて画像の読み込みを制御
+                        if (this.isSlowNetwork()) {
+                            // 低速ネットワークの場合はサムネイルのまま
+                            img.dataset.loaded = 'true';
+                            observer.unobserve(img);
+                            return;
+                        }
+                        
+                        // 通常画質画像に切り替え
+                        const highQualitySrc = img.dataset.src;
+                        if (highQualitySrc && img.src !== highQualitySrc) {
+                            const tempImg = new Image();
+                            tempImg.onload = () => {
+                                img.src = highQualitySrc;
+                                img.removeAttribute('data-src');
+                                img.dataset.loaded = 'true';
+                            };
+                            tempImg.src = highQualitySrc;
+                        } else if (!highQualitySrc) {
+                            // 高画質画像がない場合でもロード済みとしてマーク
+                            img.dataset.loaded = 'true';
+                        }
+                        
+                        observer.unobserve(img);
+                    }
+                });
+            }, {
+                rootMargin: '50px' // ビューポートの50px手前から読み込み開始
+            });
+            
+            images.forEach(img => imageObserver.observe(img));
+        } else {
+            // IntersectionObserverがサポートされていない場合のフォールバック
+            images.forEach(img => {
+                if (this.isSlowNetwork()) {
+                    img.dataset.loaded = 'true';
+                    return; // 低速ネットワークの場合はサムネイルのまま
+                }
+                
+                const highQualitySrc = img.dataset.src;
+                if (highQualitySrc) {
+                    img.src = highQualitySrc;
+                    img.removeAttribute('data-src');
+                    img.dataset.loaded = 'true';
+                } else {
+                    // 高画質画像がない場合でもロード済みとしてマーク
+                    img.dataset.loaded = 'true';
+                }
+            });
+        }
+    },
+
+    // ネットワーク速度の判定
+    isSlowNetwork() {
+        const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+        
+        if (connection) {
+            // 接続タイプで判定
+            if (connection.type === 'cellular') {
+                // モバイルネットワークの場合
+                if (connection.effectiveType === 'slow-2g' ||
+                    connection.effectiveType === '2g' ||
+                    connection.effectiveType === '3g') {
+                    return true;
+                }
+            }
+            
+            // ダウンロード速度で判定
+            if (connection.downlink && connection.downlink < 1.5) {
+                return true; // 1.5Mbps未満は低速と判定
+            }
+        }
+        
+        return false;
     }
 };
 

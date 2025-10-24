@@ -782,7 +782,7 @@ const CommentComponent = {
                 <div class="post-content" id="post-content-${post.id}">${API.escapeHtmlWithLineBreaks(post.content)}</div>
                 ${this.isLongText(post.content) ? `<button class="show-more-btn" onclick="CommentComponent.toggleText('post', ${post.id})">続きを見る</button>` : ''}
             </div>
-            ${post.image_url ? `<div class="post-image"><img src="${API.escapeHtml(post.image_url)}" style="width:100%; border-radius: 16px; margin-top: 12px;" alt="Post image" onclick="CommentComponent.openImageModal(['${API.escapeHtml(post.image_url)}'], 0)"></div>` : ''}
+            ${this.createPostImageHTML(post)}
             <div class="post-engagement">
                 <button class="engagement-btn" onclick="CommentComponent.handleLike(${post.id})">
                     <i class="fas fa-heart ${post.is_liked_by_current_user ? 'liked' : ''}" id="like-icon-${post.id}"></i> 
@@ -819,7 +819,7 @@ const CommentComponent = {
                     <div class="comment-content" id="comment-content-${comment.id}">${API.escapeHtmlWithLineBreaks(comment.content)}</div>
                     ${this.isLongText(comment.content) ? `<button class="show-more-btn" onclick="CommentComponent.toggleText('comment', ${comment.id})">続きを見る</button>` : ''}
                 </div>
-                ${comment.image_url ? `<div class="post-image"><img src="${API.escapeHtml(comment.image_url)}" style="width:100%; border-radius: 16px; margin-top: 12px;" alt="Comment image" onclick="CommentComponent.openImageModal(['${API.escapeHtml(comment.image_url)}'], 0)"></div>` : ''}
+                ${this.createCommentImageHTML(comment)}
                 <div class="comment-actions">
                     <button class="comment-action-btn" onclick="CommentComponent.handleCommentLike(${comment.id})">
                         <i class="fas fa-heart ${comment.is_liked_by_current_user ? 'liked' : ''}" id="comment-like-icon-${comment.id}"></i> 
@@ -874,6 +874,11 @@ const CommentComponent = {
             document.getElementById('commentSubmitBtn').disabled = true;
             // Reload comments
             await this.loadPostAndComments(this.state.currentPost.id);
+            
+            // 遅延読み込みを再設定
+            setTimeout(() => {
+                this.setupLazyLoading();
+            }, 100);
         } else {
             alert(`コメントの投稿に失敗しました: ${result.error}`);
         }
@@ -1403,6 +1408,179 @@ const CommentComponent = {
         if (nextBtn) {
             nextBtn.classList.toggle('disabled', currentIndex === images.length - 1);
         }
+    },
+
+    // 投稿画像のHTMLを生成（picture要素を使用）
+    createPostImageHTML(post) {
+        // 新しい画像URLがある場合はpicture要素を使用
+        if (post.thumbnail_url || post.original_image_url) {
+            const thumbnailUrl = post.thumbnail_url || post.image_url;
+            const originalUrl = post.original_image_url || post.image_url;
+            
+            return `
+                <div class="post-image">
+                    <picture>
+                        <source srcset="${API.escapeHtml(originalUrl)}" media="(min-width: 768px)">
+                        <img src="${API.escapeHtml(thumbnailUrl)}"
+                             style="width:100%; border-radius: 16px; margin-top: 12px;"
+                             alt="Post image"
+                             loading="lazy"
+                             data-src="${API.escapeHtml(originalUrl)}"
+                             onclick="CommentComponent.openImageModal(['${API.escapeHtml(originalUrl)}'], 0)">
+                    </picture>
+                </div>
+            `;
+        }
+        
+        // 後方互換性のための従来の画像表示
+        if (post.image_url) {
+            return `
+                <div class="post-image">
+                    <img src="${API.escapeHtml(post.image_url)}"
+                         style="width:100%; border-radius: 16px; margin-top: 12px;"
+                         alt="Post image"
+                         loading="lazy"
+                         onclick="CommentComponent.openImageModal(['${API.escapeHtml(post.image_url)}'], 0)">
+                </div>
+            `;
+        }
+        
+        return '';
+    },
+
+    // コメント画像のHTMLを生成
+    createCommentImageHTML(comment) {
+        // 新しい画像URLがある場合はpicture要素を使用
+        if (comment.thumbnail_url || comment.original_image_url) {
+            const thumbnailUrl = comment.thumbnail_url || comment.image_url;
+            const originalUrl = comment.original_image_url || comment.image_url;
+            
+            return `
+                <div class="post-image">
+                    <picture>
+                        <source srcset="${API.escapeHtml(originalUrl)}" media="(min-width: 768px)">
+                        <img src="${API.escapeHtml(thumbnailUrl)}"
+                             style="width:100%; border-radius: 16px; margin-top: 12px;"
+                             alt="Comment image"
+                             loading="lazy"
+                             data-src="${API.escapeHtml(originalUrl)}"
+                             onclick="CommentComponent.openImageModal(['${API.escapeHtml(originalUrl)}'], 0)">
+                    </picture>
+                </div>
+            `;
+        }
+        
+        // 後方互換性のための従来の画像表示
+        if (comment.image_url) {
+            return `
+                <div class="post-image">
+                    <img src="${API.escapeHtml(comment.image_url)}"
+                         style="width:100%; border-radius: 16px; margin-top: 12px;"
+                         alt="Comment image"
+                         loading="lazy"
+                         onclick="CommentComponent.openImageModal(['${API.escapeHtml(comment.image_url)}'], 0)">
+                </div>
+            `;
+        }
+        
+        return '';
+    },
+
+    // 遅延読み込みの設定
+    setupLazyLoading() {
+        const images = document.querySelectorAll('img[data-src]');
+        
+        if ('IntersectionObserver' in window) {
+            const imageObserver = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const img = entry.target;
+                        
+                        // すでに高画質画像に切り替わっている場合はスキップ
+                        if (img.dataset.loaded === 'true') {
+                            observer.unobserve(img);
+                            return;
+                        }
+                        
+                        // ネットワーク状況に応じて画像の読み込みを制御
+                        if (this.isSlowNetwork()) {
+                            // 低速ネットワークの場合はサムネイルのまま
+                            img.dataset.loaded = 'true';
+                            observer.unobserve(img);
+                            return;
+                        }
+                        
+                        // 通常画質画像に切り替え
+                        const highQualitySrc = img.dataset.src;
+                        if (highQualitySrc && img.src !== highQualitySrc) {
+                            const tempImg = new Image();
+                            tempImg.onload = () => {
+                                img.src = highQualitySrc;
+                                img.removeAttribute('data-src');
+                                img.dataset.loaded = 'true';
+                            };
+                            tempImg.src = highQualitySrc;
+                        } else {
+                            // 高画質画像がない場合でもロード済みとしてマーク
+                            img.dataset.loaded = 'true';
+                        }
+                        
+                        observer.unobserve(img);
+                    }
+                });
+            }, {
+                rootMargin: '50px' // ビューポートの50px手前から読み込み開始
+            });
+            
+            images.forEach(img => imageObserver.observe(img));
+        } else {
+            // IntersectionObserverがサポートされていない場合のフォールバック
+            images.forEach(img => {
+                // すでに高画質画像に切り替わっている場合はスキップ
+                if (img.dataset.loaded === 'true') {
+                    return;
+                }
+                
+                if (this.isSlowNetwork()) {
+                    img.dataset.loaded = 'true';
+                    return; // 低速ネットワークの場合はサムネイルのまま
+                }
+                
+                const highQualitySrc = img.dataset.src;
+                if (highQualitySrc) {
+                    img.src = highQualitySrc;
+                    img.removeAttribute('data-src');
+                    img.dataset.loaded = 'true';
+                } else {
+                    // 高画質画像がない場合でもロード済みとしてマーク
+                    img.dataset.loaded = 'true';
+                }
+            });
+        }
+    },
+
+    // ネットワーク速度の判定
+    isSlowNetwork() {
+        const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+        
+        if (connection) {
+            // 接続タイプで判定
+            if (connection.type === 'cellular') {
+                // モバイルネットワークの場合
+                if (connection.effectiveType === 'slow-2g' ||
+                    connection.effectiveType === '2g' ||
+                    connection.effectiveType === '3g') {
+                    return true;
+                }
+            }
+            
+            // ダウンロード速度で判定
+            if (connection.downlink && connection.downlink < 1.5) {
+                return true; // 1.5Mbps未満は低速と判定
+            }
+        }
+        
+        return false;
     }
 };
 

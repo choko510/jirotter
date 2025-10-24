@@ -16,6 +16,7 @@ from app.models import Post, User, Like, Reply, RamenShop
 from app.schemas import PostCreate, PostResponse, PostsResponse
 from app.utils.auth import get_current_user, get_current_active_user, get_current_user_optional
 from app.utils.security import validate_post_content, escape_html
+from app.utils.image_processor import process_image
 
 router = APIRouter(tags=["posts"])
 
@@ -460,8 +461,10 @@ async def create_post(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="指定された店舗が存在しません"
             )
-    
     image_url = None
+    thumbnail_url = None
+    original_image_url = None
+    
     if image:
         # ファイルバリデーション
         validation_result = validate_image_file(image)
@@ -471,29 +474,33 @@ async def create_post(
                 detail=validation_result["error"]
             )
         
-        # 安全なファイル名を生成
-        file_extension = os.path.splitext(image.filename)[1].lower()
-        safe_filename = f"{current_user.id}_{int(time.time())}{file_extension}"
-        file_path = os.path.join(UPLOAD_DIR, safe_filename)
-        
+        # 画像処理（WebP変換とリサイズ）
         try:
-            with open(file_path, "wb") as buffer:
-                shutil.copyfileobj(image.file, buffer)
-            image_url = f"/{file_path}"
+            thumbnail_url, original_image_url = process_image(image, current_user.id)
+            
+            if not thumbnail_url or not original_image_url:
+                raise HTTPException(
+                    status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                    detail="画像の処理に失敗しました"
+                )
+            
+            # 後方互換性のためにimage_urlにも設定
+            image_url = thumbnail_url
+            
         except Exception as e:
-            # ファイル書き込みエラーの場合、一時ファイルがあれば削除
-            if os.path.exists(file_path):
-                os.remove(file_path)
+            print(f"画像処理エラー: {e}")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-                detail="画像の保存に失敗しました"
+                detail="画像の処理に失敗しました"
             )
 
     try:
         post = Post(
             content=sanitized_content,
             user_id=current_user.id,
-            image_url=image_url,
+            image_url=image_url,  # 後方互換性
+            thumbnail_url=thumbnail_url,
+            original_image_url=original_image_url,
             shop_id=shop_id
         )
         
@@ -591,7 +598,9 @@ async def get_posts(
                 "content": post.content,
                 "user_id": post.user_id,
                 "author_username": post.author.username,
-                "image_url": post.image_url,
+                "image_url": post.image_url,  # 後方互換性
+                "thumbnail_url": post.thumbnail_url,
+                "original_image_url": post.original_image_url,
                 "shop_id": post.shop_id,
                 "shop_name": post.shop.name if post.shop else None,
                 "shop_address": post.shop.address if post.shop else None,
@@ -651,7 +660,9 @@ async def get_post(
         "content": post.content,
         "user_id": post.user_id,
         "author_username": post.author.username,
-        "image_url": post.image_url,
+        "image_url": post.image_url,  # 後方互換性
+        "thumbnail_url": post.thumbnail_url,
+        "original_image_url": post.original_image_url,
         "shop_id": post.shop_id,
         "shop_name": post.shop.name if post.shop else None,
         "shop_address": post.shop.address if post.shop else None,
@@ -750,7 +761,9 @@ async def get_user_posts(
                 "content": post.content,
                 "user_id": post.user_id,
                 "author_username": post.author.username,
-                "image_url": post.image_url,
+                "image_url": post.image_url,  # 後方互換性
+                "thumbnail_url": post.thumbnail_url,
+                "original_image_url": post.original_image_url,
                 "shop_id": post.shop_id,
                 "shop_name": post.shop.name if post.shop else None,
                 "shop_address": post.shop.address if post.shop else None,

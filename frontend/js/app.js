@@ -44,7 +44,9 @@ const API = {
                     avatar: '<i class="fas fa-user"></i>'
                 },
                 text: post.content,
-                image: post.image_url,
+                image: post.image_url,  // 後方互換性
+                thumbnail_url: post.thumbnail_url,
+                original_image_url: post.original_image_url,
                 time: this.formatTime(post.created_at),
                 shop_id: post.shop_id,
                 shop_name: post.shop_name,
@@ -140,7 +142,9 @@ const API = {
                     avatar: '<i class="fas fa-user"></i>'
                 },
                 text: post.content,
-                image: post.image_url,
+                image: post.image_url,  // 後方互換性
+                thumbnail_url: post.thumbnail_url,
+                original_image_url: post.original_image_url,
                 time: this.formatTime(post.created_at),
                 shop_id: post.shop_id,
                 shop_name: post.shop_name,
@@ -194,7 +198,9 @@ const API = {
                     avatar: '<i class="fas fa-user"></i>'
                 },
                 text: data.content,
-                image: data.image_url,
+                image: data.image_url,  // 後方互換性
+                thumbnail_url: data.thumbnail_url,
+                original_image_url: data.original_image_url,
                 time: this.formatTime(data.created_at),
                 shop_id: data.shop_id,
                 shop_name: data.shop_name,

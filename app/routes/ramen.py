@@ -1,7 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
 from sqlalchemy import func
-from typing import List, Optional
+from typing import Optional, Tuple
 import math
 import csv
 import os
@@ -12,6 +12,50 @@ from app.models import RamenShop, Checkin
 from app.schemas import RamenShopResponse, RamenShopsResponse
 
 router = APIRouter(tags=["ramen"])
+
+
+def _build_bounding_box(latitude: float, longitude: float, radius_km: float) -> Tuple[float, float, float, float]:
+    """
+    Haversine距離計算前に緯度・経度の範囲で候補を絞り込むバウンディングボックスを生成する。
+    """
+    earth_radius_km = 6371.0
+    lat_delta = math.degrees(radius_km / earth_radius_km)
+    cos_lat = math.cos(math.radians(latitude))
+
+    if abs(cos_lat) < 1e-12:
+        lon_delta = 180.0
+    else:
+        lon_delta = math.degrees(radius_km / (earth_radius_km * abs(cos_lat)))
+
+    min_lat = max(-90.0, latitude - lat_delta)
+    max_lat = min(90.0, latitude + lat_delta)
+    min_lon = max(-180.0, longitude - lon_delta)
+    max_lon = min(180.0, longitude + lon_delta)
+
+    return min_lat, max_lat, min_lon, max_lon
+
+
+def _distance_expression(latitude: float, longitude: float):
+    """
+    指定した位置とラーメン店とのハバースイン距離を算出するSQLAlchemy式を返す。
+    """
+    earth_radius_km = 6371.0
+    lat_rad = math.radians(latitude)
+    lon_rad = math.radians(longitude)
+
+    shop_lat_rad = func.radians(RamenShop.latitude)
+    shop_lon_rad = func.radians(RamenShop.longitude)
+
+    dlat = shop_lat_rad - lat_rad
+    dlon = shop_lon_rad - lon_rad
+
+    a = (func.sin(dlat / 2) * func.sin(dlat / 2) +
+         func.cos(lat_rad) * func.cos(shop_lat_rad) *
+         func.sin(dlon / 2) * func.sin(dlon / 2))
+
+    c = 2 * func.atan2(func.sqrt(a), func.sqrt(1 - a))
+
+    return (earth_radius_km * c).label('distance')
 
 # この関数はDBで計算するため、APIロジックからは不要になる
 # def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float: ...
@@ -69,22 +113,27 @@ async def get_ramen_ranking(db: Session = Depends(get_db)):
     try:
         one_week_ago = datetime.utcnow() - timedelta(days=7)
 
-        ranking_query = (
+        ranking_subquery = (
             db.query(
-                RamenShop,
+                Checkin.shop_id.label("shop_id"),
                 func.count(Checkin.id).label("checkin_count")
             )
-            .join(Checkin, RamenShop.id == Checkin.shop_id)
             .filter(Checkin.checkin_date >= one_week_ago)
-            .group_by(RamenShop.id)
+            .group_by(Checkin.shop_id)
             .order_by(func.count(Checkin.id).desc())
             .limit(10)
+            .subquery()
         )
 
-        results = ranking_query.all()
+        results = (
+            db.query(RamenShop, ranking_subquery.c.checkin_count)
+            .join(ranking_subquery, RamenShop.id == ranking_subquery.c.shop_id)
+            .order_by(ranking_subquery.c.checkin_count.desc())
+            .all()
+        )
 
         shop_responses = []
-        for shop, checkin_count in results:
+        for shop, _ in results:
             shop_response = RamenShopResponse.model_validate(shop)
             shop_responses.append(shop_response)
 
@@ -111,41 +160,18 @@ async def get_nearby_ramen_shops_optimized(
     距離計算とフィルタリングをDB側で実行するため非常に高速。
     """
     try:
-        # 地球の半径 (km)
-        R = 6371.0
+        distance_col = _distance_expression(latitude, longitude)
+        min_lat, max_lat, min_lon, max_lon = _build_bounding_box(latitude, longitude, radius_km)
 
-        # ラジアンに変換
-        lat_rad = math.radians(latitude)
-        lon_rad = math.radians(longitude)
-        
-        # Haversine公式をSQLAlchemyで表現
-        # 緯度・経度カラムもラジアンに変換
-        shop_lat_rad = func.radians(RamenShop.latitude)
-        shop_lon_rad = func.radians(RamenShop.longitude)
-
-        dlat = shop_lat_rad - lat_rad
-        dlon = shop_lon_rad - lon_rad
-        
-        a = (func.sin(dlat / 2) * func.sin(dlat / 2) +
-             func.cos(lat_rad) * func.cos(shop_lat_rad) *
-             func.sin(dlon / 2) * func.sin(dlon / 2))
-        
-        # NOTE: 多くのDBではatan2は引数を(y, x)の順で受け取る
-        c = 2 * func.atan2(func.sqrt(a), func.sqrt(1 - a))
-        
-        # 距離を計算する式にラベルを付ける
-        distance_col = (R * c).label('distance')
-        
-        # クエリを構築
-        nearby_shops_query = (
+        results = (
             db.query(RamenShop, distance_col)
-              .filter(distance_col <= radius_km) # DB側でフィルタリング
-              .order_by(distance_col.asc())      # DB側でソート
+            .filter(RamenShop.latitude.between(min_lat, max_lat))
+            .filter(RamenShop.longitude.between(min_lon, max_lon))
+            .filter(distance_col <= radius_km)
+            .order_by(distance_col.asc())
+            .all()
         )
-        
-        results = nearby_shops_query.all()
-        
-        # レスポンスデータの作成
+
         shop_responses = []
         for shop, distance in results:
             shop_response = RamenShopResponse.model_validate(shop)
@@ -194,50 +220,28 @@ async def get_ramen_shops_with_waittime(
     待ち時間情報を含むラーメン店リストを返すエンドポイント
     """
     try:
-        query = db.query(RamenShop)
-        
-        # 緯度経度が指定されている場合は距離計算を行う
         if latitude is not None and longitude is not None:
-            # 地球の半径 (km)
-            R = 6371.0
-            
-            # ラジアンに変換
-            lat_rad = math.radians(latitude)
-            lon_rad = math.radians(longitude)
-            
-            # Haversine公式をSQLAlchemyで表現
-            shop_lat_rad = func.radians(RamenShop.latitude)
-            shop_lon_rad = func.radians(RamenShop.longitude)
-            
-            dlat = shop_lat_rad - lat_rad
-            dlon = shop_lon_rad - lon_rad
-            
-            a = (func.sin(dlat / 2) * func.sin(dlat / 2) +
-                 func.cos(lat_rad) * func.cos(shop_lat_rad) *
-                 func.sin(dlon / 2) * func.sin(dlon / 2))
-            
-            c = 2 * func.atan2(func.sqrt(a), func.sqrt(1 - a))
-            
-            # 距離を計算する式にラベルを付ける
-            distance_col = (R * c).label('distance')
-            
-            # クエリを構築
-            query = query.add_columns(distance_col).filter(distance_col <= radius_km)
-            
-            # 結果を取得
-            results = query.all()
-            
-            # レスポンスデータの作成
+            distance_col = _distance_expression(latitude, longitude)
+            min_lat, max_lat, min_lon, max_lon = _build_bounding_box(latitude, longitude, radius_km)
+
+            results = (
+                db.query(RamenShop, distance_col)
+                .filter(RamenShop.latitude.between(min_lat, max_lat))
+                .filter(RamenShop.longitude.between(min_lon, max_lon))
+                .filter(distance_col <= radius_km)
+                .order_by(distance_col.asc())
+                .all()
+            )
+
             shop_responses = []
             for shop, distance in results:
                 shop_response = RamenShopResponse.model_validate(shop)
                 shop_response.distance = round(distance, 2)
                 shop_responses.append(shop_response)
         else:
-            # 緯度経度が指定されていない場合は全店舗を返す
-            all_shops = query.all()
-            shop_responses = [RamenShopResponse.model_validate(shop) for shop in all_shops]
-        
+            shops = db.query(RamenShop).all()
+            shop_responses = [RamenShopResponse.model_validate(shop) for shop in shops]
+
         return RamenShopsResponse(
             shops=shop_responses,
             total=len(shop_responses)

@@ -139,7 +139,9 @@ class PostResponse(PostBase):
     id: int
     user_id: str
     author_username: str
-    image_url: Optional[str] = None
+    image_url: Optional[str] = None  # 後方互換性のために残す
+    thumbnail_url: Optional[str] = None  # 低画質画像URL
+    original_image_url: Optional[str] = None  # 通常画質画像URL
     shop_id: Optional[int] = None
     shop_name: Optional[str] = None
     shop_address: Optional[str] = None
@@ -159,6 +161,14 @@ class PostResponse(PostBase):
     
     @field_serializer('image_url')
     def serialize_image_url(self, value):
+        return escape_html(value) if value else value
+    
+    @field_serializer('thumbnail_url')
+    def serialize_thumbnail_url(self, value):
+        return escape_html(value) if value else value
+    
+    @field_serializer('original_image_url')
+    def serialize_original_image_url(self, value):
         return escape_html(value) if value else value
     
     @field_serializer('shop_name')

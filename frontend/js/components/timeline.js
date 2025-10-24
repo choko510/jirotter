@@ -113,6 +113,9 @@ const TimelineComponent = {
         const timeline = document.getElementById('timeline');
         const postsHTML = newPosts.map(post => this.createPostHTML(post)).join('');
         timeline.insertAdjacentHTML('afterbegin', postsHTML);
+        
+        // 遅延読み込みを設定
+        this.setupLazyLoading();
     },
 
     // 新着投稿通知を表示
@@ -483,6 +486,9 @@ const TimelineComponent = {
         const timeline = document.getElementById('timeline');
         const postsHTML = newPosts.map(post => this.createPostHTML(post)).join('');
         timeline.insertAdjacentHTML('beforeend', postsHTML);
+        
+        // 遅延読み込みを設定
+        this.setupLazyLoading();
     },
 
     createPostHTML(post) {
@@ -513,7 +519,7 @@ const TimelineComponent = {
                     </div>
                 </div>
                 ` : ''}
-                ${post.image ? `<div class="post-image"><img src="${API.escapeHtml(post.image)}" style="width:60%; border-radius: 16px; margin-top: 12px;" alt="Post image"></div>` : ''}
+                ${this.createPostImageHTML(post)}
                 <div class="post-engagement">
                     <button class="engagement-btn" onclick="event.stopPropagation(); TimelineComponent.openCommentModal(${post.id})"><i class="fas fa-comment"></i> ${post.engagement.comments}</button>
                     <button class="engagement-btn" onclick="event.stopPropagation(); TimelineComponent.handleLike(${post.id})">
@@ -1182,6 +1188,153 @@ const TimelineComponent = {
             return connection.type === 'cellular';
         }
         return false; // 判定できない場合はfalseを返す
+    },
+
+    // 投稿画像のHTMLを生成（picture要素を使用）
+    createPostImageHTML(post) {
+        // 新しい画像URLがある場合はpicture要素を使用
+        if (post.thumbnail_url || post.original_image_url) {
+            const thumbnailUrl = post.thumbnail_url || post.image;
+            const originalUrl = post.original_image_url || post.image;
+            
+            return `
+                <div class="post-image">
+                    <picture>
+                        <source srcset="${API.escapeHtml(originalUrl)}" media="(min-width: 768px)">
+                        <img src="${API.escapeHtml(thumbnailUrl)}"
+                             data-src="${API.escapeHtml(originalUrl)}"
+                             style="width:60%; border-radius: 16px; margin-top: 12px;"
+                             alt="Post image"
+                             loading="lazy"
+                             onclick="TimelineComponent.handleImageClick(event, '${API.escapeHtml(originalUrl)}')">
+                    </picture>
+                </div>
+            `;
+        }
+        
+        // 後方互換性のための従来の画像表示
+        if (post.image) {
+            return `
+                <div class="post-image">
+                    <img src="${API.escapeHtml(post.image)}"
+                         style="width:60%; border-radius: 16px; margin-top: 12px;"
+                         alt="Post image"
+                         loading="lazy"
+                         onclick="TimelineComponent.handleImageClick(event, '${API.escapeHtml(post.image)}')">
+                </div>
+            `;
+        }
+        
+        return '';
+    },
+
+    // 画像クリック処理
+    handleImageClick(event, imageUrl) {
+        event.stopPropagation();
+        // 画像モーダルを開く（既存の機能を利用）
+        if (typeof CommentComponent !== 'undefined' && CommentComponent.openImageModal) {
+            CommentComponent.openImageModal([imageUrl], 0);
+        } else {
+            // フォールバック：新しいタブで画像を開く
+            window.open(imageUrl, '_blank');
+        }
+    },
+
+    // 遅延読み込みの設定
+    setupLazyLoading() {
+        const images = document.querySelectorAll('img[data-src]');
+        
+        if ('IntersectionObserver' in window) {
+            const imageObserver = new IntersectionObserver((entries, observer) => {
+                entries.forEach(entry => {
+                    if (entry.isIntersecting) {
+                        const img = entry.target;
+                        
+                        // すでに高画質画像に切り替わっている場合はスキップ
+                        if (img.dataset.loaded === 'true') {
+                            observer.unobserve(img);
+                            return;
+                        }
+                        
+                        // ネットワーク状況に応じて画像の読み込みを制御
+                        if (this.isSlowNetwork()) {
+                            // 低速ネットワークの場合はサムネイルのまま
+                            img.dataset.loaded = 'true';
+                            observer.unobserve(img);
+                            return;
+                        }
+                        
+                        // 通常画質画像に切り替え
+                        const highQualitySrc = img.dataset.src;
+                        if (highQualitySrc && img.src !== highQualitySrc) {
+                            const tempImg = new Image();
+                            tempImg.onload = () => {
+                                img.src = highQualitySrc;
+                                img.removeAttribute('data-src');
+                                img.dataset.loaded = 'true';
+                            };
+                            tempImg.src = highQualitySrc;
+                        } else {
+                            // 高画質画像がない場合でもロード済みとしてマーク
+                            img.dataset.loaded = 'true';
+                        }
+                        
+                        observer.unobserve(img);
+                    }
+                });
+            }, {
+                rootMargin: '50px' // ビューポートの50px手前から読み込み開始
+            });
+            
+            images.forEach(img => imageObserver.observe(img));
+        } else {
+            // IntersectionObserverがサポートされていない場合のフォールバック
+            images.forEach(img => {
+                // すでに高画質画像に切り替わっている場合はスキップ
+                if (img.dataset.loaded === 'true') {
+                    return;
+                }
+                
+                if (this.isSlowNetwork()) {
+                    img.dataset.loaded = 'true';
+                    return; // 低速ネットワークの場合はサムネイルのまま
+                }
+                
+                const highQualitySrc = img.dataset.src;
+                if (highQualitySrc) {
+                    img.src = highQualitySrc;
+                    img.removeAttribute('data-src');
+                    img.dataset.loaded = 'true';
+                } else {
+                    // 高画質画像がない場合でもロード済みとしてマーク
+                    img.dataset.loaded = 'true';
+                }
+            });
+        }
+    },
+
+    // ネットワーク速度の判定
+    isSlowNetwork() {
+        const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+        
+        if (connection) {
+            // 接続タイプで判定
+            if (connection.type === 'cellular') {
+                // モバイルネットワークの場合
+                if (connection.effectiveType === 'slow-2g' ||
+                    connection.effectiveType === '2g' ||
+                    connection.effectiveType === '3g') {
+                    return true;
+                }
+            }
+            
+            // ダウンロード速度で判定
+            if (connection.downlink && connection.downlink < 1.5) {
+                return true; // 1.5Mbps未満は低速と判定
+            }
+        }
+        
+        return false;
     }
 };
 
