@@ -49,6 +49,14 @@ const API = {
             ...headers
         });
 
+        // Add CSRF token for state-changing methods
+        if (['POST', 'PUT', 'DELETE', 'PATCH'].includes(method.toUpperCase())) {
+            const csrfToken = this.getCookie('csrftoken');
+            if (csrfToken) {
+                combinedHeaders.set('X-CSRF-Token', csrfToken);
+            }
+        }
+
         let requestBody = body;
         const hasJsonContentType = combinedHeaders.has('Content-Type') && combinedHeaders.get('Content-Type').includes('application/json');
 

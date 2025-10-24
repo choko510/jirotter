@@ -552,7 +552,7 @@ const TimelineComponent = {
         return `
             <div class="post-card" id="post-${post.id}" onclick="router.navigate('comment', [${post.id}])">
                 <div class="post-header" onclick="event.stopPropagation(); router.navigate('profile', ['${escapedUserHandle}'])">
-                    <div class="post-avatar">${post.user.avatar}</div>
+                    <div class="post-avatar">${API.escapeHtml(post.user.avatar)}</div>
                     <div class="post-user-info">
                         <div class="post-username">
                             <span>${API.escapeHtml(post.user.name)}</span>

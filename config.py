@@ -30,4 +30,7 @@ class Settings:
     TESTING: bool = os.getenv("TESTING", False)
     TEST_DATABASE_URL: str = os.getenv("TEST_DATABASE_URL", "sqlite:///./test_sns.db")
 
+    # CSRF and Session
+    SESSION_SECRET_KEY: str = os.getenv("SESSION_SECRET_KEY", "8ed0d42c306ffdc0a15ae3fbf73518c1be20ae78ca38f8b2b32c6642acd171fc")
+
 settings = Settings()
