@@ -12,7 +12,7 @@ from PIL.ExifTags import TAGS
 import io
 
 from database import get_db
-from app.models import Post, User, Like, Reply, RamenShop
+from app.models import Post, User, Like, Reply, RamenShop, Follow
 from app.schemas import PostCreate, PostResponse, PostsResponse
 from app.utils.auth import get_current_user, get_current_active_user, get_current_user_optional
 from app.utils.security import validate_post_content, escape_html
