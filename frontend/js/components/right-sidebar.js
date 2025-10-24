@@ -45,11 +45,7 @@ const RightSidebar = {
     // fetchRanking: 週間チェックインランキングを取得
     async fetchRanking() {
         try {
-            const response = await fetch('/api/v1/ramen/ranking');
-            if (!response.ok) {
-                throw new Error('ランキングの取得に失敗しました。');
-            }
-            const data = await response.json();
+            const data = await API.request('/api/v1/ramen/ranking', { includeAuth: false });
             this.state.rankingShops = data.shops;
             this.renderRanking();
         } catch (error) {

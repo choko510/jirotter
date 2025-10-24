@@ -3,7 +3,9 @@ from sqlalchemy.orm import Session
 from typing import List
 
 from database import get_db
-from app.models import User, Follow
+from sqlalchemy import or_
+
+from app.models import User, Follow, Post, Report
 from app.schemas import UserProfileResponse, UserResponse, UserUpdate
 from app.utils.auth import get_current_user, get_current_user_optional
 
@@ -25,7 +27,7 @@ async def get_user_profile(
 
     followers_count = user.followers.count()
     following_count = user.following.count()
-    posts_count = len(user.posts)
+    posts_count = db.query(Post.id).filter(Post.user_id == user.id).count()
 
     is_following = False
     if current_user:
@@ -75,7 +77,7 @@ async def update_user_profile(
     # UserProfileResponseに必要な情報を再計算
     followers_count = current_user.followers.count()
     following_count = current_user.following.count()
-    posts_count = len(current_user.posts)
+    posts_count = db.query(Post.id).filter(Post.user_id == current_user.id).count()
 
     return UserProfileResponse(
         id=current_user.id,
@@ -172,44 +174,21 @@ async def delete_user_account(
     """認証済みユーザーのアカウントを削除する"""
     try:
         # ユーザーに関連するデータを削除
-        # 1. フォロー関係を削除
         db.query(Follow).filter(
-            Follow.follower_id == current_user.id
-        ).delete()
-        
-        db.query(Follow).filter(
-            Follow.followed_id == current_user.id
-        ).delete()
-        
-        # 2. ユーザーの投稿を削除
-        for post in current_user.posts:
-            # 投稿へのいいねを削除
-            for like in post.likes:
-                db.delete(like)
-            # 投稿への返信を削除
-            for reply in post.replies:
-                db.delete(reply)
-            # 投稿自体を削除
-            db.delete(post)
-        
-        # 3. ユーザーがいいねした投稿のいいねを削除
-        for like in current_user.likes:
-            db.delete(like)
-        
-        # 4. ユーザーが作成した返信を削除
-        for reply in current_user.replies:
-            db.delete(reply)
-        
-        # 5. ユーザーが作成した通報を削除
-        for report in current_user.reports:
-            db.delete(report)
-        
-        # 6. 最後にユーザー自身を削除
+            or_(
+                Follow.follower_id == current_user.id,
+                Follow.followed_id == current_user.id,
+            )
+        ).delete(synchronize_session=False)
+
+        db.query(Report).filter(Report.reporter_id == current_user.id).delete(synchronize_session=False)
+
+        # 投稿と関連データ、いいね、返信はリレーションのカスケード設定に任せる
         db.delete(current_user)
-        
+
         db.commit()
-        
-    except Exception as e:
+
+    except Exception:
         db.rollback()
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,

@@ -906,13 +906,9 @@ const TimelineComponent = {
     // 最寄りのラーメン店を取得
     async getNearbyShops(lat, lng, radius = 30) {
         try {
-            const response = await fetch(`/api/v1/ramen/nearby?latitude=${lat}&longitude=${lng}&radius_km=${radius}`);
-            
-            if (!response.ok) {
-                throw new Error('最寄りの店舗情報の取得に失敗しました');
-            }
-            
-            const data = await response.json();
+            const data = await API.request(`/api/v1/ramen/nearby?latitude=${lat}&longitude=${lng}&radius_km=${radius}`, {
+                includeAuth: false
+            });
             return data.shops || [];
         } catch (error) {
             console.error('最寄りの店舗情報の取得に失敗しました:', error);
@@ -1172,26 +1168,18 @@ const TimelineComponent = {
                 async (position) => {
                     try {
                         // 近隣店舗を検索
-                        const response = await fetch('/api/v1/checkin/nearby', {
+                        const data = await API.request('/api/v1/checkin/nearby', {
                             method: 'POST',
-                            headers: {
-                                'Content-Type': 'application/json',
-                                ...API.getAuthHeader()
-                            },
-                            body: JSON.stringify({
+                            body: {
                                 latitude: position.coords.latitude,
                                 longitude: position.coords.longitude,
                                 radius_km: 0.5,
                                 include_ip_location: false
-                            })
-                        });
-                        
-                        if (response.ok) {
-                            const data = await response.json();
-                            if (data.can_checkin && data.recommended_shop) {
-                                // チェックイン通知を表示
-                                CheckinComponent.showTimelineCheckinNotification([data.recommended_shop]);
                             }
+                        });
+                        if (data.can_checkin && data.recommended_shop) {
+                            // チェックイン通知を表示
+                            CheckinComponent.showTimelineCheckinNotification([data.recommended_shop]);
                         }
                     } catch (error) {
                         console.error('近隣店舗チェックエラー:', error);
@@ -1218,23 +1206,15 @@ const TimelineComponent = {
         // モバイルデバイスかつモバイルネットワークの場合のみ実行
         if (this.isMobileDevice() && this.isMobileNetwork()) {
             try {
-                const response = await fetch('/api/v1/checkin/nearby', {
+                const data = await API.request('/api/v1/checkin/nearby', {
                     method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        ...API.getAuthHeader()
-                    },
-                    body: JSON.stringify({
+                    body: {
                         include_ip_location: true
-                    })
-                });
-                
-                if (response.ok) {
-                    const data = await response.json();
-                    if (data.can_checkin && data.recommended_shop) {
-                        // チェックイン通知を表示
-                        CheckinComponent.showTimelineCheckinNotification([data.recommended_shop]);
                     }
+                });
+                if (data.can_checkin && data.recommended_shop) {
+                    // チェックイン通知を表示
+                    CheckinComponent.showTimelineCheckinNotification([data.recommended_shop]);
                 }
             } catch (error) {
                 console.error('IPベース近隣店舗チェックエラー:', error);

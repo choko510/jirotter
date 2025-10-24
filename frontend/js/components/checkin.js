@@ -66,26 +66,15 @@ const CheckinComponent = {
     // 近隣店舗を検索
     async findNearbyShops(latitude, longitude, radiusKm = 0.5) {
         try {
-            const response = await fetch('/api/v1/checkin/nearby', {
+            return await API.request('/api/v1/checkin/nearby', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...API.getAuthHeader()
-                },
-                body: JSON.stringify({
-                    latitude: latitude,
-                    longitude: longitude,
+                body: {
+                    latitude,
+                    longitude,
                     radius_km: radiusKm,
                     include_ip_location: false
-                })
+                }
             });
-
-            if (!response.ok) {
-                throw new Error('近隣店舗の検索に失敗しました');
-            }
-
-            const data = await response.json();
-            return data;
         } catch (error) {
             console.error('近隣店舗検索エラー:', error);
             throw error;
@@ -95,23 +84,12 @@ const CheckinComponent = {
     // IPベースの位置情報で近隣店舗を検索
     async findNearbyShopsByIP() {
         try {
-            const response = await fetch('/api/v1/checkin/nearby', {
+            return await API.request('/api/v1/checkin/nearby', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...API.getAuthHeader()
-                },
-                body: JSON.stringify({
+                body: {
                     include_ip_location: true
-                })
+                }
             });
-
-            if (!response.ok) {
-                throw new Error('IPベースの店舗検索に失敗しました');
-            }
-
-            const data = await response.json();
-            return data;
         } catch (error) {
             console.error('IPベース店舗検索エラー:', error);
             throw error;
@@ -321,33 +299,10 @@ const CheckinComponent = {
             };
 
             // チェックインAPIを呼び出し
-            const response = await fetch('/api/v1/checkin', {
+            const checkinResult = await API.request('/api/v1/checkin', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...API.getAuthHeader()
-                },
-                body: JSON.stringify(checkinData)
+                body: checkinData
             });
-
-            if (!response.ok) {
-                const errorData = await response.json();
-                let errorMessage = 'チェックインに失敗しました';
-                
-                // エラーメッセージを整形
-                if (errorData.detail) {
-                    if (Array.isArray(errorData.detail)) {
-                        // 複数のエラーがある場合は最初のエラーを表示
-                        errorMessage = errorData.detail[0].msg || errorMessage;
-                    } else if (typeof errorData.detail === 'string') {
-                        errorMessage = errorData.detail;
-                    }
-                }
-                
-                throw new Error(errorMessage);
-            }
-
-            const checkinResult = await response.json();
             this.state.checkinData = checkinResult;
 
             // チェックイン成功
@@ -427,28 +382,18 @@ const CheckinComponent = {
                 return;
             }
             
-            const response = await fetch('/api/v1/waittime/report', {
+            await API.request('/api/v1/waittime/report', {
                 method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    ...API.getAuthHeader()
-                },
-                body: JSON.stringify({
+                body: {
                     shop_id: parseInt(shopId),
                     wait_time: waitTime,
                     confidence: confidence,
                     checkin_id: this.state.checkinData ? this.state.checkinData.id : null
-                })
+                }
             });
-            
-            if (!response.ok) {
-                throw new Error('待ち時間の送信に失敗しました');
-            }
-            
-            const result = await response.json();
             Utils.showNotification('待ち時間を報告しました', 'success');
             this.closeWaitTimeSurvey();
-            
+
         } catch (error) {
             console.error('待ち時間送信エラー:', error);
             Utils.showNotification('待ち時間の送信に失敗しました', 'error');
