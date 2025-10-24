@@ -192,12 +192,18 @@ async def get_nearby_ramen_shops_optimized(
 
 
 @router.get("/ramen", response_model=RamenShopsResponse)
-async def get_all_ramen_shops(keyword: Optional[str] = Query(None, description="店名での検索キーワード"), db: Session = Depends(get_db)):
-    """全てのラーメン店を返す、またはキーワードで店名を検索するエンドポイント"""
+async def get_all_ramen_shops(
+    keyword: Optional[str] = Query(None, description="店名での検索キーワード"),
+    prefecture: Optional[str] = Query(None, description="都道府県での絞り込み"),
+    db: Session = Depends(get_db)
+):
+    """全てのラーメン店を返す、またはキーワードや都道府県で検索するエンドポイント"""
     try:
         query = db.query(RamenShop)
         if keyword:
             query = query.filter(RamenShop.name.ilike(f"%{keyword}%"))
+        if prefecture:
+            query = query.filter(RamenShop.address.ilike(f"%{prefecture}%"))
 
         all_shops = query.all()
         shop_responses = [RamenShopResponse.model_validate(shop) for shop in all_shops]

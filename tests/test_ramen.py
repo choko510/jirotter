@@ -66,3 +66,16 @@ def test_get_nearby_ramen_shops(test_client, test_db):
     assert "蒙古タンメン中本 新宿店" in shop_names
     assert "一蘭 新宿中央東口店" in shop_names
     assert "ラーメン二郎 池袋東口店" not in shop_names
+
+def test_filter_ramen_shops_by_prefecture(test_client, test_db):
+    """都道府県でラーメン店を絞り込むテスト"""
+    add_ramen_shops_to_db(test_db)
+
+    response = test_client.get("/api/v1/ramen?prefecture=東京都")
+    data = response.json()
+
+    assert response.status_code == 200
+    assert data["total"] == 4
+    shop_names = {shop["name"] for shop in data["shops"]}
+    assert "ラーメン二郎 新宿店" in shop_names
+    assert "ラーメン二郎 池袋東口店" in shop_names
