@@ -619,9 +619,16 @@ const TimelineComponent = {
                     timeline.innerHTML = `
                         <div style="text-align: center; padding: 40px; color: #666;">
                             <p style="margin-bottom: 16px;">フォロー中のユーザーの投稿を見るにはログインが必要です。</p>
-                            <button class="login-btn" onclick="router.navigate('auth', ['login'])">ログイン</button>
+                            <button class="login-btn" data-action="login">ログイン</button>
                         </div>
                     `;
+                }
+                // Attach event listener to login button
+                const loginBtn = document.querySelector('#timeline .login-btn[data-action="login"]');
+                if (loginBtn) {
+                    loginBtn.addEventListener('click', function() {
+                        router.navigate('auth', ['login']);
+                    });
                 }
                 // 投稿の読み込みは行わない
                 return;
