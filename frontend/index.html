@@ -73,6 +73,14 @@
             min-height: 100vh;
         }
 
+        /* ワイドスクリーン対応 */
+        @media (min-width: 1410px) {
+            .container {
+                grid-template-columns: 260px 800px 350px;
+                justify-content: center;
+            }
+        }
+
         /* スマホ対応 */
         @media (max-width: 768px) {
             .container {
