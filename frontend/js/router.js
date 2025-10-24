@@ -115,25 +115,32 @@ class Router {
         const rightSidebar = document.querySelector('.right-sidebar');
         const mainContent = document.querySelector('.main-content');
         const container = document.querySelector('.container');
-        
-        if (rightSidebar && mainContent && container) {
+
+        if (!rightSidebar || !mainContent || !container) return;
+
+        // 画面幅に応じてレイアウトを動的に変更
+        const isDesktop = window.innerWidth > 768;
+
+        if (isDesktop) {
             if (route === 'map') {
-                // mapページの場合、右サイドバーを非表示にし、main-contentを広げる
+                // デスクトップでMapページの場合: 右サイドバーを非表示
                 rightSidebar.style.display = 'none';
                 mainContent.style.maxWidth = 'none';
-                mainContent.style.width = 'calc(100vw - 260px)'; // 左サイドバーの幅を引いた残りすべて
                 mainContent.style.borderRight = 'none';
-                mainContent.style.flex = '1'; // フレックスアイテムとして伸縮する
-                container.style.gridTemplateColumns = '260px 1fr 0px'; // 右サイドバーを0pxに
+                container.style.gridTemplateColumns = '260px 1fr 0px';
             } else {
-                // その他のページの場合、元のレイアウトに戻す
+                // デスクトップでその他のページの場合: 通常の3カラムレイアウト
                 rightSidebar.style.display = '';
                 mainContent.style.maxWidth = '';
-                mainContent.style.width = '';
                 mainContent.style.borderRight = '';
-                mainContent.style.flex = '';
                 container.style.gridTemplateColumns = '';
             }
+        } else {
+            // モバイルの場合: すべてのインラインスタイルを解除し、CSSメディアクエリに任せる
+            rightSidebar.style.display = '';
+            mainContent.style.maxWidth = '';
+            mainContent.style.borderRight = '';
+            container.style.gridTemplateColumns = '';
         }
     }
 
