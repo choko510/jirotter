@@ -161,7 +161,7 @@ const MapComponent = {
     // 地図の凡例を生成する関数
     generateLegend() {
         let legendHtml = '<div class="legend-title">ブランド</div>';
-        
+
         for (const [brandKey, brandConfig] of Object.entries(this.BRAND_CONFIG)) {
             const count = this.state.brandShopCounts[brandKey] || 0;
             if (count > 0 || brandKey === 'other') {
@@ -173,14 +173,83 @@ const MapComponent = {
                 `;
             }
         }
-        
+
         return legendHtml;
+    },
+
+    getBrandInfo(shopName) {
+        const brandKey = this.determineBrand(shopName);
+        const brandConfig = this.BRAND_CONFIG[brandKey] || this.BRAND_CONFIG.other;
+        return {
+            key: brandKey,
+            name: brandConfig.name,
+            color: brandConfig.color,
+            textColor: brandConfig.textColor || 'white'
+        };
+    },
+
+    formatWaitTime(waitTime) {
+        if (typeof waitTime !== 'number' || Number.isNaN(waitTime)) {
+            return '---';
+        }
+
+        return `${waitTime}分`;
+    },
+
+    formatLastUpdate(lastUpdate) {
+        if (!lastUpdate) {
+            return '更新なし';
+        }
+
+        const date = new Date(lastUpdate);
+        if (Number.isNaN(date.getTime())) {
+            return '更新なし';
+        }
+
+        const datePart = date.toLocaleDateString('ja-JP');
+        const timePart = date.toLocaleTimeString('ja-JP', { hour: '2-digit', minute: '2-digit' });
+        return `${datePart} ${timePart}`;
+    },
+
+    getDistanceFromUser(shop) {
+        if (!this.state.userLocation) {
+            return null;
+        }
+
+        const { lat: userLat, lng: userLng } = this.state.userLocation;
+        const normalizedUserLat = typeof userLat === 'number' ? userLat : parseFloat(userLat);
+        const normalizedUserLng = typeof userLng === 'number' ? userLng : parseFloat(userLng);
+
+        if (!Number.isFinite(normalizedUserLat) || !Number.isFinite(normalizedUserLng)) {
+            return null;
+        }
+
+        const shopLat = typeof shop.latitude === 'number' ? shop.latitude : parseFloat(shop.latitude);
+        const shopLng = typeof shop.longitude === 'number' ? shop.longitude : parseFloat(shop.longitude);
+
+        if (!Number.isFinite(shopLat) || !Number.isFinite(shopLng)) {
+            return null;
+        }
+
+        return MapUtils.calculateDistance(normalizedUserLat, normalizedUserLng, shopLat, shopLng);
+    },
+
+    formatDistance(distanceKm) {
+        if (!Number.isFinite(distanceKm)) {
+            return null;
+        }
+
+        if (distanceKm >= 10) {
+            return `${Math.round(distanceKm)}km`;
+        }
+
+        return `${distanceKm.toFixed(1)}km`;
     },
 
     // レンダリング
     async render(params = []) {
         const contentArea = document.getElementById('contentArea');
-        
+
         const mainHeader = document.querySelector('.main-header');
         const isHeaderVisible = mainHeader && mainHeader.style.display !== 'none';
         const mapHeight = isHeaderVisible ? 'calc(100vh - 60px)' : '100vh';
@@ -681,6 +750,126 @@ const MapComponent = {
             .dark-mode .shop-detail-panel {
                 background: #2a2a2a;
                 border-right: 1px solid #333;
+            }
+
+            .shop-info-card {
+                border: 1px solid #e0e0e0;
+                border-radius: 8px;
+                overflow: hidden;
+                margin-bottom: 12px;
+                background: white;
+            }
+
+            .shop-details {
+                padding: 12px;
+            }
+
+            .shop-brand-badge {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                padding: 6px 12px;
+                border-radius: 999px;
+                font-size: 12px;
+                font-weight: bold;
+                margin-bottom: 12px;
+                box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+            }
+
+            .shop-brand-badge i {
+                font-size: 14px;
+            }
+
+            .shop-meta-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+                gap: 12px;
+                margin-bottom: 12px;
+            }
+
+            .shop-meta-item {
+                background: #f9f9f9;
+                border: 1px solid #f0f0f0;
+                border-radius: 8px;
+                padding: 10px 12px;
+            }
+
+            .shop-meta-label {
+                display: block;
+                font-size: 12px;
+                color: #666;
+                margin-bottom: 4px;
+            }
+
+            .shop-meta-value {
+                font-size: 16px;
+                font-weight: bold;
+                color: #333;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                flex-wrap: wrap;
+            }
+
+            .shop-actions {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                margin-top: 8px;
+            }
+
+            .shop-action-btn {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                padding: 8px 12px;
+                border-radius: 6px;
+                border: 1px solid #e0e0e0;
+                background: white;
+                font-size: 13px;
+                color: #333;
+                text-decoration: none;
+                transition: all 0.2s ease-in-out;
+            }
+
+            .shop-action-btn:hover {
+                background: #f5f5f5;
+                border-color: #d4a574;
+                color: #d4a574;
+            }
+
+            .dark-mode .shop-info-card {
+                background: #1f1f1f;
+                border-color: #333;
+            }
+
+            .dark-mode .shop-details {
+                color: #e0e0e0;
+            }
+
+            .dark-mode .shop-meta-item {
+                background: rgba(255, 255, 255, 0.05);
+                border-color: rgba(255, 255, 255, 0.08);
+            }
+
+            .dark-mode .shop-meta-label {
+                color: #bbb;
+            }
+
+            .dark-mode .shop-meta-value {
+                color: white;
+            }
+
+            .dark-mode .shop-action-btn {
+                background: rgba(255, 255, 255, 0.08);
+                border-color: rgba(255, 255, 255, 0.12);
+                color: white;
+            }
+
+            .dark-mode .shop-action-btn:hover {
+                background: rgba(212, 165, 116, 0.2);
+                border-color: #d4a574;
+                color: #d4a574;
             }
 
             @media (max-width: 768px) {
@@ -1920,10 +2109,17 @@ const MapComponent = {
                 async (position) => {
                     const lat = position.coords.latitude;
                     const lng = position.coords.longitude;
-                    
+
+                    this.state.userLocation = {
+                        lat,
+                        lng,
+                        city: '現在地',
+                        country: ''
+                    };
+
                     this.state.map.setView([lat, lng], 15);
                     this.addUserMarker({ lat, lng, city: '現在地', country: '' });
-                    
+
                     // 現在位置周辺のラーメン店を再取得
                     await this.addNearbyShops({ lat, lng });
                 },
@@ -2124,8 +2320,22 @@ const MapComponent = {
             }
             const shop = await response.json();
 
-            if (this.state.map && shop.latitude && shop.longitude) {
-                const latLng = [shop.latitude, shop.longitude];
+            const brandInfo = this.getBrandInfo(shop.name);
+            const waitTimeText = this.formatWaitTime(shop.wait_time);
+            const lastUpdateText = this.formatLastUpdate(shop.last_update);
+            const distanceKm = this.getDistanceFromUser(shop);
+            const distanceText = this.formatDistance(distanceKm);
+            const seatsText = shop.seats ? this.escapeHtml(shop.seats) : null;
+            const addressText = this.escapeHtml(shop.address);
+            const businessHours = shop.business_hours ? this.escapeHtml(shop.business_hours).replace(/\n/g, '<br>') : null;
+            const closedDay = shop.closed_day ? this.escapeHtml(shop.closed_day).replace(/\n/g, '<br>') : null;
+
+            const lat = typeof shop.latitude === 'number' ? shop.latitude : parseFloat(shop.latitude);
+            const lng = typeof shop.longitude === 'number' ? shop.longitude : parseFloat(shop.longitude);
+            const hasCoordinates = Number.isFinite(lat) && Number.isFinite(lng);
+
+            if (this.state.map && hasCoordinates) {
+                const latLng = [lat, lng];
                 const isMobile = window.innerWidth <= 768;
 
                 this.state.map.setView(latLng, this.state.map.getZoom(), { animate: false });
@@ -2144,6 +2354,63 @@ const MapComponent = {
                 }, 100);
             }
 
+            const metaItems = [
+                `
+                <div class="shop-meta-item">
+                    <span class="shop-meta-label">待ち時間</span>
+                    <span class="shop-meta-value"><i class="fas fa-stopwatch"></i>${waitTimeText}</span>
+                </div>
+                `,
+                `
+                <div class="shop-meta-item">
+                    <span class="shop-meta-label">最終更新</span>
+                    <span class="shop-meta-value"><i class="fas fa-history"></i>${lastUpdateText}</span>
+                </div>
+                `
+            ];
+
+            if (distanceText) {
+                metaItems.push(`
+                    <div class="shop-meta-item">
+                        <span class="shop-meta-label">現在地から</span>
+                        <span class="shop-meta-value"><i class="fas fa-route"></i>${distanceText}</span>
+                    </div>
+                `);
+            }
+
+            if (seatsText) {
+                metaItems.push(`
+                    <div class="shop-meta-item">
+                        <span class="shop-meta-label">座席</span>
+                        <span class="shop-meta-value"><i class="fas fa-chair"></i>${seatsText}</span>
+                    </div>
+                `);
+            }
+
+            if (hasCoordinates) {
+                metaItems.push(`
+                    <div class="shop-meta-item">
+                        <span class="shop-meta-label">緯度・経度</span>
+                        <span class="shop-meta-value"><i class="fas fa-globe-asia"></i>${lat.toFixed(5)}, ${lng.toFixed(5)}</span>
+                    </div>
+                `);
+            }
+
+            const metaHtml = `<div class="shop-meta-grid">${metaItems.join('')}</div>`;
+
+            const actionsHtml = hasCoordinates ? `
+                <div class="shop-actions">
+                    <a class="shop-action-btn" href="https://www.google.com/maps?q=${lat},${lng}" target="_blank" rel="noopener noreferrer">
+                        <i class="fas fa-map-marked-alt"></i>
+                        Googleマップで開く
+                    </a>
+                    <a class="shop-action-btn" href="https://www.google.com/maps/dir/?api=1&destination=${lat},${lng}" target="_blank" rel="noopener noreferrer">
+                        <i class="fas fa-location-arrow"></i>
+                        経路を表示
+                    </a>
+                </div>
+            ` : '';
+
             panel.innerHTML = `
                 <div class="shop-detail-container" style="padding: 16px;">
                     <div class="shop-header" style="display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 12px;">
@@ -2152,26 +2419,32 @@ const MapComponent = {
                             <i class="fas fa-times"></i>
                         </button>
                     </div>
-                     <div class="shop-info-card" style="border: 1px solid #e0e0e0; border-radius: 8px; overflow: hidden; margin-bottom: 12px;">
-                        <div class="shop-details" style="padding: 12px;">
-                            <div class="shop-info-item" style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px;">
-                                <i class="fas fa-map-marker-alt" style="color: #d4a574; font-size: 14px; margin-top: 2px;"></i>
-                                <span style="font-size: 14px;">${this.escapeHtml(shop.address)}</span>
+                    <div class="shop-brand-badge" style="background: ${brandInfo.color}; color: ${brandInfo.textColor};">
+                        <i class="fas fa-store"></i>
+                        <span>${brandInfo.name}</span>
+                    </div>
+                    ${metaHtml}
+                    <div class="shop-info-card">
+                        <div class="shop-details">
+                            <div class="shop-info-item">
+                                <i class="fas fa-map-marker-alt"></i>
+                                <span>${addressText}</span>
                             </div>
-                            ${shop.business_hours ? `
-                            <div class="shop-info-item" style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px;">
-                                <i class="fas fa-clock" style="color: #d4a574; font-size: 14px; margin-top: 2px;"></i>
-                                <span style="font-size: 14px;">${this.escapeHtml(shop.business_hours)}</span>
+                            ${businessHours ? `
+                            <div class="shop-info-item">
+                                <i class="fas fa-clock"></i>
+                                <span>${businessHours}</span>
                             </div>
                             ` : ''}
-                            ${shop.closed_day ? `
-                            <div class="shop-info-item" style="display: flex; align-items: flex-start; gap: 8px; margin-bottom: 8px;">
-                                <i class="fas fa-calendar-times" style="color: #d4a574; font-size: 14px; margin-top: 2px;"></i>
-                                <span style="font-size: 14px;">定休日: ${this.escapeHtml(shop.closed_day)}</span>
+                            ${closedDay ? `
+                            <div class="shop-info-item">
+                                <i class="fas fa-calendar-times"></i>
+                                <span>定休日: ${closedDay}</span>
                             </div>
                             ` : ''}
                         </div>
                     </div>
+                    ${actionsHtml}
                 </div>
             `;
         } catch (error) {
