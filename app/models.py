@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Float
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Float, Boolean, JSON
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
@@ -115,6 +115,8 @@ class RamenShop(Base):
     seats = Column(String(255))
     latitude = Column(Float, nullable=False)
     longitude = Column(Float, nullable=False)
+    wait_time = Column(Integer, default=0)  # 待ち時間（分）
+    last_update = Column(DateTime, default=datetime.utcnow)  # 最終更新時間
 
 class Visit(Base):
     """訪問記録モデル"""
@@ -147,3 +149,68 @@ class Report(Base):
     # Relationships
     post = relationship('Post', backref='reports')
     reporter = relationship('User', backref='reports_made')
+
+
+class Checkin(Base):
+    """チェックインモデル"""
+    __tablename__ = 'checkins'
+    
+    id = Column(Integer, primary_key=True)
+    user_id = Column(String(80), ForeignKey('users.id'), nullable=False)
+    shop_id = Column(Integer, ForeignKey('ramen_shops.id'), nullable=False)
+    checkin_date = Column(DateTime, nullable=False, default=datetime.utcnow)
+    
+    # 位置情報
+    latitude = Column(Float, nullable=True)  # GPSまたはEXIFから取得
+    longitude = Column(Float, nullable=True)  # GPSまたはEXIFから取得
+    location_source = Column(String(20), nullable=True)  # 'gps', 'exif', 'ip'
+    location_accuracy = Column(Float, nullable=True)  # 位置情報の精度（メートル）
+    
+    # デバイス情報
+    user_agent = Column(Text, nullable=True)
+    device_type = Column(String(20), nullable=True)  # 'mobile', 'desktop', 'tablet'
+    is_mobile_network = Column(Boolean, nullable=True)  # モバイルネットワーク判定
+    
+    # 検証情報
+    verification_method = Column(String(50), nullable=True)  # 'gps', 'gps_exif', 'ip_only'
+    verification_score = Column(Integer, nullable=True)  # 検証スコア（0-100）
+    is_verified = Column(Boolean, default=False)
+    
+    # 待ち時間アンケート
+    wait_time_reported = Column(Integer, nullable=True)  # 報告された待ち時間（分）
+    wait_time_confidence = Column(Integer, nullable=True)  # 待ち時間の信頼度（1-5）
+    
+    # その他情報
+    checkin_note = Column(Text, nullable=True)  # チェックイン時のメモ
+    extra_data = Column(JSON, nullable=True)  # 追加情報（EXIFデータなど）
+    
+    # Relationships
+    user = relationship('User', backref='checkins')
+    shop = relationship('RamenShop', backref='checkins')
+    
+    @property
+    def verification_level(self):
+        """検証レベルを返す"""
+        if self.verification_score >= 90:
+            return 'high'
+        elif self.verification_score >= 60:
+            return 'medium'
+        else:
+            return 'low'
+
+
+class CheckinVerification(Base):
+    """チェックイン検証ログモデル"""
+    __tablename__ = 'checkin_verifications'
+    
+    id = Column(Integer, primary_key=True)
+    checkin_id = Column(Integer, ForeignKey('checkins.id'), nullable=False)
+    verification_type = Column(String(50), nullable=False)  # 'gps', 'exif', 'ip', 'device'
+    verification_data = Column(JSON, nullable=True)  # 検証データ
+    result = Column(String(20), nullable=False)  # 'success', 'failed', 'warning'
+    score = Column(Integer, nullable=True)  # 検証スコア
+    message = Column(Text, nullable=True)  # 検証メッセージ
+    created_at = Column(DateTime, default=datetime.utcnow)
+    
+    # Relationships
+    checkin = relationship('Checkin', backref='verifications')

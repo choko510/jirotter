@@ -190,6 +190,8 @@ class RamenShopResponse(RamenShopBase):
     
     id: int
     distance: Optional[float] = None
+    wait_time: Optional[int] = None
+    last_update: Optional[datetime] = None
 
 class RamenShopsResponse(BaseModel):
     shops: List[RamenShopResponse]
@@ -307,3 +309,134 @@ class ReportResponse(ReportBase):
     post_id: int
     reporter_id: str
     created_at: datetime
+
+
+# Checkin Schemas
+class CheckinBase(BaseModel):
+    checkin_date: datetime
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    location_source: Optional[str] = None
+    location_accuracy: Optional[float] = None
+    wait_time_reported: Optional[int] = None
+    wait_time_confidence: Optional[int] = None
+    checkin_note: Optional[str] = None
+
+class CheckinCreate(CheckinBase):
+    shop_id: int
+    user_agent: Optional[str] = None
+    device_type: Optional[str] = None
+    is_mobile_network: Optional[bool] = None
+    extra_data: Optional[dict] = None
+    
+    @field_validator('wait_time_reported')
+    @classmethod
+    def validate_wait_time(cls, v):
+        if v is not None and (v < 0 or v > 300):
+            raise ValueError('待ち時間は0分から300分の間で入力してください')
+        return v
+    
+    @field_validator('wait_time_confidence')
+    @classmethod
+    def validate_confidence(cls, v):
+        if v is not None and (v < 1 or v > 5):
+            raise ValueError('信頼度は1から5の間で入力してください')
+        return v
+    
+    @field_validator('location_source')
+    @classmethod
+    def validate_location_source(cls, v):
+        if v is not None and v not in ['gps', 'exif', 'ip']:
+            raise ValueError('位置情報ソースはgps、exif、ipのいずれかでなければなりません')
+        return v
+
+class CheckinResponse(CheckinBase):
+    model_config = ConfigDict(from_attributes=True)
+    
+    id: int
+    user_id: str
+    shop_id: int
+    verification_method: Optional[str] = None
+    verification_score: Optional[int] = None
+    is_verified: bool
+    verification_level: str
+    shop_name: str
+    shop_address: str
+    author_username: str
+    
+    @field_serializer('checkin_note')
+    def serialize_checkin_note(self, value):
+        return escape_html(value) if value else value
+    
+    @field_serializer('shop_name')
+    def serialize_shop_name(self, value):
+        return escape_html(value)
+    
+    @field_serializer('shop_address')
+    def serialize_shop_address(self, value):
+        return escape_html(value)
+    
+    @field_serializer('author_username')
+    def serialize_author_username(self, value):
+        return escape_html(value)
+
+class CheckinsResponse(BaseModel):
+    checkins: List[CheckinResponse]
+    total: int
+
+class CheckinVerificationRequest(BaseModel):
+    latitude: float
+    longitude: float
+    shop_id: int
+    location_source: str = 'gps'
+    location_accuracy: Optional[float] = None
+    user_agent: Optional[str] = None
+    device_type: Optional[str] = None
+    is_mobile_network: Optional[bool] = None
+    exif_data: Optional[dict] = None
+
+class CheckinVerificationResponse(BaseModel):
+    is_valid: bool
+    verification_score: int
+    verification_method: str
+    verification_level: str
+    warnings: List[str] = []
+    errors: List[str] = []
+
+class NearbyShopsForCheckinRequest(BaseModel):
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    radius_km: float = 0.5  # デフォルトは500m範囲
+    include_ip_location: bool = False
+
+class NearbyShopsForCheckinResponse(BaseModel):
+    shops: List[dict]
+    can_checkin: bool
+    recommended_shop: Optional[dict] = None
+    location_method: str  # 'gps', 'ip', 'manual'
+
+class WaitTimeReportRequest(BaseModel):
+    shop_id: int
+    wait_time: int
+    confidence: int = 3
+    checkin_id: Optional[int] = None
+    
+    @field_validator('wait_time')
+    @classmethod
+    def validate_wait_time(cls, v):
+        if v < 0 or v > 300:
+            raise ValueError('待ち時間は0分から300分の間で入力してください')
+        return v
+    
+    @field_validator('confidence')
+    @classmethod
+    def validate_confidence(cls, v):
+        if v < 1 or v > 5:
+            raise ValueError('信頼度は1から5の間で入力してください')
+        return v
+
+class WaitTimeReportResponse(BaseModel):
+    success: bool
+    updated_wait_time: int
+    previous_wait_time: Optional[int] = None
+    message: str

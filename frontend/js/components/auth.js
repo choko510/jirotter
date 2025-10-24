@@ -253,7 +253,12 @@ const AuthComponent = {
                     router.navigate('timeline');
                 }, 1000);
             } else {
-                this.showMessage(result.error, 'error');
+                // エラーメッセージを表示（文字列以外の場合は文字列に変換）
+                let errorMessage = result.error;
+                if (typeof errorMessage === 'object') {
+                    errorMessage = JSON.stringify(errorMessage);
+                }
+                this.showMessage(errorMessage, 'error');
             }
         } catch (error) {
             console.error(`${this.state.currentView === 'login' ? 'ログイン' : '登録'}に失敗しました:`, error);

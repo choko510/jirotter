@@ -373,6 +373,9 @@ const TimelineComponent = {
         this.setupEventListeners();
         this.loadInitialPosts();
         this.setupAutoRefresh(); // 自動更新を設定
+        
+        // チェックイン通知を確認
+        this.checkForNearbyShops();
     },
 
     setupEventListeners() {
@@ -413,6 +416,9 @@ const TimelineComponent = {
             tweetBtn.disabled = (!textarea.value.trim() && !this.state.selectedImage && !this.state.selectedShop) || length > 200;
         });
         imageUpload.addEventListener('change', (event) => this.handleImageSelect(event));
+        
+        // GPS権限を確認
+        this.checkGPSPermission();
     },
 
     debounce(func, delay) {
@@ -710,11 +716,70 @@ const TimelineComponent = {
     handleImageSelect(event) {
         const file = event.target.files[0];
         if (file) {
+            // ファイルバリデーション
+            const validation = this.validateImageFile(file);
+            
+            if (!validation.isValid) {
+                alert(validation.error);
+                // ファイル入力をリセット
+                event.target.value = '';
+                return;
+            }
+            
             this.state.selectedImage = file;
             const previewContainer = document.getElementById('imagePreviewContainer');
             previewContainer.innerHTML = `<img src="${URL.createObjectURL(file)}" class="image-preview" alt="Image preview"/>`;
             document.getElementById('tweetBtn').disabled = false;
         }
+    },
+
+    // 画像ファイルのバリデーション（クライアント側での基本的な検証のみ）
+    validateImageFile(file) {
+        // 許可するMIMEタイプ
+        const allowedMimeTypes = [
+            'image/jpeg',
+            'image/jpg',
+            'image/png',
+            'image/gif',
+            'image/webp'
+        ];
+        
+        // ファイルサイズ上限（5MB）
+        const maxSizeInBytes = 5 * 1024 * 1024;
+        
+        // MIMEタイプチェック
+        if (!allowedMimeTypes.includes(file.type)) {
+            return {
+                isValid: false,
+                error: '対応している画像形式はJPEG、PNG、GIF、WebPのみです'
+            };
+        }
+        
+        // ファイルサイズチェック
+        if (file.size > maxSizeInBytes) {
+            return {
+                isValid: false,
+                error: '画像サイズは5MB以下にしてください'
+            };
+        }
+        
+        // ファイル名チェック（危険な拡張子を排除）
+        const dangerousExtensions = ['.php', '.js', '.exe', '.bat', '.cmd', '.sh', '.py', '.pl', '.rb'];
+        const fileName = file.name.toLowerCase();
+        
+        for (const ext of dangerousExtensions) {
+            if (fileName.endsWith(ext)) {
+                return {
+                    isValid: false,
+                    error: 'このファイル形式は許可されていません'
+                };
+            }
+        }
+        
+        return {
+            isValid: true,
+            error: null
+        };
     },
 
     // IPアドレスから位置情報を取得
@@ -999,6 +1064,124 @@ const TimelineComponent = {
             console.error('通報エラー:', error);
             alert('通報に失敗しました');
         }
+    },
+    
+    // GPS権限を確認
+    async checkGPSPermission() {
+        if (!navigator.geolocation) {
+            return;
+        }
+        
+        // GPS権限状態を確認
+        if ('permissions' in navigator) {
+            try {
+                const permission = await navigator.permissions.query({ name: 'geolocation' });
+                if (permission.state === 'granted') {
+                    // GPSが許可されている場合、近隣店舗をチェック
+                    this.checkForNearbyShops();
+                }
+            } catch (error) {
+                console.error('GPS権限の確認に失敗しました:', error);
+            }
+        }
+    },
+    
+    // 近隣店舗をチェック
+    async checkForNearbyShops() {
+        // ログインしていない場合はチェックしない
+        if (!API.getCookie('authToken')) {
+            return;
+        }
+        
+        // GPSが利用可能な場合
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                async (position) => {
+                    try {
+                        // 近隣店舗を検索
+                        const response = await fetch('/api/v1/checkin/nearby', {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json',
+                                ...API.getAuthHeader()
+                            },
+                            body: JSON.stringify({
+                                latitude: position.coords.latitude,
+                                longitude: position.coords.longitude,
+                                radius_km: 0.5,
+                                include_ip_location: false
+                            })
+                        });
+                        
+                        if (response.ok) {
+                            const data = await response.json();
+                            if (data.can_checkin && data.recommended_shop) {
+                                // チェックイン通知を表示
+                                CheckinComponent.showTimelineCheckinNotification([data.recommended_shop]);
+                            }
+                        }
+                    } catch (error) {
+                        console.error('近隣店舗チェックエラー:', error);
+                    }
+                },
+                (error) => {
+                    // GPSエラーの場合はIPベースのチェックを試行
+                    this.checkForNearbyShopsByIP();
+                }
+            );
+        } else {
+            // GPSが利用できない場合はIPベースのチェックを試行
+            this.checkForNearbyShopsByIP();
+        }
+    },
+    
+    // IPベースで近隣店舗をチェック
+    async checkForNearbyShopsByIP() {
+        // ログインしていない場合はチェックしない
+        if (!API.getCookie('authToken')) {
+            return;
+        }
+        
+        // モバイルデバイスかつモバイルネットワークの場合のみ実行
+        if (this.isMobileDevice() && this.isMobileNetwork()) {
+            try {
+                const response = await fetch('/api/v1/checkin/nearby', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        ...API.getAuthHeader()
+                    },
+                    body: JSON.stringify({
+                        include_ip_location: true
+                    })
+                });
+                
+                if (response.ok) {
+                    const data = await response.json();
+                    if (data.can_checkin && data.recommended_shop) {
+                        // チェックイン通知を表示
+                        CheckinComponent.showTimelineCheckinNotification([data.recommended_shop]);
+                    }
+                }
+            } catch (error) {
+                console.error('IPベース近隣店舗チェックエラー:', error);
+            }
+        }
+    },
+    
+    // モバイルデバイスかどうかを判定
+    isMobileDevice() {
+        const userAgent = navigator.userAgent.toLowerCase();
+        return /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
+    },
+    
+    // モバイルネットワークかどうかを判定
+    isMobileNetwork() {
+        const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+        if (connection) {
+            return connection.type === 'cellular';
+        }
+        return false; // 判定できない場合はfalseを返す
     }
 };
 

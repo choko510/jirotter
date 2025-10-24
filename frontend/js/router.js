@@ -159,4 +159,14 @@ const router = new Router();
 document.addEventListener('DOMContentLoaded', function() {
     // 店舗詳細ページのルートを登録
     router.register('shop', ShopDetailComponent);
+    
+    // スタンプラリーページのルートを登録
+    if (typeof StampRallyComponent !== 'undefined') {
+        router.register('stamp-rally', StampRallyComponent);
+    }
+    
+    // プロフィールページのルートを登録（新しいバージョン）
+    if (typeof ProfileComponent !== 'undefined') {
+        router.register('profile', ProfileComponent);
+    }
 });

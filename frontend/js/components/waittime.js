@@ -229,17 +229,13 @@ const WaittimeComponent = {
             return '<div class="loading">読み込み中...</div>';
         }
 
-        // モックデータ
-        const mockShops = [
-            { id: 1, name: '下荒庄', waitTime: 15, distance: 0.3, lastUpdate: '5分前' },
-            { id: 2, name: 'らーめん一', waitTime: 45, distance: 0.8, lastUpdate: '2分前' },
-            { id: 3, name: '二郎藍', waitTime: 30, distance: 1.2, lastUpdate: '10分前' },
-            { id: 4, name: '家系本舗', waitTime: 5, distance: 0.5, lastUpdate: '1分前' },
-            { id: 5, name: '醤油らーめん田中', waitTime: 20, distance: 0.7, lastUpdate: '7分前' }
-        ];
+        // データがない場合はメッセージを表示
+        if (this.state.shops.length === 0) {
+            return '<div class="loading">待ち時間データがありません</div>';
+        }
 
         // ソート
-        let sortedShops = [...mockShops];
+        let sortedShops = [...this.state.shops];
         if (this.state.sortBy === 'waitTime') {
             sortedShops.sort((a, b) => a.waitTime - b.waitTime);
         } else if (this.state.sortBy === 'name') {
@@ -292,7 +288,11 @@ const WaittimeComponent = {
                 e.target.classList.add('active');
                 
                 // 再レンダリング
-                this.renderWaittimeList();
+                const updatedHtml = this.renderWaittimeList();
+                const listElement = document.getElementById('waittimeList');
+                if (listElement) {
+                    listElement.innerHTML = updatedHtml;
+                }
             });
         });
     },
@@ -300,28 +300,52 @@ const WaittimeComponent = {
     // 待ち時間データの読み込み
     async loadWaittimeData() {
         this.state.isLoading = true;
-        document.getElementById('waittimeList').innerHTML = '<div class="loading">読み込み中...</div>';
+        const waittimeListElement = document.getElementById('waittimeList');
+        if (waittimeListElement) {
+            waittimeListElement.innerHTML = '<div class="loading">読み込み中...</div>';
+        }
         
         try {
-            // 実際の実装ではAPIからデータを取得
-            // const shops = await API.getWaittimeData();
+            // APIからデータを取得
+            const response = await fetch('/api/v1/ramen/waittime', {
+                headers: API.getAuthHeader()
+            });
             
-            // モックデータを使用
-            setTimeout(() => {
-                this.state.isLoading = false;
-                this.renderWaittimeList();
-            }, 1000);
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+            
+            const data = await response.json();
+            
+            // 取得したデータを状態に保存
+            this.state.shops = data.shops.map(shop => ({
+                id: shop.id,
+                name: shop.name,
+                waitTime: shop.wait_time || 0,
+                distance: shop.distance || 0,
+                lastUpdate: shop.last_update ? API.formatTime(shop.last_update) : '不明'
+            }));
+            
+            this.state.isLoading = false;
+            const updatedHtml = this.renderWaittimeList();
+            const listElement = document.getElementById('waittimeList');
+            if (listElement) {
+                listElement.innerHTML = updatedHtml;
+            }
         } catch (error) {
             console.error('待ち時間データの読み込みに失敗しました:', error);
             this.state.isLoading = false;
-            document.getElementById('waittimeList').innerHTML = `
-                <div class="error">
-                    <p>データの読み込みに失敗しました</p>
-                    <button onclick="WaittimeComponent.loadWaittimeData()" style="margin-top: 16px; padding: 8px 16px; background: #d4a574; color: white; border: none; border-radius: 4px; cursor: pointer;">
-                        再読み込み
-                    </button>
-                </div>
-            `;
+            const listElement = document.getElementById('waittimeList');
+            if (listElement) {
+                listElement.innerHTML = `
+                    <div class="error">
+                        <p>データの読み込みに失敗しました</p>
+                        <button onclick="WaittimeComponent.loadWaittimeData()" style="margin-top: 16px; padding: 8px 16px; background: #d4a574; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                            再読み込み
+                        </button>
+                    </div>
+                `;
+            }
         }
     },
 

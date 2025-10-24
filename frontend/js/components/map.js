@@ -890,8 +890,20 @@ const MapComponent = {
         try {
             this.showLoading(true);
             
+            // 既存のマップを破棄
+            if (this.state.map) {
+                this.state.map.remove();
+                this.state.map = null;
+            }
+            
             // IPアドレスから位置情報を取得
             const location = await this.getLocationFromIP();
+            
+            // マップコンテナをクリア
+            const mapContainer = document.getElementById('map');
+            if (mapContainer) {
+                mapContainer.innerHTML = '';
+            }
             
             // マップを作成
             this.state.map = L.map('map', {
@@ -1155,7 +1167,9 @@ const MapComponent = {
                 disableClusteringAtZoom: 15,
                 // 少数のマーカーがクラスタリングされないように設定
                 chunkedLoading: true,
-                spiderfyDistanceMultiplier: 2.0
+                spiderfyDistanceMultiplier: 2.0,
+                // マーカーの位置情報が無効な場合のエラーハンドリング
+                maxSingleMarkerRadius: 50 // 単一マーカーのクラスタリングを防ぐ
             };
             
             // 特にピンク（豚山）のクラスタースタイルをカスタマイズ
@@ -1181,8 +1195,15 @@ const MapComponent = {
                 };
             }
             
-            this.state.brandClusters[brandKey] = L.markerClusterGroup(clusterOptions);
-            this.state.map.addLayer(this.state.brandClusters[brandKey]);
+            try {
+                this.state.brandClusters[brandKey] = L.markerClusterGroup(clusterOptions);
+                this.state.map.addLayer(this.state.brandClusters[brandKey]);
+            } catch (error) {
+                console.error(`ブランド ${brandKey} のクラスターグループの初期化に失敗しました:`, error);
+                // エラーが発生した場合は、クラスタリングを無効にして通常のレイヤーグループを使用
+                this.state.brandClusters[brandKey] = L.layerGroup();
+                this.state.map.addLayer(this.state.brandClusters[brandKey]);
+            }
         }
     },
 
@@ -1349,16 +1370,20 @@ const MapComponent = {
         for (const [shopId, marker] of this.state.markers.entries()) {
             const brand = marker.brand || 'other';
             
-            if (this.state.clusterEnabled && this.state.brandClusters[brand]) {
-                // クラスタリングが有効な場合はクラスターグループから削除
-                if (this.state.brandClusters[brand].hasLayer(marker)) {
-                    this.state.brandClusters[brand].removeLayer(marker);
+            try {
+                if (this.state.clusterEnabled && this.state.brandClusters[brand]) {
+                    // クラスタリングが有効な場合はクラスターグループから削除
+                    if (this.state.brandClusters[brand].hasLayer(marker)) {
+                        this.state.brandClusters[brand].removeLayer(marker);
+                    }
+                } else {
+                    // クラスタリングが無効な場合は通常のマーカーグループから削除
+                    if (this.state.markerLayerGroup.hasLayer(marker)) {
+                        this.state.markerLayerGroup.removeLayer(marker);
+                    }
                 }
-            } else {
-                // クラスタリングが無効な場合は通常のマーカーグループから削除
-                if (this.state.markerLayerGroup.hasLayer(marker)) {
-                    this.state.markerLayerGroup.removeLayer(marker);
-                }
+            } catch (error) {
+                console.error(`マーカーの削除に失敗しました (店舗ID: ${shopId}):`, error);
             }
         }
         
@@ -1463,6 +1488,12 @@ const MapComponent = {
         
         // 新しい店舗データでマーカーを更新または追加
         shops.forEach(shop => {
+            // 緯度・経度が存在することを確認
+            if (!shop.latitude || !shop.longitude) {
+                console.warn(`店舗 ID ${shop.id} の位置情報が不足しています: 緯度=${shop.latitude}, 経度=${shop.longitude}`);
+                return; // この店舗はスキップ
+            }
+            
             // ブランドを判定
             const brand = MapUtils.determineBrand(shop.name, this.BRAND_CONFIG);
             
@@ -1496,7 +1527,9 @@ const MapComponent = {
             } else {
                 // 新規マーカーの追加
                 const newMarker = this.addShopMarker(shopData); // addShopMarkerはmarkerオブジェクトを返すように変更
-                this.state.markers.set(shopId, newMarker);
+                if (newMarker) {
+                    this.state.markers.set(shopId, newMarker);
+                }
             }
         });
         
@@ -1505,19 +1538,30 @@ const MapComponent = {
             if (!newShopIds.has(shopId)) {
                 const brand = marker.brand || 'other';
                 
-                if (this.state.clusterEnabled && this.state.brandClusters[brand]) {
-                    // クラスタリングが有効な場合はクラスターグループから削除
-                    if (this.state.brandClusters[brand].hasLayer(marker)) {
-                        this.state.brandClusters[brand].removeLayer(marker);
+                try {
+                    if (this.state.clusterEnabled && this.state.brandClusters[brand]) {
+                        // クラスタリングが有効な場合はクラスターグループから削除
+                        if (this.state.brandClusters[brand].hasLayer(marker)) {
+                            this.state.brandClusters[brand].removeLayer(marker);
+                        }
+                    } else {
+                        // クラスタリングが無効な場合は通常のマーカーグループから削除
+                        if (this.state.markerLayerGroup.hasLayer(marker)) {
+                            this.state.markerLayerGroup.removeLayer(marker);
+                        }
                     }
-                } else {
-                    // クラスタリングが無効な場合は通常のマーカーグループから削除
-                    if (this.state.markerLayerGroup.hasLayer(marker)) {
-                        this.state.markerLayerGroup.removeLayer(marker);
+                    this.state.visibleMarkers.delete(shopId);
+                    this.state.markers.delete(shopId); // Mapから削除
+                } catch (error) {
+                    console.error(`マーカーの削除に失敗しました (店舗ID: ${shopId}):`, error);
+                    // エラーが発生した場合でも、マーカーリストからは削除を試みる
+                    try {
+                        this.state.visibleMarkers.delete(shopId);
+                        this.state.markers.delete(shopId);
+                    } catch (cleanupError) {
+                        console.error(`マーカーのクリーンアップにも失敗しました (店舗ID: ${shopId}):`, cleanupError);
                     }
                 }
-                this.state.visibleMarkers.delete(shopId);
-                this.state.markers.delete(shopId); // Mapから削除
             }
         }
         
@@ -1548,19 +1592,30 @@ const MapComponent = {
         
         for (const [shopId, marker] of this.state.markers.entries()) {
             const markerPos = marker.getLatLng();
+            
+            // マーカーの位置情報が有効かチェック
+            if (!markerPos || !markerPos.lat || !markerPos.lng) {
+                console.warn(`マーカー ID ${shopId} の位置情報が無効です`);
+                continue;
+            }
+            
             const brand = marker.brand || 'other';
             
             // 早期フィルタリング：フィルターに合致しない場合はスキップ
             if (hasActiveFilters && !this.state.activeFilters.has(brand)) {
                 // 表示範囲外またはフィルターに合致しない場合、マーカーを非表示
-                if (this.state.clusterEnabled && this.state.brandClusters[brand]) {
-                    if (this.state.brandClusters[brand].hasLayer(marker)) {
-                        this.state.brandClusters[brand].removeLayer(marker);
+                try {
+                    if (this.state.clusterEnabled && this.state.brandClusters[brand]) {
+                        if (this.state.brandClusters[brand].hasLayer(marker)) {
+                            this.state.brandClusters[brand].removeLayer(marker);
+                        }
+                    } else {
+                        if (this.state.markerLayerGroup.hasLayer(marker)) {
+                            this.state.markerLayerGroup.removeLayer(marker);
+                        }
                     }
-                } else {
-                    if (this.state.markerLayerGroup.hasLayer(marker)) {
-                        this.state.markerLayerGroup.removeLayer(marker);
-                    }
+                } catch (error) {
+                    console.error(`マーカーの非表示に失敗しました (店舗ID: ${shopId}):`, error);
                 }
                 this.state.visibleMarkers.delete(shopId);
                 continue;
@@ -1569,14 +1624,18 @@ const MapComponent = {
             // 早期フィルタリング：表示範囲外の場合はスキップ
             if (!bounds.contains(markerPos)) {
                 // 表示範囲外の場合、マーカーを非表示
-                if (this.state.clusterEnabled && this.state.brandClusters[brand]) {
-                    if (this.state.brandClusters[brand].hasLayer(marker)) {
-                        this.state.brandClusters[brand].removeLayer(marker);
+                try {
+                    if (this.state.clusterEnabled && this.state.brandClusters[brand]) {
+                        if (this.state.brandClusters[brand].hasLayer(marker)) {
+                            this.state.brandClusters[brand].removeLayer(marker);
+                        }
+                    } else {
+                        if (this.state.markerLayerGroup.hasLayer(marker)) {
+                            this.state.markerLayerGroup.removeLayer(marker);
+                        }
                     }
-                } else {
-                    if (this.state.markerLayerGroup.hasLayer(marker)) {
-                        this.state.markerLayerGroup.removeLayer(marker);
-                    }
+                } catch (error) {
+                    console.error(`マーカーの非表示に失敗しました (店舗ID: ${shopId}):`, error);
                 }
                 this.state.visibleMarkers.delete(shopId);
                 continue;
@@ -1587,26 +1646,42 @@ const MapComponent = {
             
             if (distance <= visibilityRadius) {
                 // 表示範囲内かつフィルターに合致する場合、マーカーを表示
-                if (this.state.clusterEnabled && this.state.brandClusters[brand]) {
-                    if (!this.state.brandClusters[brand].hasLayer(marker)) {
-                        this.state.brandClusters[brand].addLayer(marker);
+                try {
+                    if (this.state.clusterEnabled && this.state.brandClusters[brand]) {
+                        if (!this.state.brandClusters[brand].hasLayer(marker)) {
+                            this.state.brandClusters[brand].addLayer(marker);
+                        }
+                    } else {
+                        if (!this.state.markerLayerGroup.hasLayer(marker)) {
+                            this.state.markerLayerGroup.addLayer(marker);
+                        }
                     }
-                } else {
-                    if (!this.state.markerLayerGroup.hasLayer(marker)) {
-                        this.state.markerLayerGroup.addLayer(marker);
+                } catch (error) {
+                    console.error(`マーカーの表示に失敗しました (店舗ID: ${shopId}):`, error);
+                    // エラーが発生した場合は、クラスタリングを無効にして通常のマーカーグループに追加
+                    try {
+                        if (!this.state.markerLayerGroup.hasLayer(marker)) {
+                            this.state.markerLayerGroup.addLayer(marker);
+                        }
+                    } catch (fallbackError) {
+                        console.error(`マーカーのフォールバック表示にも失敗しました (店舗ID: ${shopId}):`, fallbackError);
                     }
                 }
                 this.state.visibleMarkers.add(shopId);
             } else {
                 // 表示範囲外の場合、マーカーを非表示
-                if (this.state.clusterEnabled && this.state.brandClusters[brand]) {
-                    if (this.state.brandClusters[brand].hasLayer(marker)) {
-                        this.state.brandClusters[brand].removeLayer(marker);
+                try {
+                    if (this.state.clusterEnabled && this.state.brandClusters[brand]) {
+                        if (this.state.brandClusters[brand].hasLayer(marker)) {
+                            this.state.brandClusters[brand].removeLayer(marker);
+                        }
+                    } else {
+                        if (this.state.markerLayerGroup.hasLayer(marker)) {
+                            this.state.markerLayerGroup.removeLayer(marker);
+                        }
                     }
-                } else {
-                    if (this.state.markerLayerGroup.hasLayer(marker)) {
-                        this.state.markerLayerGroup.removeLayer(marker);
-                    }
+                } catch (error) {
+                    console.error(`マーカーの非表示に失敗しました (店舗ID: ${shopId}):`, error);
                 }
                 this.state.visibleMarkers.delete(shopId);
             }
@@ -1633,6 +1708,12 @@ const MapComponent = {
 
     // 店舗マーカーを追加
     addShopMarker(shop) {
+        // 緯度・経度が存在することを確認
+        if (!shop.lat || !shop.lng || isNaN(shop.lat) || isNaN(shop.lng)) {
+            console.warn(`店舗 ID ${shop.id} の位置情報が不足しています: 緯度=${shop.lat}, 経度=${shop.lng}`);
+            return null; // マーカーを作成しない
+        }
+        
         const brand = shop.brand || shop.type || 'other';
         const brandConfig = this.BRAND_CONFIG[brand];
         const color = brandConfig ? brandConfig.color : this.BRAND_CONFIG.other.color;
@@ -1694,11 +1775,21 @@ const MapComponent = {
         marker.brand = brand;
         
         // クラスタリングが有効な場合はブランドごとのクラスターグループに追加
-        if (this.state.clusterEnabled && this.state.brandClusters[brand]) {
-            this.state.brandClusters[brand].addLayer(marker);
-        } else {
-            // クラスタリングが無効な場合は通常のマーカーグループに追加
-            this.state.markerLayerGroup.addLayer(marker);
+        try {
+            if (this.state.clusterEnabled && this.state.brandClusters[brand]) {
+                this.state.brandClusters[brand].addLayer(marker);
+            } else {
+                // クラスタリングが無効な場合は通常のマーカーグループに追加
+                this.state.markerLayerGroup.addLayer(marker);
+            }
+        } catch (error) {
+            console.error(`マーカーの追加に失敗しました (店舗ID: ${shop.id}):`, error);
+            // エラーが発生した場合は、クラスタリングを無効にして通常のマーカーグループに追加
+            try {
+                this.state.markerLayerGroup.addLayer(marker);
+            } catch (fallbackError) {
+                console.error(`マーカーのフォールバック追加にも失敗しました (店舗ID: ${shop.id}):`, fallbackError);
+            }
         }
         
         // 表示範囲内かチェックして、範囲内なら表示
@@ -1763,27 +1854,28 @@ const MapComponent = {
         if (shop && shop.latitude && shop.longitude) {
             this.state.map.setView([shop.latitude, shop.longitude], 16);
             this.showShopDetails(shop.id);
+        } else {
+            console.warn('選択された店舗の位置情報が不足しています', shop);
         }
     },
 
     // フィルター切り替え
     toggleFilter(brand) {
-        // まずすべてのフィルターをクリア
-        this.state.activeFilters.clear();
+        // 選択されたブランドのフィルター状態を切り替え
+        if (this.state.activeFilters.has(brand)) {
+            this.state.activeFilters.delete(brand);
+        } else {
+            this.state.activeFilters.add(brand);
+        }
         
-        // すべてのボタンを非アクティブにする
-        const buttons = document.querySelectorAll('.map-filter-btn[data-brand]');
-        buttons.forEach(btn => {
-            btn.classList.remove('active');
-        });
-        
-        // 選択されたブランドのみをアクティブにする
-        this.state.activeFilters.add(brand);
-        
-        // 選択されたボタンをアクティブにする
+        // 選択されたボタンのアクティブ状態を切り替え
         const button = document.querySelector(`[data-brand="${brand}"]`);
         if (button) {
-            button.classList.add('active');
+            if (this.state.activeFilters.has(brand)) {
+                button.classList.add('active');
+            } else {
+                button.classList.remove('active');
+            }
         }
         
         // マーカーの表示を更新
@@ -1923,6 +2015,20 @@ const MapComponent = {
     retryLoad() {
         const errorElement = document.getElementById('mapError');
         errorElement.style.display = 'none';
+        
+        // 既存のマップを破棄してから再初期化
+        if (this.state.map) {
+            this.state.map.remove();
+            this.state.map = null;
+        }
+        
+        // マーカーをクリア
+        this.clearShopMarkers();
+        
+        // クラスターグループをリセット
+        this.state.brandClusters = {};
+        
+        // マップを再初期化
         this.initializeMap();
     },
 
@@ -1933,10 +2039,15 @@ const MapComponent = {
         this.updateShopMarkers(shops);
 
         if (shops.length > 0) {
-            // 地図の表示範囲を調整
-            const latLngs = shops.map(s => [s.latitude, s.longitude]);
-            const bounds = L.latLngBounds(latLngs);
-            this.state.map.fitBounds(bounds, { padding: [50, 50] });
+            // 位置情報が有効な店舗のみで地図の表示範囲を調整
+            const validShops = shops.filter(s => s.latitude && s.longitude);
+            if (validShops.length > 0) {
+                const latLngs = validShops.map(s => [s.latitude, s.longitude]);
+                const bounds = L.latLngBounds(latLngs);
+                this.state.map.fitBounds(bounds, { padding: [50, 50] });
+            } else {
+                console.warn('位置情報が有効な店舗がありません');
+            }
         }
     }
 };

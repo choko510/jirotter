@@ -115,6 +115,9 @@ const ShopDetailComponent = {
                     <button class="action-button primary" onclick="ShopDetailComponent.navigateToMap()">
                         <i class="fas fa-map"></i> MAPで見る
                     </button>
+                    <button class="action-button checkin-btn" data-shop-id="${this.shopData.id}" data-checkin-type="manual">
+                        <i class="fas fa-map-marker-alt"></i> チェックイン
+                    </button>
                     <button class="action-button" onclick="ShopDetailComponent.shareShop()">
                         <i class="fas fa-share-alt"></i> シェア
                     </button>
@@ -244,6 +247,31 @@ const ShopDetailComponent = {
         return div.innerHTML;
     }
 };
+
+// CSSスタイルを追加
+const shopDetailStyles = document.createElement('style');
+shopDetailStyles.textContent = `
+    .checkin-btn {
+        background: #d4a574;
+        color: white;
+        border: none;
+        transition: all 0.2s;
+    }
+    
+    .checkin-btn:hover {
+        background: #c19663;
+    }
+    
+    .dark-mode .checkin-btn {
+        background: #d4a574;
+        color: white;
+    }
+    
+    .dark-mode .checkin-btn:hover {
+        background: #c19663;
+    }
+`;
+document.head.appendChild(shopDetailStyles);
 
 // グローバルに公開
 window.ShopDetailComponent = ShopDetailComponent;

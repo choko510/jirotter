@@ -12,3 +12,6 @@ pydantic[email]
 aiohttp
 openai
 pytest-playwright
+Pillow
+user-agents
+httpx
