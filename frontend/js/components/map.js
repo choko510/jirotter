@@ -2165,9 +2165,6 @@ const MapComponent = {
         searchContainer.innerHTML = `
             <div class="map-search">
                 <input type="text" id="mapSearchInput" class="map-search-input" placeholder="店名で検索...">
-                <button id="mapSearchBtn" class="map-search-btn">
-                    <i class="fas fa-search"></i>
-                </button>
             </div>
             <div id="mapSearchResults" class="map-search-results" style="display: none;">
                 <!-- 検索結果がここに表示される -->
@@ -2179,7 +2176,6 @@ const MapComponent = {
 
         // イベントリスナーを設定
         const searchInput = document.getElementById('mapSearchInput');
-        const searchBtn = document.getElementById('mapSearchBtn');
         const searchResults = document.getElementById('mapSearchResults');
 
         // 検索入力のデバウンス処理
@@ -2189,11 +2185,6 @@ const MapComponent = {
             searchTimeout = setTimeout(() => {
                 this.handleMapSearch(e.target.value);
             }, 300);
-        });
-
-        // 検索ボタンクリック
-        searchBtn.addEventListener('click', () => {
-            this.handleMapSearch(searchInput.value);
         });
 
         // 検索結果外クリックで結果を閉じる
@@ -2334,25 +2325,26 @@ const MapComponent = {
             const lng = typeof shop.longitude === 'number' ? shop.longitude : parseFloat(shop.longitude);
             const hasCoordinates = Number.isFinite(lat) && Number.isFinite(lng);
 
-            if (this.state.map && hasCoordinates) {
-                const latLng = [lat, lng];
-                const isMobile = window.innerWidth <= 768;
+            // 店舗詳細パネル表示時にマップが動かないようにコメントアウト
+            // if (this.state.map && hasCoordinates) {
+            //     const latLng = [lat, lng];
+            //     const isMobile = window.innerWidth <= 768;
 
-                this.state.map.setView(latLng, this.state.map.getZoom(), { animate: false });
+            //     this.state.map.setView(latLng, this.state.map.getZoom(), { animate: false });
 
-                setTimeout(() => {
-                    if (isMobile) {
-                        const mapHeight = this.state.map.getSize().y;
-                        const panelHeight = mapHeight * 0.6; // Panel is 60% of height
-                        const yOffset = panelHeight / 2;
-                        this.state.map.panBy([0, -yOffset], { animate: true });
-                    } else {
-                        const panelWidth = 350; // Panel is 350px wide
-                        const xOffset = panelWidth / 2;
-                        this.state.map.panBy([xOffset, 0], { animate: true });
-                    }
-                }, 100);
-            }
+            //     setTimeout(() => {
+            //         if (isMobile) {
+            //             const mapHeight = this.state.map.getSize().y;
+            //             const panelHeight = mapHeight * 0.6; // Panel is 60% of height
+            //             const yOffset = panelHeight / 2;
+            //             this.state.map.panBy([0, -yOffset], { animate: true });
+            //         } else {
+            //             const panelWidth = 350; // Panel is 350px wide
+            //             const xOffset = panelWidth / 2;
+            //             this.state.map.panBy([xOffset, 0], { animate: true });
+            //         }
+            //     }, 100);
+            // }
 
             const metaItems = [
                 `
@@ -2387,14 +2379,7 @@ const MapComponent = {
                 `);
             }
 
-            if (hasCoordinates) {
-                metaItems.push(`
-                    <div class="shop-meta-item">
-                        <span class="shop-meta-label">緯度・経度</span>
-                        <span class="shop-meta-value"><i class="fas fa-globe-asia"></i>${lat.toFixed(5)}, ${lng.toFixed(5)}</span>
-                    </div>
-                `);
-            }
+            // 緯度経度表示は削除
 
             const metaHtml = `<div class="shop-meta-grid">${metaItems.join('')}</div>`;
 
