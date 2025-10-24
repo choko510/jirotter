@@ -76,6 +76,7 @@ def create_app():
     
     # 静的ファイルの提供設定（キャッシュ無効化）
     app.mount("/js", StaticFiles(directory="frontend/js", html=True), name="js")
+    app.mount("/css", StaticFiles(directory="frontend/css", html=True), name="css")
     app.mount("/uploads", StaticFiles(directory="uploads", html=True), name="uploads")
     
     # ルーターの登録

@@ -1,13 +1,14 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query
 from sqlalchemy.orm import Session
-from sqlalchemy import func, cast, Float
+from sqlalchemy import func
 from typing import List, Optional
 import math
 import csv
 import os
+from datetime import datetime, timedelta
 
 from database import get_db
-from app.models import RamenShop
+from app.models import RamenShop, Checkin
 from app.schemas import RamenShopResponse, RamenShopsResponse
 
 router = APIRouter(tags=["ramen"])
@@ -59,6 +60,44 @@ def load_ramen_data_on_startup(db: Session):
     except Exception as e:
         db.rollback()
         print(f"Error loading ramen data: {e}")
+
+@router.get("/ramen/ranking", response_model=RamenShopsResponse)
+async def get_ramen_ranking(db: Session = Depends(get_db)):
+    """
+    過去1週間のチェックイン数に基づいたラーメン店のトップ10ランキングを取得する。
+    """
+    try:
+        one_week_ago = datetime.utcnow() - timedelta(days=7)
+
+        ranking_query = (
+            db.query(
+                RamenShop,
+                func.count(Checkin.id).label("checkin_count")
+            )
+            .join(Checkin, RamenShop.id == Checkin.shop_id)
+            .filter(Checkin.checkin_date >= one_week_ago)
+            .group_by(RamenShop.id)
+            .order_by(func.count(Checkin.id).desc())
+            .limit(10)
+        )
+
+        results = ranking_query.all()
+
+        shop_responses = []
+        for shop, checkin_count in results:
+            shop_response = RamenShopResponse.model_validate(shop)
+            shop_responses.append(shop_response)
+
+        return RamenShopsResponse(
+            shops=shop_responses,
+            total=len(shop_responses)
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"ランキングの取得に失敗しました: {str(e)}"
+        )
 
 @router.get("/ramen/nearby", response_model=RamenShopsResponse)
 async def get_nearby_ramen_shops_optimized(

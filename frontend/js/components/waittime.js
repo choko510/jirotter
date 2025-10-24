@@ -4,7 +4,8 @@ const WaittimeComponent = {
     state: {
         shops: [],
         isLoading: false,
-        sortBy: 'waitTime' // 'waitTime', 'name', 'distance'
+        sortBy: 'waitTime', // 'waitTime', 'name', 'distance'
+        selectedPrefecture: 'all'
     },
 
     // レンダリング
@@ -188,6 +189,74 @@ const WaittimeComponent = {
                 .dark-mode .waittime-card:hover {
                     box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
                 }
+                
+                /* 都道府県フィルター用スタイル */
+                .prefecture-filter-section {
+                    margin-bottom: 20px;
+                }
+                
+                .filter-header {
+                    margin-bottom: 10px;
+                }
+                
+                .filter-header h3 {
+                    margin: 0;
+                    font-size: 16px;
+                    color: #d4a574;
+                }
+                
+                .prefecture-filters {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+                    gap: 8px;
+                    max-height: 200px;
+                    overflow-y: auto;
+                    padding: 10px;
+                    background: #f9f9f9;
+                    border-radius: 8px;
+                }
+                
+                .prefecture-filter-btn {
+                    background: #ffffff;
+                    border: 1px solid #e0e0e0;
+                    color: #666;
+                    padding: 6px 12px;
+                    border-radius: 16px;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                    font-size: 12px;
+                    text-align: center;
+                }
+                
+                .prefecture-filter-btn:hover {
+                    background: #f5f5f5;
+                }
+                
+                .prefecture-filter-btn.active {
+                    background: #d4a574;
+                    border-color: #d4a574;
+                    color: white;
+                }
+                
+                .dark-mode .prefecture-filters {
+                    background: #2a2a2a;
+                }
+                
+                .dark-mode .prefecture-filter-btn {
+                    background: #2a2a2a;
+                    border-color: #333;
+                    color: #e0e0e0;
+                }
+                
+                .dark-mode .prefecture-filter-btn:hover {
+                    background: #333;
+                }
+                
+                .dark-mode .prefecture-filter-btn.active {
+                    background: #d4a574;
+                    border-color: #d4a574;
+                    color: #1a1a1a;
+                }
             </style>
             
             <div class="waittime-container">
@@ -243,6 +312,11 @@ const WaittimeComponent = {
         } else if (this.state.sortBy === 'distance') {
             sortedShops.sort((a, b) => a.distance - b.distance);
         }
+        
+        // 都道府県でフィルタリング
+        if (this.state.selectedPrefecture !== 'all') {
+            sortedShops = this.filterShopsByPrefecture(sortedShops, this.state.selectedPrefecture);
+        }
 
         return sortedShops.map(shop => {
             let badgeClass = 'short';
@@ -294,6 +368,13 @@ const WaittimeComponent = {
                     listElement.innerHTML = updatedHtml;
                 }
             });
+        });
+        
+        // 都道府県フィルターボタン
+        document.addEventListener('click', (e) => {
+            if (e.target.classList.contains('prefecture-filter-btn')) {
+                this.filterByPrefecture(e.target.dataset.prefecture);
+            }
         });
     },
 
@@ -351,9 +432,68 @@ const WaittimeComponent = {
 
     // 店舗詳細表示
     showShopDetail(shopId) {
-        alert(`店舗ID: ${shopId} の詳細を表示`);
-        // 実際の実装では、店舗詳細ページに遷移する
-        // router.navigate('shop', [shopId]);
+        router.navigate('shop', [shopId]);
+    },
+    
+    // 都道府県フィルターをレンダリング
+    renderPrefectureFilters() {
+        const prefectures = [
+            '北海道', '青森県', '岩手県', '宮城県', '秋田県', '山形県', '福島県',
+            '茨城県', '栃木県', '群馬県', '埼玉県', '千葉県', '東京都', '神奈川県',
+            '新潟県', '富山県', '石川県', '福井県', '山梨県', '長野県', '岐阜県', '静岡県', '愛知県',
+            '三重県', '滋賀県', '京都府', '大阪府', '兵庫県', '奈良県', '和歌山県',
+            '鳥取県', '島根県', '岡山県', '広島県', '山口県', '徳島県', '香川県', '愛媛県', '高知県',
+            '福岡県', '佐賀県', '長崎県', '熊本県', '大分県', '宮崎県', '鹿児島県', '沖縄県'
+        ];
+        
+        let buttonsHtml = `
+            <button class="prefecture-filter-btn ${this.state.selectedPrefecture === 'all' ? 'active' : ''}" data-prefecture="all">
+                全国
+            </button>
+        `;
+
+        for (const prefecture of prefectures) {
+            buttonsHtml += `
+                <button class="prefecture-filter-btn ${this.state.selectedPrefecture === prefecture ? 'active' : ''}" data-prefecture="${prefecture}">
+                    ${prefecture}
+                </button>
+            `;
+        }
+
+        return buttonsHtml;
+    },
+    
+    // 都道府県でフィルタリング
+    filterByPrefecture(prefecture) {
+        this.state.selectedPrefecture = prefecture;
+        
+        // アクティブ状態を更新
+        document.querySelectorAll('.prefecture-filter-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.dataset.prefecture === prefecture) {
+                btn.classList.add('active');
+            }
+        });
+        
+        // 再レンダリング
+        const updatedHtml = this.renderWaittimeList();
+        const listElement = document.getElementById('waittimeList');
+        if (listElement) {
+            listElement.innerHTML = updatedHtml;
+        }
+    },
+    
+    // 都道府県から店舗をフィルタリング
+    filterShopsByPrefecture(shops, prefecture) {
+        if (!prefecture || prefecture === 'all') {
+            return shops;
+        }
+        
+        return shops.filter(shop => {
+            // 店舗の住所から都道府県を判定
+            const address = shop.address || '';
+            return address.includes(prefecture);
+        });
     }
 };
 

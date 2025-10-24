@@ -88,6 +88,8 @@ const MapComponent = {
         // フィルター関連
         activeFilters: new Set(),
         brandShopCounts: {},
+        searchQuery: '',
+        searchResults: [],
         
         // キャッシュ関連
         cache: {
@@ -204,6 +206,8 @@ const MapComponent = {
             await this.initializeMap();
             // ブランドフィルターUIを初期化
             this.initializeBrandFilters();
+            // 検索入力フィールドを追加
+            this.addSearchInput();
         }, 100);
     },
 
@@ -276,6 +280,11 @@ const MapComponent = {
                 position: relative;
             }
             
+            .map-search-input-container {
+                flex: 1;
+                position: relative;
+            }
+            
             .map-search-input {
                 width: 100%;
                 padding: 8px 36px 8px 12px;
@@ -301,6 +310,63 @@ const MapComponent = {
                 color: #666;
                 cursor: pointer;
                 padding: 4px;
+            }
+            
+            .map-search-results {
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: white;
+                border: 1px solid #e0e0e0;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+                max-height: 200px;
+                overflow-y: auto;
+                z-index: 1000;
+                margin-top: 4px;
+            }
+            
+            .search-result-item {
+                padding: 10px 12px;
+                cursor: pointer;
+                border-bottom: 1px solid #f0f0f0;
+            }
+            
+            .search-result-item:last-child {
+                border-bottom: none;
+            }
+            
+            .search-result-item:hover {
+                background: #f5f5f5;
+            }
+            
+            .search-result-name {
+                font-weight: bold;
+                font-size: 14px;
+                margin-bottom: 4px;
+            }
+            
+            .search-result-address {
+                font-size: 12px;
+                color: #666;
+                margin-bottom: 4px;
+            }
+            
+            .search-result-brand {
+                font-size: 11px;
+                font-weight: bold;
+                padding: 2px 6px;
+                border-radius: 10px;
+                background: rgba(212, 165, 116, 0.1);
+                display: inline-block;
+            }
+            
+            .search-no-results, .search-error {
+                padding: 10px 12px;
+                font-size: 14px;
+                color: #666;
+                text-align: center;
             }
             
             .map-filter-btn {
@@ -538,6 +604,22 @@ const MapComponent = {
             }
             .dark-mode .map-search-btn {
                 color: #aaa;
+            }
+            .dark-mode .map-search-results {
+                background: #2a2a2a;
+                border-color: #333;
+            }
+            .dark-mode .search-result-item {
+                border-bottom-color: #333;
+            }
+            .dark-mode .search-result-item:hover {
+                background: #333;
+            }
+            .dark-mode .search-no-results, .dark-mode .search-error {
+                color: #aaa;
+            }
+            .dark-mode .search-result-brand {
+                background: rgba(212, 165, 116, 0.2);
             }
             .dark-mode .map-filter-btn {
                 background: #1a1a1a;
@@ -1215,19 +1297,22 @@ const MapComponent = {
         
         if (zoomLevel <= 6) {
             // 日本全土が見えるような非常に広い範囲
-            return 500;
+            return 2000;
         } else if (zoomLevel <= 8) {
             // 広域（地方レベル）
-            return 300;
+            return 1000;
+        } else if(zoomLevel <=9){
+            // 中域（県レベル）
+            return 600;
         } else if (zoomLevel <= 10) {
             // 中域（県レベル）
-            return 150;
+            return 300;
         } else if (zoomLevel <= 12) {
             // やや広域（市レベル）
-            return 80;
+            return 100;
         } else if (zoomLevel <= 14) {
             // 標準（地域レベル）
-            return 40;
+            return 60;
         } else if (zoomLevel <= 16) {
             // やや狭域（近隣レベル）
             return 20;
@@ -1856,6 +1941,110 @@ const MapComponent = {
             this.showShopDetails(shop.id);
         } else {
             console.warn('選択された店舗の位置情報が不足しています', shop);
+        }
+    },
+
+    // 検索入力フィールドを追加
+    addSearchInput() {
+        const controls = document.querySelector('.map-controls');
+        if (!controls) return;
+
+        // 既存の検索入力フィールドがあれば削除
+        const existingSearch = document.querySelector('.map-search-input-container');
+        if (existingSearch) {
+            existingSearch.remove();
+        }
+
+        // 検索入力フィールドコンテナを作成
+        const searchContainer = document.createElement('div');
+        searchContainer.className = 'map-search-input-container';
+        searchContainer.innerHTML = `
+            <div class="map-search">
+                <input type="text" id="mapSearchInput" class="map-search-input" placeholder="店名で検索...">
+                <button id="mapSearchBtn" class="map-search-btn">
+                    <i class="fas fa-search"></i>
+                </button>
+            </div>
+            <div id="mapSearchResults" class="map-search-results" style="display: none;">
+                <!-- 検索結果がここに表示される -->
+            </div>
+        `;
+
+        // 既存のコントロールの先頭に検索フィールドを追加
+        controls.insertBefore(searchContainer, controls.firstChild);
+
+        // イベントリスナーを設定
+        const searchInput = document.getElementById('mapSearchInput');
+        const searchBtn = document.getElementById('mapSearchBtn');
+        const searchResults = document.getElementById('mapSearchResults');
+
+        // 検索入力のデバウンス処理
+        let searchTimeout;
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                this.handleMapSearch(e.target.value);
+            }, 300);
+        });
+
+        // 検索ボタンクリック
+        searchBtn.addEventListener('click', () => {
+            this.handleMapSearch(searchInput.value);
+        });
+
+        // 検索結果外クリックで結果を閉じる
+        document.addEventListener('click', (e) => {
+            if (!searchContainer.contains(e.target)) {
+                searchResults.style.display = 'none';
+            }
+        });
+    },
+
+    // マップ検索処理
+    async handleMapSearch(query) {
+        const searchResults = document.getElementById('mapSearchResults');
+        
+        if (!query || query.trim().length < 2) {
+            searchResults.style.display = 'none';
+            return;
+        }
+
+        try {
+            // APIで店舗を検索
+            const shops = await API.getShops(query.trim());
+            
+            if (shops.length === 0) {
+                searchResults.innerHTML = '<div class="search-no-results">店舗が見つかりませんでした</div>';
+                searchResults.style.display = 'block';
+                return;
+            }
+
+            // 検索結果を表示
+            searchResults.innerHTML = shops.map(shop => `
+                <div class="search-result-item" data-shop-id="${shop.id}">
+                    <div class="search-result-name">${shop.name}</div>
+                    <div class="search-result-address">${shop.address}</div>
+                </div>
+            `).join('');
+
+            // 結果アイテムクリックイベント
+            searchResults.querySelectorAll('.search-result-item').forEach(item => {
+                item.addEventListener('click', () => {
+                    const shopId = parseInt(item.dataset.shopId, 10);
+                    const selectedShop = shops.find(s => s.id === shopId);
+                    if (selectedShop) {
+                        this.handleShopSelection(selectedShop);
+                        searchResults.style.display = 'none';
+                        document.getElementById('mapSearchInput').value = '';
+                    }
+                });
+            });
+
+            searchResults.style.display = 'block';
+        } catch (error) {
+            console.error('検索エラー:', error);
+            searchResults.innerHTML = '<div class="search-error">検索に失敗しました</div>';
+            searchResults.style.display = 'block';
         }
     },
 

@@ -648,9 +648,11 @@ const Utils = {
         setTimeout(() => {
             notification.classList.remove('show');
             notification.addEventListener('transitionend', () => {
-                container.removeChild(notification);
-                if (container.childElementCount === 0) {
-                    document.body.removeChild(container);
+                if (notification.parentNode === container) {
+                    container.removeChild(notification);
+                    if (container.childElementCount === 0) {
+                        document.body.removeChild(container);
+                    }
                 }
             });
         }, duration);

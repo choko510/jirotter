@@ -7,7 +7,8 @@ const StampRallyComponent = {
         isLoading: false,
         currentPage: 1,
         hasMoreShops: true,
-        selectedBrand: 'all'
+        selectedBrand: 'all',
+        selectedPrefecture: 'all'
     },
 
     // ブランド設定（MapComponentと共通）
@@ -32,6 +33,9 @@ const StampRallyComponent = {
         document.addEventListener('click', (e) => {
             if (e.target.classList.contains('brand-filter-btn')) {
                 this.filterByBrand(e.target.dataset.brand);
+            }
+            if (e.target.classList.contains('prefecture-filter-btn')) {
+                this.filterByPrefecture(e.target.dataset.prefecture);
             }
             if (e.target.classList.contains('load-more-shops')) {
                 this.loadMoreShops();
@@ -97,15 +101,42 @@ const StampRallyComponent = {
                     font-size: 14px;
                 }
                 
+                .filter-section {
+                    margin-bottom: 30px;
+                }
+                
+                .filter-header {
+                    margin-bottom: 15px;
+                }
+                
+                .filter-header h3 {
+                    margin: 0;
+                    font-size: 18px;
+                    color: #d4a574;
+                }
+                
                 .brand-filters {
                     display: flex;
                     justify-content: center;
                     gap: 10px;
-                    margin-bottom: 30px;
+                    margin-bottom: 20px;
                     flex-wrap: wrap;
                 }
                 
-                .brand-filter-btn {
+                .prefecture-filters {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
+                    gap: 8px;
+                    margin-bottom: 20px;
+                    max-height: 200px;
+                    overflow-y: auto;
+                    padding: 10px;
+                    background: #f9f9f9;
+                    border-radius: 8px;
+                }
+                
+                .brand-filter-btn,
+                .prefecture-filter-btn {
                     background: #ffffff;
                     border: 1px solid #e0e0e0;
                     color: #666;
@@ -116,11 +147,13 @@ const StampRallyComponent = {
                     font-size: 14px;
                 }
                 
-                .brand-filter-btn:hover {
+                .brand-filter-btn:hover,
+                .prefecture-filter-btn:hover {
                     background: #f5f5f5;
                 }
                 
-                .brand-filter-btn.active {
+                .brand-filter-btn.active,
+                .prefecture-filter-btn.active {
                     background: #d4a574;
                     border-color: #d4a574;
                     color: white;
@@ -440,6 +473,34 @@ const StampRallyComponent = {
         return buttonsHtml;
     },
 
+    // 都道府県フィルターをレンダリング
+    renderPrefectureFilters() {
+        const prefectures = [
+            '北海道', '青森県', '岩手県', '宮城県', '秋田県', '山形県', '福島県',
+            '茨城県', '栃木県', '群馬県', '埼玉県', '千葉県', '東京都', '神奈川県',
+            '新潟県', '富山県', '石川県', '福井県', '山梨県', '長野県', '岐阜県', '静岡県', '愛知県',
+            '三重県', '滋賀県', '京都府', '大阪府', '兵庫県', '奈良県', '和歌山県',
+            '鳥取県', '島根県', '岡山県', '広島県', '山口県', '徳島県', '香川県', '愛媛県', '高知県',
+            '福岡県', '佐賀県', '長崎県', '熊本県', '大分県', '宮崎県', '鹿児島県', '沖縄県'
+        ];
+        
+        let buttonsHtml = `
+            <button class="prefecture-filter-btn ${this.state.selectedPrefecture === 'all' ? 'active' : ''}" data-prefecture="all">
+                全国
+            </button>
+        `;
+
+        for (const prefecture of prefectures) {
+            buttonsHtml += `
+                <button class="prefecture-filter-btn ${this.state.selectedPrefecture === prefecture ? 'active' : ''}" data-prefecture="${prefecture}">
+                    ${prefecture}
+                </button>
+            `;
+        }
+
+        return buttonsHtml;
+    },
+
     // 店舗グリッドをレンダリング
     renderShopsGrid() {
         if (this.state.isLoading) {
@@ -456,13 +517,20 @@ const StampRallyComponent = {
             `;
         }
 
-        // ブランドでフィルタリング
+        // ブランドと都道府県でフィルタリング
         let filteredShops = this.state.shops;
+        
+        // ブランドでフィルタリング
         if (this.state.selectedBrand !== 'all') {
-            filteredShops = this.state.shops.filter(shop => {
+            filteredShops = filteredShops.filter(shop => {
                 const brand = this.determineBrand(shop.name);
                 return brand === this.state.selectedBrand;
             });
+        }
+        
+        // 都道府県でフィルタリング
+        if (this.state.selectedPrefecture !== 'all') {
+            filteredShops = this.filterShopsByPrefecture(filteredShops, this.state.selectedPrefecture);
         }
 
         return filteredShops.map(shop => {
@@ -485,8 +553,8 @@ const StampRallyComponent = {
                             </div>
                         </div>
                         <div class="shop-actions">
-                            <button class="shop-action-btn checkin-btn" 
-                                    data-shop-id="${shop.id}" 
+                            <button class="shop-action-btn checkin-btn"
+                                    data-shop-id="${shop.id}"
                                     data-checkin-type="manual"
                                     ${isChecked ? 'disabled' : ''}>
                                 ${isChecked ? 'チェックイン済み' : 'チェックイン'}
@@ -523,6 +591,38 @@ const StampRallyComponent = {
         document.querySelectorAll('.brand-filter-btn').forEach(btn => {
             btn.classList.remove('active');
             if (btn.dataset.brand === brand) {
+                btn.classList.add('active');
+            }
+        });
+        
+        // 再レンダリング
+        const shopsGrid = document.getElementById('shopsGrid');
+        if (shopsGrid) {
+            shopsGrid.innerHTML = this.renderShopsGrid();
+        }
+    },
+
+    // 都道府県から店舗をフィルタリング
+    filterShopsByPrefecture(shops, prefecture) {
+        if (!prefecture || prefecture === 'all') {
+            return shops;
+        }
+        
+        return shops.filter(shop => {
+            // 店舗の住所から都道府県を判定
+            const address = shop.address || '';
+            return address.includes(prefecture);
+        });
+    },
+
+    // 都道府県でフィルタリング
+    filterByPrefecture(prefecture) {
+        this.state.selectedPrefecture = prefecture;
+        
+        // アクティブ状態を更新
+        document.querySelectorAll('.prefecture-filter-btn').forEach(btn => {
+            btn.classList.remove('active');
+            if (btn.dataset.prefecture === prefecture) {
                 btn.classList.add('active');
             }
         });
