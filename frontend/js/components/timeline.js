@@ -19,8 +19,14 @@ const TimelineComponent = {
         selectedShop: null
     },
 
+    _initialized: false,
+
     init() {
+        if (this._initialized) {
+            return;
+        }
         this.bindEvents();
+        this._initialized = true;
     },
 
     bindEvents() {
@@ -152,6 +158,7 @@ const TimelineComponent = {
     },
 
     render(params = []) {
+        this.init();
         this.state.selectedImage = null;
         const contentArea = document.getElementById('contentArea');
         
@@ -601,22 +608,36 @@ const TimelineComponent = {
         document.querySelectorAll('.tab').forEach(tab => tab.classList.remove('active'));
         tabElement.classList.add('active');
         this.state.currentTab = tabElement.dataset.tab;
-        
-        // フォロー中タブの場合、ログインチェック
+
+        // フォロー中タブの場合、ログイン状態を確認
         if (this.state.currentTab === 'following') {
             const token = API.getCookie('authToken');
             if (!token) {
-                alert('フォロー中のタイムラインを表示するにはログインしてください');
-                // おすすめタブに戻す
-                document.querySelector('[data-tab="recommend"]').classList.add('active');
-                tabElement.classList.remove('active');
-                this.state.currentTab = 'recommend';
+                // ログインしていない場合、ログインを促すメッセージを表示
+                const timeline = document.getElementById('timeline');
+                if (timeline) {
+                    timeline.innerHTML = `
+                        <div style="text-align: center; padding: 40px; color: #666;">
+                            <p style="margin-bottom: 16px;">フォロー中のユーザーの投稿を見るにはログインが必要です。</p>
+                            <button class="login-btn" data-action="login">ログイン</button>
+                        </div>
+                    `;
+                }
+                // Attach event listener to login button
+                const loginBtn = document.querySelector('#timeline .login-btn[data-action="login"]');
+                if (loginBtn) {
+                    loginBtn.addEventListener('click', function() {
+                        router.navigate('auth', ['login']);
+                    });
+                }
+                // 投稿の読み込みは行わない
                 return;
             }
         }
-        
+
+        // 投稿を読み込み
         this.loadInitialPosts();
-        this.setupAutoRefresh(); // タブ切り替え時に自動更新を再設定
+        this.setupAutoRefresh();
     },
 
     async handleLike(postId) {
