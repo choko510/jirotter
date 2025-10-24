@@ -118,6 +118,14 @@ const ShopDetailComponent = {
                     <button class="action-button checkin-btn" data-shop-id="${this.shopData.id}" data-checkin-type="manual">
                         <i class="fas fa-map-marker-alt"></i> チェックイン
                     </button>
+                    ${this.shopData.latitude && this.shopData.longitude ? `
+                    <button class="action-button" onclick="ShopDetailComponent.openInGoogleMaps()">
+                        <i class="fas fa-external-link-alt"></i> Googleマップで開く
+                    </button>
+                    <button class="action-button" onclick="ShopDetailComponent.showDirections()">
+                        <i class="fas fa-directions"></i> 経路を表示
+                    </button>
+                    ` : ''}
                     <button class="action-button" onclick="ShopDetailComponent.shareShop()">
                         <i class="fas fa-share-alt"></i> シェア
                     </button>
@@ -150,23 +158,113 @@ const ShopDetailComponent = {
                 
                 const map = L.map('shopMap').setView([this.shopData.latitude, this.shopData.longitude], 15);
                 
-                L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-                    attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                // MapLibre GLを使用してmap.jsと同じスタイルに
+                L.maplibreGL({
+                    style: 'https://tiles.openfreemap.org/styles/liberty',
+                    maxZoom: 18
                 }).addTo(map);
                 
-                const marker = L.marker([this.shopData.latitude, this.shopData.longitude]).addTo(map);
-                marker.bindPopup(`<b>${this.escapeHtml(this.shopData.name)}</b><br>${this.escapeHtml(this.shopData.address)}`).openPopup();
+                // 店舗のブランドを判定
+                const brand = this.determineBrand(this.shopData.name);
+                const brandConfig = this.getBrandConfig(brand);
+                
+                // ブランドに応じたマーカーアイコンを作成
+                const shopIcon = L.divIcon({
+                    html: `
+                        <div style="
+                            position: relative;
+                            width: 30px;
+                            height: 30px;
+                        ">
+                            <div style="
+                                position: absolute;
+                                top: 0;
+                                left: 0;
+                                width: 30px;
+                                height: 30px;
+                                background: ${brandConfig.color};
+                                border-radius: 50% 50% 50% 0;
+                                border: 2px solid white;
+                                box-shadow: 0 2px 5px rgba(0,0,0,0.3);
+                                transform: rotate(-45deg);
+                            "></div>
+                            <div style="
+                                position: absolute;
+                                top: 50%;
+                                left: 50%;
+                                transform: translate(-50%, -50%);
+                                color: ${brandConfig.textColor};
+                                font-weight: bold;
+                                font-size: 12px;
+                            ">${brandConfig.markerText || 'ラ'}</div>
+                        </div>
+                    `,
+                    iconSize: [30, 30],
+                    iconAnchor: [15, 30],
+                    popupAnchor: [0, -30],
+                    className: 'shop-marker'
+                });
+                
+                const marker = L.marker([this.shopData.latitude, this.shopData.longitude], { icon: shopIcon }).addTo(map);
+                marker.bindPopup(`
+                    <div style="max-width: 200px;">
+                        <h3 style="margin: 0 0 8px 0;">${this.escapeHtml(this.shopData.name)}</h3>
+                        <p style="margin: 0 0 8px 0; font-size: 12px;">${this.escapeHtml(this.shopData.address)}</p>
+                        <p style="margin: 0 0 8px 0; font-size: 12px;">ブランド: ${brandConfig.name}</p>
+                    </div>
+                `).openPopup();
             } catch (error) {
                 console.error('地図の初期化に失敗しました:', error);
             }
         }, 100);
     },
     
+    // 店名からブランドを判定する関数
+    determineBrand(shopName) {
+        const BRAND_CONFIG = {
+            butayama: { name: '豚山', color: '#fcd700ff', textColor: 'black', markerText: '豚', keywords: ['豚山'] },
+            ramenso: { name: 'ラーメン荘', color: '#3498db', textColor: 'white', markerText: '荘', keywords: ['ラーメン荘'] },
+            rakeiko: { name: 'ら・けいこ', color: '#2ecc71', textColor: 'white', keywords: ['ら・けいこ'] },
+            ahare: { name: '麺屋あっ晴れ', color: '#e74c3c', textColor: 'white', keywords: ['あっ晴れ'] },
+            tachikawa: { name: '立川マシマシ', color: '#9b59b6', textColor: 'white', keywords: ['立川マシマシ'] },
+            tsukemensha: { name: 'つけめん舎', color: '#1abc9c', textColor: 'white', keywords: ['つけめん舎'] },
+            jiro: { name: '直系二郎', color: '#d4a574', textColor: 'white', markerText: '直', keywords: ['ラーメン二郎'] },
+            other: { name: 'その他', color: '#95a5a6', textColor: 'white', keywords: [] }
+        };
+        
+        for (const [brandKey, config] of Object.entries(BRAND_CONFIG)) {
+            if (brandKey === 'other') continue;
+            
+            for (const keyword of config.keywords) {
+                if (shopName.includes(keyword)) {
+                    return brandKey;
+                }
+            }
+        }
+        return 'other';
+    },
+    
+    // ブランド設定を取得する関数
+    getBrandConfig(brand) {
+        const BRAND_CONFIG = {
+            butayama: { name: '豚山', color: '#fcd700ff', textColor: 'black', markerText: '豚', keywords: ['豚山'] },
+            ramenso: { name: 'ラーメン荘', color: '#3498db', textColor: 'white', markerText: '荘', keywords: ['ラーメン荘'] },
+            rakeiko: { name: 'ら・けいこ', color: '#2ecc71', textColor: 'white', keywords: ['ら・けいこ'] },
+            ahare: { name: '麺屋あっ晴れ', color: '#e74c3c', textColor: 'white', keywords: ['あっ晴れ'] },
+            tachikawa: { name: '立川マシマシ', color: '#9b59b6', textColor: 'white', keywords: ['立川マシマシ'] },
+            tsukemensha: { name: 'つけめん舎', color: '#1abc9c', textColor: 'white', keywords: ['つけめん舎'] },
+            jiro: { name: '直系二郎', color: '#d4a574', textColor: 'white', markerText: '直', keywords: ['ラーメン二郎'] },
+            other: { name: 'その他', color: '#95a5a6', textColor: 'white', keywords: [] }
+        };
+        
+        return BRAND_CONFIG[brand] || BRAND_CONFIG.other;
+    },
+    
     // 店舗関連の投稿を読み込み
     async loadShopPosts() {
         try {
-            // 店舗名を含む投稿を検索
-            const result = await API.getShopPosts(this.shopData.name);
+            // 店舗IDで投稿を検索
+            const result = await API.getPostsByShopId(this.shopData.id);
             const postsContainer = document.getElementById('shopPosts');
             
             if (result.success && result.posts.length > 0) {
@@ -198,6 +296,40 @@ const ShopDetailComponent = {
         if (this.shopData && this.shopData.latitude && this.shopData.longitude) {
             // MAPページに移動し、この店を中心に表示
             router.navigate('map', [this.shopData.latitude, this.shopData.longitude, this.shopData.id]);
+        }
+    },
+    
+    // Googleマップで店舗を開く
+    openInGoogleMaps() {
+        if (!this.shopData || !this.shopData.latitude || !this.shopData.longitude) return;
+        
+        const url = `https://www.google.com/maps?q=${this.shopData.latitude},${this.shopData.longitude}`;
+        window.open(url, '_blank');
+    },
+    
+    // Googleマップで経路を表示
+    showDirections() {
+        if (!this.shopData || !this.shopData.latitude || !this.shopData.longitude) return;
+        
+        // 現在地を取得して経路を表示
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(
+                (position) => {
+                    const { latitude, longitude } = position.coords;
+                    const url = `https://www.google.com/maps/dir/?api=1&origin=${latitude},${longitude}&destination=${this.shopData.latitude},${this.shopData.longitude}`;
+                    window.open(url, '_blank');
+                },
+                (error) => {
+                    console.error('現在地の取得に失敗しました:', error);
+                    // 現在地が取得できない場合は目的地のみでGoogleマップを開く
+                    const url = `https://www.google.com/maps/dir/?api=1&destination=${this.shopData.latitude},${this.shopData.longitude}`;
+                    window.open(url, '_blank');
+                }
+            );
+        } else {
+            // ブラウザが位置情報をサポートしていない場合
+            const url = `https://www.google.com/maps/dir/?api=1&destination=${this.shopData.latitude},${this.shopData.longitude}`;
+            window.open(url, '_blank');
         }
     },
     

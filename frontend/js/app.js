@@ -119,6 +119,57 @@ const API = {
         }
     },
 
+    // 店舗IDで投稿を取得
+    async getPostsByShopId(shopId) {
+        try {
+            const response = await fetch(`/api/v1/posts?shop_id=${shopId}`, {
+                headers: this.getAuthHeader()
+            });
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            const data = await response.json();
+            
+            // 投稿データをフォーマット
+            const formattedPosts = data.posts.map(post => ({
+                id: post.id,
+                user: {
+                    name: post.author_username,
+                    handle: `@${post.author_username}`,
+                    avatar: '<i class="fas fa-user"></i>'
+                },
+                text: post.content,
+                image: post.image_url,  // 後方互換性
+                thumbnail_url: post.thumbnail_url,
+                original_image_url: post.original_image_url,
+                time: this.formatTime(post.created_at),
+                shop_id: post.shop_id,
+                shop_name: post.shop_name,
+                shop_address: post.shop_address,
+                engagement: {
+                    comments: post.replies_count,
+                    retweets: 0,
+                    likes: post.likes_count,
+                    shares: 0
+                },
+                isLiked: post.is_liked_by_current_user
+            }));
+
+            return {
+                success: true,
+                posts: formattedPosts
+            };
+        } catch (error) {
+            console.error('店舗投稿の取得に失敗しました:', error);
+            return {
+                success: false,
+                error: error.message
+            };
+        }
+    },
+
     // 店舗関連投稿取得
     async getShopPosts(shopName) {
         try {
