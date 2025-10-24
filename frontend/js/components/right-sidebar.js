@@ -80,8 +80,8 @@ const RightSidebar = {
             }
             shopList.innerHTML = this.state.rankingShops.map(shop => `
                 <div class="result-item" onclick="router.navigate('shop', [${shop.id}])">
-                    <div class="shop-name">${shop.name}</div>
-                    <div class="shop-address">${shop.address}</div>
+                    <div class="shop-name">${API.escapeHtml(shop.name)}</div>
+                    <div class="shop-address">${API.escapeHtml(shop.address)}</div>
                 </div>
             `).join('');
         }
@@ -102,8 +102,8 @@ const RightSidebar = {
             }
             shopList.innerHTML = this.state.searchResults.map(shop => `
                 <div class="result-item" onclick="router.navigate('shop', [${shop.id}])">
-                    <div class="shop-name">${shop.name}</div>
-                    <div class="shop-address">${shop.address}</div>
+                    <div class="shop-name">${API.escapeHtml(shop.name)}</div>
+                    <div class="shop-address">${API.escapeHtml(shop.address)}</div>
                 </div>
             `).join('');
         }

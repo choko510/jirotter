@@ -141,8 +141,8 @@ const SearchComponent = {
         // 検索結果の各店舗をリストアイテムとして表示
         resultsContainer.innerHTML = this.state.searchResults.map(shop => `
             <div class="result-item" data-shop-id="${shop.id}">
-                <div class="shop-name">${shop.name}</div>
-                <div class="shop-address">${shop.address}</div>
+                <div class="shop-name">${API.escapeHtml(shop.name)}</div>
+                <div class="shop-address">${API.escapeHtml(shop.address)}</div>
                 ${shop.distance ? `<div class="shop-distance">約${Math.round(shop.distance)}km</div>` : ''}
             </div>
         `).join('');
