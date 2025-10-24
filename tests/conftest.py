@@ -78,3 +78,30 @@ def test_client(test_db: Session):
         yield client
     
     app.dependency_overrides.clear()
+
+import uuid
+
+@pytest.fixture(scope="function")
+def auth_headers(test_client):
+    """
+    Fixture to create a unique test user and return authentication headers.
+    """
+    unique_id = str(uuid.uuid4()).replace("-", "")
+    user_data = {
+        "id": f"testuser{unique_id}",
+        "email": f"test{unique_id}@example.com",
+        "password": "password123!"
+    }
+
+    # 1. Create a unique user
+    register_response = test_client.post("/api/v1/auth/register", json=user_data)
+    if register_response.status_code != 201:
+        raise ValueError(
+            f"Failed to register user in auth_headers fixture. "
+            f"Status: {register_response.status_code}, "
+            f"Response: {register_response.text}"
+        )
+
+    # 2. The registration response should contain the token
+    token = register_response.json()["access_token"]
+    return {"Authorization": f"Bearer {token}"}

@@ -4,11 +4,13 @@ const StampRallyComponent = {
     state: {
         shops: [],
         checkins: [],
+        progress: [],
         isLoading: false,
         currentPage: 1,
         hasMoreShops: true,
         selectedBrand: 'all',
-        selectedPrefecture: 'all'
+        selectedPrefecture: 'all',
+        currentView: 'list' // 'list' or 'progress'
     },
 
     // ブランド設定（MapComponentと共通）
@@ -24,8 +26,26 @@ const StampRallyComponent = {
     },
 
     // 初期化
-    init() {
+    async init() {
         this.bindEvents();
+        const location = await this.getLocationFromIP();
+        if (location && location.region) {
+            this.state.selectedPrefecture = location.region;
+        }
+    },
+
+    // IPアドレスから位置情報を取得
+    async getLocationFromIP() {
+        try {
+            const response = await fetch('https://ipinfo.io/json');
+            if (!response.ok) throw new Error('Failed to fetch location from IP');
+            const data = await response.json();
+            return data;
+        } catch (error) {
+            console.error('IP-based location fetch failed:', error);
+            // デフォルトは東京
+            return { region: '東京都' };
+        }
     },
 
     // イベントバインド
@@ -37,6 +57,9 @@ const StampRallyComponent = {
             if (e.target.classList.contains('prefecture-filter-btn')) {
                 this.filterByPrefecture(e.target.dataset.prefecture);
             }
+            if (e.target.closest('.view-switch-btn')) {
+                this.switchView(e.target.closest('.view-switch-btn').dataset.view);
+            }
             if (e.target.classList.contains('load-more-shops')) {
                 this.loadMoreShops();
             }
@@ -45,6 +68,7 @@ const StampRallyComponent = {
 
     // レンダリング
     async render(params = []) {
+        await this.init(); // renderの前にinitを完了させる
         const contentArea = document.getElementById('contentArea');
         
         contentArea.innerHTML = `
@@ -124,15 +148,27 @@ const StampRallyComponent = {
                 }
                 
                 .prefecture-filters {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fill, minmax(100px, 1fr));
-                    gap: 8px;
-                    margin-bottom: 20px;
-                    max-height: 200px;
-                    overflow-y: auto;
-                    padding: 10px;
                     background: #f9f9f9;
                     border-radius: 8px;
+                    padding: 10px;
+                    margin-bottom: 20px;
+                }
+
+                .region-details {
+                    margin-bottom: 5px;
+                }
+
+                .region-summary {
+                    font-weight: bold;
+                    cursor: pointer;
+                    padding: 5px;
+                }
+
+                .prefecture-buttons {
+                    display: flex;
+                    flex-wrap: wrap;
+                    gap: 8px;
+                    padding: 10px;
                 }
                 
                 .brand-filter-btn,
@@ -328,7 +364,71 @@ const StampRallyComponent = {
                     margin-bottom: 8px;
                     color: #333;
                 }
+
+                .view-switcher {
+                    display: flex;
+                    justify-content: center;
+                    margin-bottom: 20px;
+                    border: 1px solid #d4a574;
+                    border-radius: 20px;
+                    overflow: hidden;
+                }
+
+                .view-switch-btn {
+                    padding: 10px 20px;
+                    cursor: pointer;
+                    border: none;
+                    background-color: transparent;
+                    color: #d4a574;
+                    font-weight: bold;
+                    transition: all 0.2s;
+                }
+
+                .view-switch-btn.active {
+                    background-color: #d4a574;
+                    color: white;
+                }
+
+                .progress-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+                    gap: 20px;
+                }
+
+                .progress-card {
+                    background: #fff;
+                    border-radius: 8px;
+                    padding: 20px;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                    border: 1px solid #e0e0e0;
+                }
+
+                .progress-card h4 {
+                    margin-bottom: 15px;
+                    color: #333;
+                }
+
+                .progress-bar-container {
+                    background: #eee;
+                    border-radius: 5px;
+                    height: 10px;
+                    margin: 10px 0;
+                    overflow: hidden;
+                }
+
+                .progress-bar {
+                    background: #d4a574;
+                    height: 100%;
+                    border-radius: 5px;
+                    transition: width 0.5s ease-in-out;
+                }
                 
+                .progress-card p {
+                    text-align: right;
+                    color: #666;
+                    font-size: 14px;
+                }
+
                 /* Dark Mode Overrides */
                 .dark-mode .stamp-rally-subtitle,
                 .dark-mode .stat-label,
@@ -377,6 +477,36 @@ const StampRallyComponent = {
                     color: #e0e0e0;
                 }
                 
+                .dark-mode .view-switcher {
+                    border-color: #d4a574;
+                }
+
+                .dark-mode .view-switch-btn {
+                    color: #d4a574;
+                }
+
+                .dark-mode .view-switch-btn.active {
+                    background-color: #d4a574;
+                    color: #1a1a1a;
+                }
+
+                .dark-mode .progress-card {
+                    background: #2a2a2a;
+                    border-color: #333;
+                }
+
+                .dark-mode .progress-card h4 {
+                    color: #e0e0e0;
+                }
+
+                .dark-mode .progress-bar-container {
+                    background: #333;
+                }
+
+                .dark-mode .progress-card p {
+                    color: #aaa;
+                }
+
                 @media (max-width: 768px) {
                     .stamp-rally-container {
                         padding: 16px;
@@ -407,27 +537,72 @@ const StampRallyComponent = {
                     <h1 class="stamp-rally-title">二郎スタンプラリー</h1>
                     <p class="stamp-rally-subtitle">訪問した店舗をチェックインしてスタンプを集めよう！</p>
                 </div>
-                
-                <div class="stamp-stats" id="stampStats">
-                    ${this.renderStats()}
+
+                <div class="view-switcher">
+                    <button class="view-switch-btn ${this.state.currentView === 'list' ? 'active' : ''}" data-view="list">店舗リスト</button>
+                    <button class="view-switch-btn ${this.state.currentView === 'progress' ? 'active' : ''}" data-view="progress">進捗マップ</button>
                 </div>
                 
-                <div class="brand-filters" id="brandFilters">
-                    ${this.renderBrandFilters()}
-                </div>
-                
-                <div class="shops-grid" id="shopsGrid">
-                    ${this.renderShopsGrid()}
-                </div>
-                
-                <div class="load-more-container" id="loadMoreContainer">
-                    ${this.state.hasMoreShops ? '<button class="load-more-shops">もっと見る</button>' : ''}
+                <div id="stampRallyContent">
+                    ${this.state.currentView === 'list' ? this.renderListView() : this.renderProgressView()}
                 </div>
             </div>
         `;
 
         // データを読み込み
         this.loadData();
+    },
+
+    // リストビューをレンダリング
+    renderListView() {
+        return `
+            <div class="stamp-stats" id="stampStats">
+                ${this.renderStats()}
+            </div>
+
+            <div class="filter-section">
+                <div class="filter-header"><h3>ブランド</h3></div>
+                <div class="brand-filters" id="brandFilters">
+                    ${this.renderBrandFilters()}
+                </div>
+                <div class="filter-header"><h3>都道府県</h3></div>
+                <div class="prefecture-filters" id="prefectureFilters">
+                    ${this.renderPrefectureFilters()}
+                </div>
+            </div>
+
+            <div class="shops-grid" id="shopsGrid">
+                ${this.renderShopsGrid()}
+            </div>
+
+            <div class="load-more-container" id="loadMoreContainer">
+                ${this.state.hasMoreShops ? '<button class="load-more-shops">もっと見る</button>' : ''}
+            </div>
+        `;
+    },
+
+    // 進捗ビューをレンダリング
+    renderProgressView() {
+        if (this.state.isLoading) {
+            return '<div class="loading">進捗を読み込み中...</div>';
+        }
+
+        let progressHtml = '<div class="progress-grid">';
+        this.state.progress.forEach(item => {
+            const percentage = item.total_shops > 0 ? (item.visited_shops / item.total_shops) * 100 : 0;
+            progressHtml += `
+                <div class="progress-card">
+                    <h4>${item.prefecture}</h4>
+                    <div class="progress-bar-container">
+                        <div class="progress-bar" style="width: ${percentage}%;"></div>
+                    </div>
+                    <p>${item.visited_shops} / ${item.total_shops} 店舗</p>
+                </div>
+            `;
+        });
+        progressHtml += '</div>';
+
+        return progressHtml;
     },
 
     // 統計情報をレンダリング
@@ -475,26 +650,39 @@ const StampRallyComponent = {
 
     // 都道府県フィルターをレンダリング
     renderPrefectureFilters() {
-        const prefectures = [
-            '北海道', '青森県', '岩手県', '宮城県', '秋田県', '山形県', '福島県',
-            '茨城県', '栃木県', '群馬県', '埼玉県', '千葉県', '東京都', '神奈川県',
-            '新潟県', '富山県', '石川県', '福井県', '山梨県', '長野県', '岐阜県', '静岡県', '愛知県',
-            '三重県', '滋賀県', '京都府', '大阪府', '兵庫県', '奈良県', '和歌山県',
-            '鳥取県', '島根県', '岡山県', '広島県', '山口県', '徳島県', '香川県', '愛媛県', '高知県',
-            '福岡県', '佐賀県', '長崎県', '熊本県', '大分県', '宮崎県', '鹿児島県', '沖縄県'
-        ];
-        
+        const regions = {
+            '北海道': ['北海道'],
+            '東北': ['青森県', '岩手県', '宮城県', '秋田県', '山形県', '福島県'],
+            '関東': ['茨城県', '栃木県', '群馬県', '埼玉県', '千葉県', '東京都', '神奈川県'],
+            '中部': ['新潟県', '富山県', '石川県', '福井県', '山梨県', '長野県', '岐阜県', '静岡県', '愛知県'],
+            '近畿': ['三重県', '滋賀県', '京都府', '大阪府', '兵庫県', '奈良県', '和歌山県'],
+            '中国': ['鳥取県', '島根県', '岡山県', '広島県', '山口県'],
+            '四国': ['徳島県', '香川県', '愛媛県', '高知県'],
+            '九州・沖縄': ['福岡県', '佐賀県', '長崎県', '熊本県', '大分県', '宮崎県', '鹿児島県', '沖縄県']
+        };
+
         let buttonsHtml = `
             <button class="prefecture-filter-btn ${this.state.selectedPrefecture === 'all' ? 'active' : ''}" data-prefecture="all">
                 全国
             </button>
         `;
 
-        for (const prefecture of prefectures) {
+        for (const region in regions) {
             buttonsHtml += `
-                <button class="prefecture-filter-btn ${this.state.selectedPrefecture === prefecture ? 'active' : ''}" data-prefecture="${prefecture}">
-                    ${prefecture}
-                </button>
+                <details class="region-details">
+                    <summary class="region-summary">${region}</summary>
+                    <div class="prefecture-buttons">
+            `;
+            regions[region].forEach(prefecture => {
+                buttonsHtml += `
+                    <button class="prefecture-filter-btn ${this.state.selectedPrefecture === prefecture ? 'active' : ''}" data-prefecture="${prefecture}">
+                        ${prefecture}
+                    </button>
+                `;
+            });
+            buttonsHtml += `
+                    </div>
+                </details>
             `;
         }
 
@@ -528,12 +716,7 @@ const StampRallyComponent = {
             });
         }
         
-        // 都道府県でフィルタリング
-        if (this.state.selectedPrefecture !== 'all') {
-            filteredShops = this.filterShopsByPrefecture(filteredShops, this.state.selectedPrefecture);
-        }
-
-        return filteredShops.map(shop => {
+        return this.state.shops.map(shop => {
             const isChecked = this.state.checkins.some(checkin => checkin.shop_id === shop.id);
             const brand = this.determineBrand(shop.name);
             const brandConfig = this.BRAND_CONFIG[brand];
@@ -602,22 +785,11 @@ const StampRallyComponent = {
         }
     },
 
-    // 都道府県から店舗をフィルタリング
-    filterShopsByPrefecture(shops, prefecture) {
-        if (!prefecture || prefecture === 'all') {
-            return shops;
-        }
-        
-        return shops.filter(shop => {
-            // 店舗の住所から都道府県を判定
-            const address = shop.address || '';
-            return address.includes(prefecture);
-        });
-    },
-
     // 都道府県でフィルタリング
-    filterByPrefecture(prefecture) {
+    async filterByPrefecture(prefecture) {
         this.state.selectedPrefecture = prefecture;
+        this.state.currentPage = 1;
+        this.state.hasMoreShops = true;
         
         // アクティブ状態を更新
         document.querySelectorAll('.prefecture-filter-btn').forEach(btn => {
@@ -627,29 +799,38 @@ const StampRallyComponent = {
             }
         });
         
-        // 再レンダリング
-        const shopsGrid = document.getElementById('shopsGrid');
-        if (shopsGrid) {
-            shopsGrid.innerHTML = this.renderShopsGrid();
-        }
+        // 新しいデータで再読み込み
+        await this.loadData();
+    },
+
+    // ビューを切り替え
+    async switchView(view) {
+        this.state.currentView = view;
+        document.querySelector('.view-switch-btn.active').classList.remove('active');
+        document.querySelector(`.view-switch-btn[data-view="${view}"]`).classList.add('active');
+        await this.loadData();
     },
 
     // データを読み込み
     async loadData() {
         this.state.isLoading = true;
-        
+        this.updateUI();
+
         try {
-            // 店舗データとチェックインデータを並行して取得
-            const [shopsResponse, checkinsResponse] = await Promise.all([
-                this.loadShops(),
-                this.loadCheckins()
-            ]);
-            
-            this.state.shops = shopsResponse;
-            this.state.checkins = checkinsResponse;
+            if (this.state.currentView === 'list') {
+                const [shopsResponse, checkinsResponse] = await Promise.all([
+                    this.loadShops(1, 20, this.state.selectedPrefecture),
+                    this.loadCheckins()
+                ]);
+                this.state.shops = shopsResponse;
+                this.state.checkins = checkinsResponse;
+            } else {
+                const progressResponse = await fetch('/api/v1/stamps/progress', { headers: API.getAuthHeader() });
+                if (!progressResponse.ok) throw new Error('Failed to fetch progress');
+                const data = await progressResponse.json();
+                this.state.progress = data.progress;
+            }
             this.state.isLoading = false;
-            
-            // UIを更新
             this.updateUI();
         } catch (error) {
             console.error('データ読み込みエラー:', error);
@@ -659,9 +840,13 @@ const StampRallyComponent = {
     },
 
     // 店舗データを読み込み
-    async loadShops(page = 1, perPage = 20) {
+    async loadShops(page = 1, perPage = 20, prefecture = 'all') {
         try {
-            const response = await fetch(`/api/v1/ramen?page=${page}&per_page=${perPage}`);
+            let url = `/api/v1/ramen?page=${page}&per_page=${perPage}`;
+            if (prefecture && prefecture !== 'all') {
+                url += `&prefecture=${encodeURIComponent(prefecture)}`;
+            }
+            const response = await fetch(url);
             
             if (!response.ok) {
                 throw new Error('店舗データの取得に失敗しました');
@@ -733,16 +918,22 @@ const StampRallyComponent = {
 
     // UIを更新
     updateUI() {
-        // 統計情報を更新
-        const statsElement = document.getElementById('stampStats');
-        if (statsElement) {
-            statsElement.innerHTML = this.renderStats();
-        }
-        
-        // 店舗グリッドを更新
-        const shopsGridElement = document.getElementById('shopsGrid');
-        if (shopsGridElement) {
-            shopsGridElement.innerHTML = this.renderShopsGrid();
+        const contentEl = document.getElementById('stampRallyContent');
+        if (!contentEl) return;
+
+        if (this.state.currentView === 'list') {
+            contentEl.innerHTML = this.renderListView();
+            // DOMが更新された後に再度要素を取得する
+            const statsElement = document.getElementById('stampStats');
+            if (statsElement) {
+                statsElement.innerHTML = this.renderStats();
+            }
+            const shopsGridElement = document.getElementById('shopsGrid');
+            if (shopsGridElement) {
+                shopsGridElement.innerHTML = this.renderShopsGrid();
+            }
+        } else {
+            contentEl.innerHTML = this.renderProgressView();
         }
     },
 

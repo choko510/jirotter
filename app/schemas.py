@@ -450,3 +450,12 @@ class WaitTimeReportResponse(BaseModel):
     updated_wait_time: int
     previous_wait_time: Optional[int] = None
     message: str
+
+# Stamp Rally Schemas
+class StampProgressItem(BaseModel):
+    prefecture: str
+    total_shops: int
+    visited_shops: int
+
+class StampProgressResponse(BaseModel):
+    progress: List[StampProgressItem]
