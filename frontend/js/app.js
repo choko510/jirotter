@@ -27,7 +27,7 @@ const API = {
     // 認証トークンを取得
     getAuthHeader() {
         const token = this.getCookie('authToken');
-        return token ? { 'Authorization': `Bearer ${decodeURIComponent(token)}` } : {};
+        return token ? { 'Authorization': `Bearer ${token}` } : {};
     },
 
     async request(url, {
