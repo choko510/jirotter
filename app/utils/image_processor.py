@@ -17,6 +17,7 @@ def ensure_directories_exist():
     """必要なディレクトリが存在することを確認"""
     os.makedirs("uploads/thumbnails", exist_ok=True)
     os.makedirs("uploads/original", exist_ok=True)
+    os.makedirs("uploads/profile_icons", exist_ok=True)
 
 
 def process_image(image: UploadFile, user_id: str) -> Tuple[Optional[str], Optional[str]]:
@@ -35,6 +36,7 @@ def process_image(image: UploadFile, user_id: str) -> Tuple[Optional[str], Optio
         ensure_directories_exist()
         
         # ファイルを一時的に保存
+        image.file.seek(0)
         with tempfile.NamedTemporaryFile(delete=False) as temp_file:
             shutil.copyfileobj(image.file, temp_file)
             temp_file_path = temp_file.name
@@ -83,15 +85,60 @@ def process_image(image: UploadFile, user_id: str) -> Tuple[Optional[str], Optio
                 thumbnail_url = f"/{thumbnail_path}"
                 
                 return thumbnail_url, original_url
-                
+
         finally:
             # 一時ファイルを削除
             if os.path.exists(temp_file_path):
                 os.unlink(temp_file_path)
-                
+
     except Exception as e:
         print(f"画像処理エラー: {e}")
         return None, None
+
+
+def process_profile_icon(image: UploadFile, user_id: str, size: int = 256) -> Optional[str]:
+    """プロフィールアイコン用に画像を処理して保存する."""
+
+    try:
+        ensure_directories_exist()
+
+        image.file.seek(0)
+        with tempfile.NamedTemporaryFile(delete=False) as temp_file:
+            shutil.copyfileobj(image.file, temp_file)
+            temp_file_path = temp_file.name
+
+        try:
+            with Image.open(temp_file_path) as img:
+                if img.mode not in ("RGB", "RGBA"):
+                    img = img.convert("RGBA")
+                else:
+                    img = img.convert("RGBA")
+
+                width, height = img.size
+                min_side = min(width, height)
+                left = (width - min_side) / 2
+                top = (height - min_side) / 2
+                right = left + min_side
+                bottom = top + min_side
+                cropped = img.crop((left, top, right, bottom))
+
+                resized = cropped.resize((size, size), Image.Resampling.LANCZOS)
+
+                timestamp = int(time.time())
+                filename = f"{user_id}_{timestamp}_icon.webp"
+                icon_path = f"uploads/profile_icons/{filename}"
+
+                resized.save(icon_path, "WEBP", quality=90, method=6)
+
+                return f"/{icon_path}"
+        finally:
+            if os.path.exists(temp_file_path):
+                os.unlink(temp_file_path)
+
+    except Exception as exc:
+        print(f"プロフィールアイコン処理エラー: {exc}")
+
+    return None
 
 
 def resize_image_if_needed(img: Image.Image, max_width: int = 1200, max_height: int = 1200) -> Image.Image:

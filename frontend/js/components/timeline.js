@@ -164,7 +164,9 @@ const TimelineComponent = {
         
         // ログイン状態をチェック
         const isLoggedIn = !!API.getCookie('authToken');
-        
+        const currentUser = API.getCurrentUser();
+        const currentUserIconSrc = API.escapeHtml((currentUser && currentUser.profile_image_url) || 'assets/baseicon.png');
+
         contentArea.innerHTML = `
             <style>
                 /* ... styles ... */
@@ -388,7 +390,7 @@ const TimelineComponent = {
             ${isLoggedIn ? `
             <div class="post-input-area">
                 <div class="post-input-wrapper">
-                    <div class="post-avatar"><img src="assets/baseicon.png" alt="User Icon" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;"></div>
+                    <div class="post-avatar"><img src="${currentUserIconSrc}" alt="User Icon" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;"></div>
                     <div class="post-input-content">
                         <textarea class="post-textarea" placeholder="今日食べる二郎は？" id="postTextarea" maxlength="200"></textarea>
                         <div id="imagePreviewContainer"></div>

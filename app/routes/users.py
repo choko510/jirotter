@@ -1,4 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+import os
+
+from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -8,6 +10,8 @@ from sqlalchemy import or_
 from app.models import User, Follow, Post, Report
 from app.schemas import UserProfileResponse, UserResponse, UserUpdate
 from app.utils.auth import get_current_user, get_current_user_optional
+from app.utils.image_validation import validate_image_file
+from app.utils.image_processor import process_profile_icon
 
 router = APIRouter(tags=["users"])
 
@@ -91,6 +95,46 @@ async def update_user_profile(
         posts_count=posts_count,
         is_following=False # 自分自身なので常にFalse
     )
+
+
+@router.post("/users/me/icon", status_code=status.HTTP_200_OK)
+async def upload_profile_icon(
+    icon: UploadFile = File(...),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """プロフィールアイコンをアップロードして更新する"""
+
+    validation = validate_image_file(icon)
+    if not validation["is_valid"]:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail=validation["error"]
+        )
+
+    icon.file.seek(0)
+    icon_url = process_profile_icon(icon, current_user.id)
+    if not icon_url:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="アイコンの処理に失敗しました"
+        )
+
+    previous_icon = current_user.profile_image_url
+    current_user.profile_image_url = icon_url
+
+    db.commit()
+    db.refresh(current_user)
+
+    if previous_icon and previous_icon != icon_url and previous_icon.startswith("/uploads/profile_icons/"):
+        try:
+            old_path = previous_icon.lstrip("/")
+            if os.path.exists(old_path):
+                os.remove(old_path)
+        except Exception as exc:  # pragma: no cover - 失敗しても致命的ではない
+            print(f"旧プロフィールアイコンの削除に失敗: {exc}")
+
+    return {"profile_image_url": icon_url}
 
 @router.post("/users/{user_id}/follow", status_code=status.HTTP_204_NO_CONTENT)
 async def follow_user(

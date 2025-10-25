@@ -768,9 +768,10 @@ const CommentComponent = {
         if (!post) return;
 
         const originalPost = document.getElementById('originalPost');
+        const postAvatarSrc = API.escapeHtml(post.author_profile_image_url || 'assets/baseicon.png');
         originalPost.innerHTML = `
             <div class="post-header">
-                <div class="comment-avatar"><i class="fas fa-user"></i></div>
+                <div class="comment-avatar"><img src="${postAvatarSrc}" alt="${API.escapeHtml(post.author_username)}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;"></div>
                 <div class="post-user-info">
                     <div class="post-username">
                         <span onclick="event.stopPropagation(); router.navigate('profile', ['${API.escapeHtml(post.user_id)}'])">${API.escapeHtml(post.author_username)}</span>
@@ -807,7 +808,7 @@ const CommentComponent = {
         commentsList.innerHTML = this.state.comments.map(comment => `
             <div class="comment-item">
                 <div class="comment-header">
-                    <div class="comment-avatar"><i class="fas fa-user"></i></div>
+                    <div class="comment-avatar"><img src="${API.escapeHtml(comment.author_profile_image_url || 'assets/baseicon.png')}" alt="${API.escapeHtml(comment.author_username)}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;"></div>
                     <div class="comment-user-info">
                         <div class="comment-username">
                             <span onclick="event.stopPropagation(); router.navigate('profile', ['${API.escapeHtml(comment.user_id)}'])">${API.escapeHtml(comment.author_username)}</span>
