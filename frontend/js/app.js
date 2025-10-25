@@ -128,7 +128,7 @@ const API = {
                 user: {
                     name: post.author_username,
                     handle: `@${post.author_username}`,
-                    avatar: '<i class="fas fa-user"></i>'
+                    avatar: '<img src="assets/baseicon.png" alt="User Icon" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">'
                 },
                 text: post.content,
                 image: post.image_url,  // 後方互換性
@@ -201,7 +201,7 @@ const API = {
                 user: {
                     name: post.author_username,
                     handle: `@${post.author_username}`,
-                    avatar: '<i class="fas fa-user"></i>'
+                    avatar: '<img src="assets/baseicon.png" alt="User Icon" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">'
                 },
                 text: post.content,
                 image: post.image_url,  // 後方互換性
@@ -245,7 +245,7 @@ const API = {
                 user: {
                     name: post.author_username,
                     handle: `@${post.author_username}`,
-                    avatar: '<i class="fas fa-user"></i>'
+                    avatar: '<img src="assets/baseicon.png" alt="User Icon" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">'
                 },
                 text: post.content,
                 image: post.image_url,  // 後方互換性
@@ -293,7 +293,7 @@ const API = {
                 user: {
                     name: data.author_username,
                     handle: `@${data.author_username}`,
-                    avatar: '<i class="fas fa-user"></i>'
+                    avatar: '<img src="assets/baseicon.png" alt="User Icon" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">'
                 },
                 text: data.content,
                 image: data.image_url,  // 後方互換性
@@ -382,13 +382,39 @@ const API = {
         }
     },
 
+    // CSRFトークンを取得
+    async getCsrfToken() {
+        try {
+            await this.request('/api/v1/auth/csrf-token', {
+                method: 'GET',
+                includeAuth: false,
+                parseJson: true,
+                credentials: 'include'  // クッキーを含める
+            });
+            return true;
+        } catch (error) {
+            console.error('CSRFトークンの取得に失敗しました:', error);
+            return false;
+        }
+    },
+
     // ユーザー登録
     async register(id, email, password) {
         try {
+            // 登録前にCSRFトークンを取得
+            await this.getCsrfToken();
+            
+            // リクエストボディをJSON文字列に変換
+            const requestBody = JSON.stringify({ id, email, password });
+            
             const data = await this.request('/api/v1/auth/register', {
                 method: 'POST',
-                body: { id, email, password },
-                includeAuth: false
+                body: requestBody,
+                includeAuth: false,
+                credentials: 'include',  // クッキーを含める
+                headers: {
+                    'Content-Type': 'application/json'
+                }
             });
             return { success: true, token: data };
         } catch (error) {
@@ -400,10 +426,20 @@ const API = {
     // ログイン
     async login(id, password) {
         try {
+            // ログイン前にCSRFトークンを取得
+            await this.getCsrfToken();
+            
+            // リクエストボディをJSON文字列に変換
+            const requestBody = JSON.stringify({ id, password });
+            
             const data = await this.request('/api/v1/auth/login', {
                 method: 'POST',
-                body: { id, password },
-                includeAuth: false
+                body: requestBody,
+                includeAuth: false,
+                credentials: 'include',  // クッキーを含める
+                headers: {
+                    'Content-Type': 'application/json'
+                }
             });
             return { success: true, token: data };
         } catch (error) {
@@ -419,6 +455,10 @@ const API = {
             return { success: true, user: data };
         } catch (error) {
             console.error('プロフィールの取得に失敗しました:', error);
+            // 404エラーの場合は特別なエラーメッセージを返す
+            if (error.message.includes('404') || error.message.includes('ユーザーが見つかりません')) {
+                return { success: false, error: 'ユーザーが見つかりません' };
+            }
             return { success: false, error: error.message };
         }
     },
@@ -463,7 +503,7 @@ const API = {
     },
 
     // ユーザーのフォロワー一覧取得
-    async getFollowers(userId) {
+    getFollowers: async function(userId) {
         try {
             const data = await this.request(`/api/v1/users/${userId}/followers`);
             return { success: true, users: data };
@@ -474,7 +514,7 @@ const API = {
     },
 
     // ユーザーのフォロー中一覧取得
-    async getFollowing(userId) {
+    getFollowing: async function(userId) {
         try {
             const data = await this.request(`/api/v1/users/${userId}/following`);
             return { success: true, users: data };
@@ -606,13 +646,19 @@ const Utils = {
         if (userProfile) {
             if (!authToken || !userCookie) {
                 userProfile.innerHTML = `
-                    <button onclick="AuthComponent.showLoginForm()" style="background: #d4a574; color: white; border: none; padding: 8px 16px; border-radius: 20px; cursor: pointer;">ログイン</button>
+                    <div class="profile-icon">
+                        <img src="assets/baseicon.png" alt="User Icon" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">
+                    </div>
+                    <button onclick="AuthComponent.showLoginForm()" style="background: #d4a574; color: white; border: none; padding: 8px 16px; border-radius: 20px; cursor: pointer; margin-top: 10px;">ログイン</button>
                 `;
             } else {
                 try {
                     const user = JSON.parse(decodeURIComponent(userCookie));
                     userProfile.innerHTML = `
-                        <div style="text-align: center;">
+                        <div class="profile-icon">
+                            <img src="assets/baseicon.png" alt="User Icon" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">
+                        </div>
+                        <div style="text-align: center; margin-top: 10px;">
                             <div style="font-weight: bold;">${user.username}</div>
                             <div style="font-size: 12px; color: #666;">@${user.id}</div>
                             <button onclick="Utils.logout()" style="margin-top: 8px; background: transparent; color: #666; border: 1px solid #e0e0e0; padding: 6px 12px; border-radius: 20px; cursor: pointer;">ログアウト</button>
@@ -716,4 +762,9 @@ window.Theme = Theme; // グローバルに公開
 document.addEventListener('DOMContentLoaded', function() {
     Theme.init(); // テーマの初期化
     Utils.updateUserProfileUI();
+    
+    // アプリケーション起動時にCSRFトークンを取得
+    API.getCsrfToken().catch(error => {
+        console.error('初期CSRFトークンの取得に失敗しました:', error);
+    });
 });

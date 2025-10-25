@@ -81,6 +81,15 @@ const ProfileComponent = {
                 this.state.isLoading = false;
                 this.updateDOM();
             } else {
+                // ユーザーが存在しない場合のエラーハンドリング
+                if (profileResult.error && (
+                    profileResult.error.includes('ユーザーが見つかりません') ||
+                    profileResult.error.includes('User not found') ||
+                    profileResult.error.includes('404')
+                )) {
+                    this.renderUserNotFound(userId);
+                    return;
+                }
                 throw new Error(profileResult.error || postsResult.error || 'データの取得に失敗しました');
             }
         } catch (error) {
@@ -88,6 +97,18 @@ const ProfileComponent = {
             this.state.error = error.message;
             this.updateDOM();
         }
+    },
+
+    // ユーザーが見つからない場合の表示
+    renderUserNotFound(userId) {
+        const contentArea = document.getElementById('contentArea');
+        contentArea.innerHTML = `
+            <div class="error">
+                <h2>ユーザーが見つかりません</h2>
+                <p>ユーザーID "${userId}" のユーザーは存在しません。</p>
+                <button onclick="router.navigate('timeline')" style="margin-top: 16px; padding: 8px 16px; background: #d4a574; color: white; border: none; border-radius: 4px; cursor: pointer;">ホームに戻る</button>
+            </div>
+        `;
     },
 
     updateDOM() {
@@ -285,11 +306,101 @@ const ProfileComponent = {
     },
 
     async showFollowers() {
-        this.renderUserList('フォロワー', API.getFollowers);
+        const content = document.getElementById('profileContent');
+        content.innerHTML = `<div class="loading">フォロワーを読み込み中...</div>`;
+
+        try {
+            const result = await API.getFollowers(this.state.user.id);
+            content.innerHTML = ''; // Clear loading
+
+            if (result.success) {
+                if (result.users.length === 0) {
+                    const noUsersDiv = document.createElement('div');
+                    noUsersDiv.textContent = 'フォロワーはいません。';
+                    content.appendChild(noUsersDiv);
+                    return;
+                }
+
+                const userList = document.createElement('div');
+                userList.className = 'user-list';
+                result.users.forEach(user => {
+                    const item = document.createElement('div');
+                    item.className = 'user-list-item';
+
+                    const avatar = document.createElement('div');
+                    avatar.className = 'user-list-avatar';
+                    item.appendChild(avatar);
+
+                    const userInfo = document.createElement('div');
+                    const nameDiv = document.createElement('div');
+                    nameDiv.className = 'user-list-name';
+                    nameDiv.textContent = user.username;
+                    userInfo.appendChild(nameDiv);
+
+                    const idDiv = document.createElement('div');
+                    idDiv.className = 'user-list-id';
+                    idDiv.textContent = `@${user.id}`;
+                    userInfo.appendChild(idDiv);
+
+                    item.appendChild(userInfo);
+                    userList.appendChild(item);
+                });
+                content.appendChild(userList);
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (error) {
+            content.innerHTML = `<div class="error">フォロワーの読み込みに失敗しました: ${error.message}</div>`;
+        }
     },
 
     async showFollowing() {
-        this.renderUserList('フォロー中', API.getFollowing);
+        const content = document.getElementById('profileContent');
+        content.innerHTML = `<div class="loading">フォロー中を読み込み中...</div>`;
+
+        try {
+            const result = await API.getFollowing(this.state.user.id);
+            content.innerHTML = ''; // Clear loading
+
+            if (result.success) {
+                if (result.users.length === 0) {
+                    const noUsersDiv = document.createElement('div');
+                    noUsersDiv.textContent = 'フォロー中はいません。';
+                    content.appendChild(noUsersDiv);
+                    return;
+                }
+
+                const userList = document.createElement('div');
+                userList.className = 'user-list';
+                result.users.forEach(user => {
+                    const item = document.createElement('div');
+                    item.className = 'user-list-item';
+
+                    const avatar = document.createElement('div');
+                    avatar.className = 'user-list-avatar';
+                    item.appendChild(avatar);
+
+                    const userInfo = document.createElement('div');
+                    const nameDiv = document.createElement('div');
+                    nameDiv.className = 'user-list-name';
+                    nameDiv.textContent = user.username;
+                    userInfo.appendChild(nameDiv);
+
+                    const idDiv = document.createElement('div');
+                    idDiv.className = 'user-list-id';
+                    idDiv.textContent = `@${user.id}`;
+                    userInfo.appendChild(idDiv);
+
+                    item.appendChild(userInfo);
+                    userList.appendChild(item);
+                });
+                content.appendChild(userList);
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (error) {
+            content.innerHTML = `<div class="error">フォロー中の読み込みに失敗しました: ${error.message}</div>`;
+        }
     },
 
     async renderUserList(title, apiMethod) {
@@ -297,7 +408,16 @@ const ProfileComponent = {
         content.innerHTML = `<div class="loading">${title}を読み込み中...</div>`;
 
         try {
-            const result = await apiMethod(this.state.user.id);
+            // APIメソッドを直接呼び出すのではなく、APIオブジェクトのメソッドとして呼び出す
+            let result;
+            if (apiMethod === API.getFollowers) {
+                result = await API.getFollowers(this.state.user.id);
+            } else if (apiMethod === API.getFollowing) {
+                result = await API.getFollowing(this.state.user.id);
+            } else {
+                throw new Error('不明なAPIメソッド');
+            }
+            
             content.innerHTML = ''; // Clear loading
 
             if (result.success) {
@@ -562,5 +682,3 @@ const ProfileComponent = {
         return false;
     }
 };
-
-router.register('profile', ProfileComponent);

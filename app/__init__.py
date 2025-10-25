@@ -71,8 +71,8 @@ def create_app():
     # Add SessionMiddleware
     app.add_middleware(SessionMiddleware, secret_key=settings.SESSION_SECRET_KEY)
 
-    # Add CSRFMiddleware
-    app.add_middleware(CSRFMiddleware, secret=settings.SESSION_SECRET_KEY)
+    # CSRFミドルウェアを一時的に無効化
+    # app.add_middleware(CSRFMiddleware, secret=settings.SESSION_SECRET_KEY)
 
     # CORSミドルウェアの設定
     app.add_middleware(
@@ -81,13 +81,16 @@ def create_app():
         allow_credentials=True,
         allow_methods=["*"],
         allow_headers=["*"],
+        expose_headers=["*"],
+        max_age=600,
     )
     
     # 静的ファイルの提供設定（キャッシュ無効化）
     app.mount("/js", StaticFiles(directory="frontend/js", html=True), name="js")
     app.mount("/css", StaticFiles(directory="frontend/css", html=True), name="css")
     app.mount("/uploads", StaticFiles(directory="uploads", html=True), name="uploads")
-    
+    app.mount("/assets", StaticFiles(directory="frontend/assets", html=True), name="assets")
+
     # ルーターの登録
     app.include_router(auth_router, prefix=settings.API_V1_STR)
     app.include_router(posts_router, prefix=settings.API_V1_STR)
@@ -103,6 +106,24 @@ def create_app():
     async def read_index():
         """index.htmlを返すエンドポイント"""
         index_path = os.path.join(os.path.dirname(__file__), "..", "frontend/index.html")
+        with open(index_path, "r", encoding="utf-8") as f:
+            content = f.read()
+        
+        # 開発環境ではキャッシュを無効化
+        headers = {}
+        if settings.DEVELOPMENT:
+            headers = {
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0"
+            }
+        
+        return HTMLResponse(content=content, headers=headers)
+
+    @app.get("/explanation", response_class=HTMLResponse)
+    async def explanation_page():
+        """index.htmlを返すエンドポイント"""
+        index_path = os.path.join(os.path.dirname(__file__), "..", "frontend/explanation.html")
         with open(index_path, "r", encoding="utf-8") as f:
             content = f.read()
         

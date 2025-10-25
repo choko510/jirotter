@@ -62,6 +62,7 @@ const MapComponent = {
         tachikawa: { name: '立川マシマシ', color: '#9b59b6', textColor: 'white', keywords: ['立川マシマシ'] },
         tsukemensha: { name: 'つけめん舎', color: '#1abc9c', textColor: 'white', keywords: ['つけめん舎'] },
         jiro: { name: '直系二郎', color: '#d4a574', textColor: 'white', markerText: '直', keywords: ['ラーメン二郎'] },
+        jiro: { name: 'BUTAKIN', color: '#fcd700ff', textColor: 'black', markerText: 'B', keywords: ['BUTAKIN'] },
         other: { name: 'その他', color: '#95a5a6', textColor: 'white', keywords: [] }
     },
 

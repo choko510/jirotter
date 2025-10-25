@@ -877,7 +877,7 @@ const StampRallyComponent = {
         this.state.isLoading = true;
         
         try {
-            const newShops = await this.loadShops(this.state.currentPage);
+            const newShops = await this.loadShops(this.state.currentPage, 20, this.state.selectedPrefecture);
             
             if (newShops.length === 0) {
                 this.state.hasMoreShops = false;

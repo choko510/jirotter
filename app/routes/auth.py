@@ -1,7 +1,8 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
 from typing import Dict, Any
+from functools import wraps
 
 from database import get_db
 from app.models import User
@@ -11,12 +12,35 @@ from app.utils.security import validate_registration_data, validate_login_data
 
 router = APIRouter(tags=["auth"])
 
+# CSRFチェックをスキップするデコレータ
+def skip_csrf_check(func):
+    @wraps(func)
+    async def wrapper(*args, **kwargs):
+        # リクエストオブジェクトを取得
+        request = None
+        for arg in args:
+            if isinstance(arg, Request):
+                request = arg
+                break
+        
+        if request:
+            # CSRFチェックをスキップするマークを設定
+            request.state.skip_csrf_check = True
+        
+        return await func(*args, **kwargs)
+    return wrapper
+
 @router.post("/auth/register", response_model=Token, status_code=status.HTTP_201_CREATED)
-async def register(user_data: UserCreate, db: Session = Depends(get_db)):
+@skip_csrf_check
+async def register(user_data: UserCreate, db: Session = Depends(get_db), request: Request = None):
     """ユーザー登録エンドポイント"""
+    # デバッグログ
+    print(f"登録リクエスト受信: {user_data}")
+    
     # バリデーション
     validation_errors = validate_registration_data(user_data.model_dump(), db)
     if validation_errors:
+        print(f"バリデーションエラー: {validation_errors}")
         raise HTTPException(
             status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
             detail=validation_errors
@@ -55,6 +79,7 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db)):
         )
 
 @router.post("/auth/login", response_model=Token)
+@skip_csrf_check
 async def login(login_data: UserLogin, db: Session = Depends(get_db)):
     """ログインエンドポイント"""
     # バリデーション
@@ -97,6 +122,11 @@ async def login(login_data: UserLogin, db: Session = Depends(get_db)):
 async def get_profile(current_user: User = Depends(get_current_active_user)):
     """ユーザープロフィール取得エンドポイント"""
     return UserResponse.model_validate(current_user)
+
+@router.get("/auth/csrf-token")
+async def get_csrf_token():
+    """CSRFトークンを取得するエンドポイント"""
+    return {"message": "CSRF token set in cookie"}
 
 @router.post("/auth/logout")
 async def logout(current_user: User = Depends(get_current_active_user)):

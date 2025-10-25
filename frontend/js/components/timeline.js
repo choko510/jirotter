@@ -388,7 +388,7 @@ const TimelineComponent = {
             ${isLoggedIn ? `
             <div class="post-input-area">
                 <div class="post-input-wrapper">
-                    <div class="post-avatar"></div>
+                    <div class="post-avatar"><img src="assets/baseicon.png" alt="User Icon" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;"></div>
                     <div class="post-input-content">
                         <textarea class="post-textarea" placeholder="今日食べる二郎は？" id="postTextarea" maxlength="200"></textarea>
                         <div id="imagePreviewContainer"></div>
@@ -552,7 +552,7 @@ const TimelineComponent = {
         return `
             <div class="post-card" id="post-${post.id}" onclick="router.navigate('comment', [${post.id}])">
                 <div class="post-header" onclick="event.stopPropagation(); router.navigate('profile', ['${escapedUserHandle}'])">
-                    <div class="post-avatar">${API.escapeHtml(post.user.avatar)}</div>
+                    <div class="post-avatar">${post.user.avatar}</div>
                     <div class="post-user-info">
                         <div class="post-username">
                             <span>${API.escapeHtml(post.user.name)}</span>
