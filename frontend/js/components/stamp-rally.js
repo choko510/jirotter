@@ -574,10 +574,6 @@ const StampRallyComponent = {
             <div class="shops-grid" id="shopsGrid">
                 ${this.renderShopsGrid()}
             </div>
-
-            <div class="load-more-container" id="loadMoreContainer">
-                ${this.state.hasMoreShops ? '<button class="load-more-shops">もっと見る</button>' : ''}
-            </div>
         `;
     },
 
@@ -887,13 +883,6 @@ const StampRallyComponent = {
             }
             
             this.state.isLoading = false;
-            
-            // もっと見るボタンを更新
-            const loadMoreContainer = document.getElementById('loadMoreContainer');
-            if (loadMoreContainer) {
-                loadMoreContainer.innerHTML = this.state.hasMoreShops ? 
-                    '<button class="load-more-shops">もっと見る</button>' : '';
-            }
         } catch (error) {
             console.error('追加店舗読み込みエラー:', error);
             this.state.isLoading = false;

@@ -522,14 +522,17 @@ const SettingsComponent = {
         localStorage.setItem('appSettings', JSON.stringify(this.state.settings));
     },
 
+    goToUserProfile(userId) {
+        router.navigate('profile', [userId]);
+    },
+
     // プロフィール編集
     editProfile() {
         if (!this.isAuthenticated()) {
             return;
         }
-        alert('プロフィール編集機能は現在開発中です');
-        // 実際の実装ではプロフィール編集ページに遷移
-        // router.navigate('profile-edit');
+        const currentUser = API.getCurrentUser();
+        this.goToUserProfile(currentUser.id);
     },
 
     // ブロックしたユーザー表示
@@ -547,7 +550,7 @@ const SettingsComponent = {
 
     // ヘルプ表示
     showHelp() {
-        alert('ヘルプセンターは現在準備中です');
+        window.open('/explanation', '_blank');
     },
 
     // アプリについて

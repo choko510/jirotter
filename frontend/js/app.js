@@ -95,7 +95,14 @@ const API = {
                 if (contentType.includes('application/json')) {
                     try {
                         const errorData = await response.json();
-                        errorMessage = errorData.detail?.[0]?.msg || errorData.detail || errorData.message || errorMessage;
+                        if (typeof errorData.detail === 'object' && errorData.detail !== null) {
+                            // Handle nested error objects like { "detail": { "password": "message" } }
+                            const firstErrorKey = Object.keys(errorData.detail)[0];
+                            errorMessage = errorData.detail[firstErrorKey] || errorMessage;
+                        } else {
+                            // Handle other error formats
+                            errorMessage = errorData.detail?.[0]?.msg || errorData.detail || errorData.message || errorMessage;
+                        }
                     } catch {
                         // ignore JSON parse errors and fall back to default message
                     }
@@ -673,19 +680,16 @@ const Utils = {
         if (userProfile) {
             if (!authToken || !currentUser) {
                 userProfile.innerHTML = `
-                    <div class="profile-icon">
-                        <img src="assets/baseicon.png" alt="User Icon" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">
-                    </div>
                     <button onclick="AuthComponent.showLoginForm()" style="background: #d4a574; color: white; border: none; padding: 8px 16px; border-radius: 20px; cursor: pointer; margin-top: 10px;">ログイン</button>
                 `;
             } else {
                 const iconSrc = API.escapeHtml(currentUser.profile_image_url || 'assets/baseicon.png');
                 userProfile.innerHTML = `
-                    <div class="profile-icon">
+                    <div class="profile-icon" style="cursor: pointer;" onclick="Utils.goToUserProfile('${currentUser.id}')">
                         <img src="${iconSrc}" alt="User Icon" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">
                     </div>
                     <div style="text-align: center; margin-top: 10px;">
-                        <div style="font-weight: bold;">${currentUser.username}</div>
+                        <div style="font-weight: bold; cursor: pointer;" onclick="Utils.goToUserProfile('${currentUser.id}')">${currentUser.username}</div>
                         <div style="font-size: 12px; color: #666;">@${currentUser.id}</div>
                         <button onclick="Utils.logout()" style="margin-top: 8px; background: transparent; color: #666; border: 1px solid #e0e0e0; padding: 6px 12px; border-radius: 20px; cursor: pointer;">ログアウト</button>
                     </div>
@@ -736,6 +740,22 @@ const Utils = {
                 }
             });
         }, duration);
+    },
+
+    // ユーザープロフィールページに遷移
+    goToUserProfile(userId) {
+        router.navigate('profile', [userId]);
+    },
+
+    // 現在のユーザーのプロフィールページに遷移
+    goToCurrentUserProfile() {
+        const currentUser = API.getCurrentUser();
+        if (currentUser) {
+            this.goToUserProfile(currentUser.id);
+        } else {
+            // ユーザーがログインしていない場合はログインページに遷移
+            router.navigate('auth', ['login']);
+        }
     }
 };
 

@@ -621,7 +621,6 @@ const TimelineComponent = {
                     timeline.innerHTML = `
                         <div style="text-align: center; padding: 40px; color: #666;">
                             <p style="margin-bottom: 16px;">フォロー中のユーザーの投稿を見るにはログインが必要です。</p>
-                            <button class="login-btn" data-action="login">ログイン</button>
                         </div>
                     `;
                 }
