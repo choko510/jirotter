@@ -24,6 +24,17 @@ const API = {
         document.cookie = `${name}=; expires=Thu, 01 Jan 1970 00:00:00 GMT; path=/; SameSite=Strict${secure}`;
     },
 
+    getCurrentUser() {
+        const userCookie = this.getCookie('user');
+        if (!userCookie) return null;
+        try {
+            return JSON.parse(decodeURIComponent(userCookie));
+        } catch (error) {
+            console.error('Failed to parse user cookie', error);
+            return null;
+        }
+    },
+
     // 認証トークンを取得
     getAuthHeader() {
         const token = this.getCookie('authToken');
@@ -122,13 +133,13 @@ const API = {
             // タブに応じてタイムラインの種類を指定
             const timelineType = tab === 'following' ? 'following' : 'recommend';
             const data = await this.request(`/api/v1/posts?page=${page}&per_page=20&timeline_type=${timelineType}`);
-            
+
             const formattedPosts = data.posts.map(post => ({
                 id: post.id,
                 user: {
                     name: post.author_username,
                     handle: `@${post.author_username}`,
-                    avatar: '<img src="assets/baseicon.png" alt="User Icon" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">'
+                    avatar: `<img src="${API.escapeHtml(post.author_profile_image_url || 'assets/baseicon.png')}" alt="User Icon" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`
                 },
                 text: post.content,
                 image: post.image_url,  // 後方互換性
@@ -201,7 +212,7 @@ const API = {
                 user: {
                     name: post.author_username,
                     handle: `@${post.author_username}`,
-                    avatar: '<img src="assets/baseicon.png" alt="User Icon" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">'
+                    avatar: `<img src="${API.escapeHtml(post.author_profile_image_url || 'assets/baseicon.png')}" alt="User Icon" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`
                 },
                 text: post.content,
                 image: post.image_url,  // 後方互換性
@@ -245,7 +256,7 @@ const API = {
                 user: {
                     name: post.author_username,
                     handle: `@${post.author_username}`,
-                    avatar: '<img src="assets/baseicon.png" alt="User Icon" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">'
+                    avatar: `<img src="${API.escapeHtml(post.author_profile_image_url || 'assets/baseicon.png')}" alt="User Icon" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`
                 },
                 text: post.content,
                 image: post.image_url,  // 後方互換性
@@ -293,7 +304,7 @@ const API = {
                 user: {
                     name: data.author_username,
                     handle: `@${data.author_username}`,
-                    avatar: '<img src="assets/baseicon.png" alt="User Icon" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">'
+                    avatar: `<img src="${API.escapeHtml(data.author_profile_image_url || 'assets/baseicon.png')}" alt="User Icon" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`
                 },
                 text: data.content,
                 image: data.image_url,  // 後方互換性
@@ -581,6 +592,22 @@ const API = {
         }
     },
 
+    async uploadProfileIcon(file) {
+        try {
+            const formData = new FormData();
+            formData.append('icon', file);
+
+            const data = await this.request('/api/v1/users/me/icon', {
+                method: 'POST',
+                body: formData
+            });
+            return { success: true, url: data.profile_image_url };
+        } catch (error) {
+            console.error('アイコンのアップロードに失敗しました:', error);
+            return { success: false, error: error.message };
+        }
+    },
+
     // アカウント削除
     async deleteAccount() {
         try {
@@ -641,10 +668,10 @@ const Utils = {
     async updateUserProfileUI() {
         const authToken = API.getCookie('authToken');
         const userProfile = document.querySelector('.user-profile');
-        const userCookie = API.getCookie('user');
+        const currentUser = API.getCurrentUser();
 
         if (userProfile) {
-            if (!authToken || !userCookie) {
+            if (!authToken || !currentUser) {
                 userProfile.innerHTML = `
                     <div class="profile-icon">
                         <img src="assets/baseicon.png" alt="User Icon" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">
@@ -652,23 +679,17 @@ const Utils = {
                     <button onclick="AuthComponent.showLoginForm()" style="background: #d4a574; color: white; border: none; padding: 8px 16px; border-radius: 20px; cursor: pointer; margin-top: 10px;">ログイン</button>
                 `;
             } else {
-                try {
-                    const user = JSON.parse(decodeURIComponent(userCookie));
-                    userProfile.innerHTML = `
-                        <div class="profile-icon">
-                            <img src="assets/baseicon.png" alt="User Icon" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">
-                        </div>
-                        <div style="text-align: center; margin-top: 10px;">
-                            <div style="font-weight: bold;">${user.username}</div>
-                            <div style="font-size: 12px; color: #666;">@${user.id}</div>
-                            <button onclick="Utils.logout()" style="margin-top: 8px; background: transparent; color: #666; border: 1px solid #e0e0e0; padding: 6px 12px; border-radius: 20px; cursor: pointer;">ログアウト</button>
-                        </div>
-                    `;
-                } catch(e) {
-                    console.error("Failed to parse user cookie", e);
-                    // クッキーがおかしい場合はログアウトさせる
-                    this.logout();
-                }
+                const iconSrc = API.escapeHtml(currentUser.profile_image_url || 'assets/baseicon.png');
+                userProfile.innerHTML = `
+                    <div class="profile-icon">
+                        <img src="${iconSrc}" alt="User Icon" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">
+                    </div>
+                    <div style="text-align: center; margin-top: 10px;">
+                        <div style="font-weight: bold;">${currentUser.username}</div>
+                        <div style="font-size: 12px; color: #666;">@${currentUser.id}</div>
+                        <button onclick="Utils.logout()" style="margin-top: 8px; background: transparent; color: #666; border: 1px solid #e0e0e0; padding: 6px 12px; border-radius: 20px; cursor: pointer;">ログアウト</button>
+                    </div>
+                `;
             }
         }
     },

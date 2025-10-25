@@ -74,6 +74,10 @@ class Post(Base):
     def replies_count(self):
         return len(self.replies)
 
+    @property
+    def author_profile_image_url(self):
+        return self.author.profile_image_url if self.author else None
+
 class Follow(Base):
     """フォローモデル"""
     __tablename__ = 'follows'
@@ -104,6 +108,10 @@ class Reply(Base):
     @property
     def author_username(self):
         return self.author.username
+
+    @property
+    def author_profile_image_url(self):
+        return self.author.profile_image_url if self.author else None
 
 class RamenShop(Base):
     """ラーメン店モデル"""

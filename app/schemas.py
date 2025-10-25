@@ -64,9 +64,13 @@ class UserUpdate(BaseModel):
     @classmethod
     def validate_url(cls, v):
         if v is not None and v.strip() != '':
-            # 簡単なURL形式のチェック
-            if not re.match(r'^https?://[^\s/$.?#].[^\s]*$', v):
+            value = v.strip()
+            if value.startswith('/uploads/') or value.startswith('data:'):
+                return value
+
+            if not re.match(r'^https?://[^\s/$.?#].[^\s]*$', value):
                 raise ValueError('有効なURLを入力してください')
+            return value
         return v
 
 class UserProfileResponse(UserResponse):
@@ -101,15 +105,20 @@ class ReplyResponse(ReplyBase):
     user_id: str
     post_id: int
     author_username: str
+    author_profile_image_url: Optional[str] = None
     created_at: datetime
-    
+
     @field_serializer('content')
     def serialize_content(self, value):
         return escape_html(value)
-    
+
     @field_serializer('author_username')
     def serialize_author_username(self, value):
         return escape_html(value)
+
+    @field_serializer('author_profile_image_url')
+    def serialize_author_profile_image_url(self, value):
+        return escape_html(value) if value else value
 
 # Like Schemas
 class LikeResponse(BaseModel):
@@ -135,10 +144,11 @@ class PostCreate(PostBase):
 
 class PostResponse(PostBase):
     model_config = ConfigDict(from_attributes=True)
-    
+
     id: int
     user_id: str
     author_username: str
+    author_profile_image_url: Optional[str] = None
     image_url: Optional[str] = None  # 後方互換性のために残す
     thumbnail_url: Optional[str] = None  # 低画質画像URL
     original_image_url: Optional[str] = None  # 通常画質画像URL
@@ -158,7 +168,11 @@ class PostResponse(PostBase):
     @field_serializer('author_username')
     def serialize_author_username(self, value):
         return escape_html(value)
-    
+
+    @field_serializer('author_profile_image_url')
+    def serialize_author_profile_image_url(self, value):
+        return escape_html(value) if value else value
+
     @field_serializer('image_url')
     def serialize_image_url(self, value):
         return escape_html(value) if value else value

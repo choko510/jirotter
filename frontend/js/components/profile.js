@@ -4,7 +4,8 @@ const ProfileComponent = {
         user: null,
         posts: [],
         isLoading: true,
-        error: null
+        error: null,
+        selectedIconFile: null
     },
 
     async render(params = []) {
@@ -157,7 +158,7 @@ const ProfileComponent = {
 
             const avatar = document.createElement('img');
             avatar.className = 'profile-avatar';
-            avatar.src = this.state.user.profile_image_url || 'data:image/svg+xml,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1 1"></svg>';
+            avatar.src = this.state.user.profile_image_url || 'assets/baseicon.png';
             avatar.alt = `${username}のアバター`;
             header.appendChild(avatar);
 
@@ -329,6 +330,11 @@ const ProfileComponent = {
 
                     const avatar = document.createElement('div');
                     avatar.className = 'user-list-avatar';
+                    const avatarImg = document.createElement('img');
+                    avatarImg.src = user.profile_image_url || 'assets/baseicon.png';
+                    avatarImg.alt = `${user.username}のアイコン`;
+                    avatarImg.style.cssText = 'width: 100%; height: 100%; border-radius: 50%; object-fit: cover;';
+                    avatar.appendChild(avatarImg);
                     item.appendChild(avatar);
 
                     const userInfo = document.createElement('div');
@@ -378,6 +384,11 @@ const ProfileComponent = {
 
                     const avatar = document.createElement('div');
                     avatar.className = 'user-list-avatar';
+                    const avatarImg = document.createElement('img');
+                    avatarImg.src = user.profile_image_url || 'assets/baseicon.png';
+                    avatarImg.alt = `${user.username}のアイコン`;
+                    avatarImg.style.cssText = 'width: 100%; height: 100%; border-radius: 50%; object-fit: cover;';
+                    avatar.appendChild(avatarImg);
                     item.appendChild(avatar);
 
                     const userInfo = document.createElement('div');
@@ -436,6 +447,11 @@ const ProfileComponent = {
 
                     const avatar = document.createElement('div');
                     avatar.className = 'user-list-avatar';
+                    const avatarImg = document.createElement('img');
+                    avatarImg.src = user.profile_image_url || 'assets/baseicon.png';
+                    avatarImg.alt = `${user.username}のアイコン`;
+                    avatarImg.style.cssText = 'width: 100%; height: 100%; border-radius: 50%; object-fit: cover;';
+                    avatar.appendChild(avatarImg);
                     item.appendChild(avatar);
 
                     const userInfo = document.createElement('div');
@@ -510,6 +526,8 @@ const ProfileComponent = {
     showEditModal() {
         if (!this.state.user) return;
 
+        this.state.selectedIconFile = null;
+
         const modalOverlay = document.createElement('div');
         modalOverlay.className = 'profile-edit-modal-overlay';
 
@@ -553,6 +571,64 @@ const ProfileComponent = {
         modal.appendChild(createFormGroup('bio', '自己紹介', 'textarea', this.state.user.bio || ''));
         modal.appendChild(createFormGroup('profileImageUrl', 'アイコンURL', 'input', this.state.user.profile_image_url || ''));
 
+        const fileGroup = document.createElement('div');
+        fileGroup.className = 'form-group';
+
+        const fileLabel = document.createElement('label');
+        fileLabel.htmlFor = 'profileImageFile';
+        fileLabel.textContent = 'アイコン画像をアップロード';
+
+        const fileInput = document.createElement('input');
+        fileInput.type = 'file';
+        fileInput.id = 'profileImageFile';
+        fileInput.accept = 'image/*';
+
+        const helperText = document.createElement('small');
+        helperText.textContent = '5MB以下のJPEG/PNG/GIF/WebPを推奨します。';
+        helperText.style.display = 'block';
+        helperText.style.marginTop = '4px';
+        helperText.style.color = '#666';
+
+        const previewWrapper = document.createElement('div');
+        previewWrapper.id = 'profileImagePreview';
+        previewWrapper.style.cssText = 'margin-top: 12px; display: flex; justify-content: center;';
+        const previewImg = document.createElement('img');
+        previewImg.id = 'profileImagePreviewImg';
+        previewImg.src = this.state.user.profile_image_url || 'assets/baseicon.png';
+        previewImg.alt = `${this.state.user.username || ''}のプレビュー`;
+        previewImg.style.cssText = 'width: 96px; height: 96px; border-radius: 50%; object-fit: cover; border: 1px solid #e0e0e0;';
+        previewWrapper.appendChild(previewImg);
+
+        fileInput.addEventListener('change', (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                const validation = this.validateIconFile(file);
+                if (!validation.isValid) {
+                    Utils.showNotification(validation.error, 'error');
+                    event.target.value = '';
+                    previewImg.src = this.state.user.profile_image_url || 'assets/baseicon.png';
+                    this.state.selectedIconFile = null;
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    previewImg.src = e.target.result;
+                };
+                reader.readAsDataURL(file);
+                this.state.selectedIconFile = file;
+            } else {
+                previewImg.src = this.state.user.profile_image_url || 'assets/baseicon.png';
+                this.state.selectedIconFile = null;
+            }
+        });
+
+        fileGroup.appendChild(fileLabel);
+        fileGroup.appendChild(fileInput);
+        fileGroup.appendChild(helperText);
+        fileGroup.appendChild(previewWrapper);
+        modal.appendChild(fileGroup);
+
         const actions = document.createElement('div');
         actions.className = 'modal-actions';
 
@@ -575,7 +651,26 @@ const ProfileComponent = {
     async handleUpdateProfile(closeModal) {
         const username = document.getElementById('username').value;
         const bio = document.getElementById('bio').value;
-        const profileImageUrl = document.getElementById('profileImageUrl').value;
+        const profileImageUrlInput = document.getElementById('profileImageUrl');
+        const fileInput = document.getElementById('profileImageFile');
+
+        let profileImageUrl = profileImageUrlInput ? profileImageUrlInput.value.trim() : '';
+
+        if (fileInput && fileInput.files && fileInput.files[0]) {
+            const uploadResult = await API.uploadProfileIcon(fileInput.files[0]);
+            if (!uploadResult.success) {
+                Utils.showNotification(uploadResult.error || 'アイコンのアップロードに失敗しました。', 'error');
+                return;
+            }
+            profileImageUrl = uploadResult.url;
+        } else if (this.state.selectedIconFile) {
+            const uploadResult = await API.uploadProfileIcon(this.state.selectedIconFile);
+            if (!uploadResult.success) {
+                Utils.showNotification(uploadResult.error || 'アイコンのアップロードに失敗しました。', 'error');
+                return;
+            }
+            profileImageUrl = uploadResult.url;
+        }
 
         const updateData = {
             username,
@@ -588,12 +683,52 @@ const ProfileComponent = {
         if (result.success) {
             this.state.user = { ...this.state.user, ...result.user };
             API.setCookie('user', JSON.stringify(this.state.user));
+            this.state.selectedIconFile = null;
             this.updateDOM();
             closeModal();
         } else {
             console.error('Update failed:', result.error);
             Utils.showNotification('プロフィールの更新に失敗しました。入力内容を確認してください。', 'error');
         }
+    },
+
+    validateIconFile(file) {
+        const allowedMimeTypes = [
+            'image/jpeg',
+            'image/jpg',
+            'image/png',
+            'image/gif',
+            'image/webp'
+        ];
+
+        const maxSizeInBytes = 5 * 1024 * 1024;
+
+        if (!allowedMimeTypes.includes(file.type)) {
+            return {
+                isValid: false,
+                error: '対応している画像形式はJPEG、PNG、GIF、WebPのみです'
+            };
+        }
+
+        if (file.size > maxSizeInBytes) {
+            return {
+                isValid: false,
+                error: '画像サイズは5MB以下にしてください'
+            };
+        }
+
+        const dangerousExtensions = ['.php', '.js', '.exe', '.bat', '.cmd', '.sh', '.py', '.pl', '.rb'];
+        const fileName = file.name.toLowerCase();
+        for (const ext of dangerousExtensions) {
+            if (fileName.endsWith(ext)) {
+                return {
+                    isValid: false,
+                    error: 'このファイル形式は許可されていません'
+                };
+            }
+        }
+
+        return { isValid: true, error: null };
     },
 
     // 遅延読み込みの設定
