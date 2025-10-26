@@ -169,103 +169,655 @@ const TimelineComponent = {
 
         contentArea.innerHTML = `
             <style>
-                /* ... styles ... */
-                .post-input-area { padding: 16px; border-bottom: 1px solid #e0e0e0; }
-                .post-input-wrapper { display: flex; gap: 12px; }
-                .post-avatar { width: 48px; height: 48px; border-radius: 50%; background: #d4a574; flex-shrink: 0; }
-                .post-input-content { flex: 1; }
-                .post-textarea { width: 100%; background: transparent; border: none; font-size: 20px; resize: none; outline: none; min-height: 60px; color: inherit; }
-                .post-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
-                .post-icons { display: flex; gap: 4px; }
-                .post-icon-btn { width: 36px; height: 36px; border-radius: 50%; border: none; background: transparent; color: #d4a574; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-                .tweet-btn { background: #dbaf3adb; color: #1a1a1a; border: none; padding: 8px 20px; border-radius: 20px; font-weight: bold; cursor: pointer; }
-                .tweet-btn:disabled { background: #ccc; cursor: not-allowed; }
-                .char-counter { color: #666; font-size: 14px; margin-right: 12px; }
-                .char-counter.warning { color: #ff9800; }
-                .char-counter.error { color: #f44336; }
-                .timeline-container { position: relative; overflow-y: auto; height: calc(100vh - 180px); }
-                .post-card { padding: 16px; border-bottom: 1px solid #e0e0e0; transition: background 0.2s; }
-                .post-card:hover { background: #f9f9f9; }
-                .post-header { display: flex; gap: 12px; margin-bottom: 12px; cursor: pointer; }
-                .post-user-info { flex: 1; }
-                .post-username { font-weight: bold; }
-                .post-meta { color: #666; font-size: 14px; }
-                .post-engagement { display: flex; justify-content: space-around; margin-top: 12px; padding-top: 12px; }
-                .engagement-btn { display: flex; align-items: center; gap: 8px; background: transparent; border: none; color: #666; cursor: pointer; }
-                .engagement-btn .liked { color: #e0245e; }
-                .image-preview { max-width: 100px; max-height: 100px; border-radius: 10px; margin-top: 10px; }
-                #timelineLoadingIndicator { text-align: center; padding: 20px; }
-                .post-content {
-                    line-height: 1.4;
-                    word-wrap: break-word;
-                    overflow-wrap: break-word;
-                    white-space: pre-wrap;
-                    max-width: 100%;
-                }
-                .post-content.collapsed {
-                    max-height: 4.2em;
-                    overflow: hidden;
-                    word-wrap: break-word;
-                    overflow-wrap: break-word;
-                    white-space: pre-wrap;
-                    max-width: 100%;
-                }
-                .show-more-btn { background: none; border: none; color: #d4a574; cursor: pointer; font-size: 14px; padding: 4px 0; }
-                .show-more-btn:hover { text-decoration: underline; }
-                .shop-reference { margin-top: 12px; padding: 12px; background: #f5f5f5; border-radius: 8px; cursor: pointer; transition: background 0.2s; }
-                .shop-reference:hover { background: #e8e8e8; }
-                .shop-reference-content { display: flex; align-items: center; color: #d4a574; }
-                .shop-reference-content i { margin-right: 8px; }
-                
-                /* ログイン促しエリアのスタイル */
-                .login-prompt-area {
-                    padding: 20px;
-                    border-bottom: 1px solid #e0e0e0;
-                    text-align: center;
-                    background: #f9f9f9;
-                }
-                .login-prompt-text {
-                    margin-bottom: 16px;
-                    color: #666;
-                    font-size: 16px;
-                }
-                .login-btn {
-                    background: #d4a574;
-                    color: white;
-                    border: none;
-                    padding: 10px 24px;
-                    border-radius: 20px;
-                    font-weight: bold;
-                    cursor: pointer;
-                    font-size: 16px;
-                }
-                .login-btn:hover {
-                    background: #c19660;
+                .timeline-page {
+                    position: relative;
+                    isolation: isolate;
+                    min-height: calc(100vh - 70px);
+                    padding: 32px 18px 56px;
+                    background: radial-gradient(120% 140% at 50% 0%, #fff7eb 0%, #f8ede0 45%, #f2e3d4 100%);
+                    display: flex;
+                    flex-direction: column;
+                    gap: 32px;
+                    align-items: center;
                 }
 
-                /* Dark Mode Overrides */
-                .dark-mode .post-input-area,
+                .dark-mode .timeline-page {
+                    background: radial-gradient(120% 140% at 50% 0%, #201910 0%, #17120c 45%, #100c08 100%);
+                }
+
+                .timeline-hero {
+                    max-width: 960px;
+                    margin: 0 auto 32px;
+                    padding: 32px;
+                    border-radius: 28px;
+                    border: 1px solid rgba(212, 165, 116, 0.25);
+                    background: rgba(255, 255, 255, 0.85);
+                    backdrop-filter: blur(18px);
+                    box-shadow: 0 24px 45px rgba(212, 165, 116, 0.18);
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 24px;
+                }
+
+                .timeline-hero > div {
+                    flex: 1;
+                }
+
+                .timeline-eyebrow {
+                    font-size: 13px;
+                    letter-spacing: 0.22em;
+                    text-transform: uppercase;
+                    color: #b17f3d;
+                    margin-bottom: 12px;
+                    font-weight: 700;
+                }
+
+                .timeline-title {
+                    font-size: 32px;
+                    line-height: 1.2;
+                    margin: 0 0 12px;
+                    color: #2f1b00;
+                    font-weight: 800;
+                }
+
+                .timeline-subtitle {
+                    font-size: 16px;
+                    color: #5c5142;
+                    margin: 0;
+                }
+
+                .timeline-hero-badge {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 10px;
+                    padding: 12px 18px;
+                    border-radius: 999px;
+                    background: rgba(245, 196, 107, 0.2);
+                    color: #8a6233;
+                    font-weight: 600;
+                    border: 1px solid rgba(212, 165, 116, 0.35);
+                    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+                }
+
+                .dark-mode .timeline-hero {
+                    background: rgba(28, 28, 28, 0.88);
+                    color: #f7f3eb;
+                    border-color: rgba(212, 165, 116, 0.32);
+                    box-shadow: 0 26px 52px rgba(0, 0, 0, 0.55);
+                }
+
+                .dark-mode .timeline-subtitle {
+                    color: #d7cfc2;
+                }
+
+                .dark-mode .timeline-hero-badge {
+                    background: rgba(212, 165, 116, 0.14);
+                    color: #f5d9a3;
+                    border-color: rgba(212, 165, 116, 0.35);
+                }
+
+                .timeline-main {
+                    max-width: 960px;
+                    margin: 0 auto;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 24px;
+                }
+
+                .composer-card {
+                    background: rgba(255, 255, 255, 0.9);
+                    border: 1px solid rgba(212, 165, 116, 0.25);
+                    border-radius: 24px;
+                    padding: 24px;
+                    box-shadow: 0 24px 46px rgba(212, 165, 116, 0.18);
+                    backdrop-filter: blur(14px);
+                    display: flex;
+                    flex-direction: column;
+                    gap: 16px;
+                }
+
+                .post-input-wrapper {
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 16px;
+                }
+
+                .post-avatar {
+                    width: 56px;
+                    height: 56px;
+                    border-radius: 20px;
+                    background: linear-gradient(135deg, #f6c46b 0%, #e09a3a 100%);
+                    box-shadow: 0 12px 24px rgba(224, 154, 58, 0.4);
+                    overflow: hidden;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    border: 3px solid rgba(255, 255, 255, 0.7);
+                    flex-shrink: 0;
+                }
+
+                .post-input-content {
+                    flex: 1;
+                }
+
+                .post-textarea {
+                    width: 100%;
+                    border: 1px solid transparent;
+                    border-radius: 18px;
+                    padding: 14px 18px;
+                    font-size: 18px;
+                    line-height: 1.6;
+                    resize: none;
+                    background: rgba(246, 237, 224, 0.4);
+                    color: #2f1b00;
+                    transition: border 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+                    min-height: 92px;
+                }
+
+                .post-textarea:focus {
+                    outline: none;
+                    border-color: rgba(212, 165, 116, 0.65);
+                    box-shadow: 0 0 0 3px rgba(212, 165, 116, 0.18);
+                    background: rgba(255, 255, 255, 0.98);
+                }
+
+                .post-actions {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    margin-top: 16px;
+                }
+
+                .post-icons {
+                    display: flex;
+                    gap: 10px;
+                }
+
+                .post-icon-btn {
+                    width: 40px;
+                    height: 40px;
+                    border-radius: 14px;
+                    border: 1px solid rgba(212, 165, 116, 0.35);
+                    background: rgba(212, 165, 116, 0.12);
+                    color: #a26a24;
+                    cursor: pointer;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+                }
+
+                .post-icon-btn:hover {
+                    transform: translateY(-1px);
+                    box-shadow: 0 12px 24px rgba(212, 165, 116, 0.25);
+                    background: rgba(212, 165, 116, 0.22);
+                }
+
+                .tweet-btn {
+                    background: linear-gradient(135deg, #f6c46b 0%, #e09a3a 100%);
+                    color: #2f1b00;
+                    border: none;
+                    padding: 10px 26px;
+                    border-radius: 999px;
+                    font-weight: 700;
+                    cursor: pointer;
+                    letter-spacing: 0.03em;
+                    box-shadow: 0 16px 32px rgba(224, 154, 58, 0.35);
+                    transition: transform 0.2s ease, box-shadow 0.2s ease;
+                }
+
+                .tweet-btn:hover:not(:disabled) {
+                    transform: translateY(-1px);
+                    box-shadow: 0 22px 38px rgba(224, 154, 58, 0.45);
+                }
+
+                .tweet-btn:disabled {
+                    background: rgba(180, 170, 150, 0.4);
+                    color: rgba(63, 45, 25, 0.5);
+                    box-shadow: none;
+                    cursor: not-allowed;
+                }
+
+                #imagePreviewContainer,
+                #shopPreviewContainer {
+                    display: flex;
+                    gap: 12px;
+                    flex-wrap: wrap;
+                    margin-top: 12px;
+                }
+
+                .image-preview {
+                    width: 96px;
+                    height: 96px;
+                    border-radius: 16px;
+                    overflow: hidden;
+                    border: 1px solid rgba(212, 165, 116, 0.35);
+                    box-shadow: 0 12px 22px rgba(0, 0, 0, 0.12);
+                }
+
+                .shop-preview-card {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 10px;
+                    padding: 10px 14px;
+                    border-radius: 14px;
+                    border: 1px solid rgba(212, 165, 116, 0.35);
+                    background: rgba(212, 165, 116, 0.1);
+                    color: #7b552d;
+                    font-weight: 600;
+                    margin-top: 12px;
+                }
+
+                .shop-preview-text {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 2px;
+                }
+
+                .shop-preview-name {
+                    font-size: 14px;
+                }
+
+                .shop-preview-address {
+                    font-size: 12px;
+                    color: #7d6a58;
+                    font-weight: 500;
+                }
+
+                .shop-preview-remove {
+                    margin-left: 8px;
+                    background: transparent;
+                    border: none;
+                    color: #7d6a58;
+                    cursor: pointer;
+                    padding: 6px;
+                    border-radius: 50%;
+                    transition: background 0.2s ease, color 0.2s ease;
+                }
+
+                .shop-preview-remove:hover {
+                    background: rgba(55, 37, 23, 0.08);
+                    color: #2f1b00;
+                }
+
+                .timeline-feed {
+                    background: rgba(255, 255, 255, 0.92);
+                    border: 1px solid rgba(212, 165, 116, 0.25);
+                    border-radius: 28px;
+                    box-shadow: 0 28px 52px rgba(212, 165, 116, 0.2);
+                    backdrop-filter: blur(18px);
+                    display: flex;
+                    flex-direction: column;
+                    min-height: 420px;
+                }
+
+                .timeline-tabs {
+                    display: flex;
+                    gap: 12px;
+                    padding: 24px 28px 12px;
+                    position: sticky;
+                    top: 0;
+                    background: inherit;
+                    z-index: 2;
+                }
+
+                .timeline-tab {
+                    flex: 1 1 0;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 10px;
+                    padding: 14px 16px;
+                    border-radius: 16px;
+                    border: 1px solid rgba(212, 165, 116, 0.32);
+                    background: rgba(212, 165, 116, 0.12);
+                    color: #8a6233;
+                    font-weight: 600;
+                    letter-spacing: 0.03em;
+                    cursor: pointer;
+                    transition: all 0.2s ease;
+                }
+
+                .timeline-tab.active {
+                    background: linear-gradient(135deg, #f5c979 0%, #e09a3a 100%);
+                    color: #2f1b00;
+                    box-shadow: 0 16px 28px rgba(224, 154, 58, 0.35);
+                }
+
+                .timeline-tab:not(.active):hover {
+                    transform: translateY(-1px);
+                    background: rgba(212, 165, 116, 0.22);
+                }
+
+                .timeline-scroll {
+                    position: relative;
+                    flex: 1;
+                    overflow-y: auto;
+                    padding: 0 28px 28px;
+                    height: calc(100vh - 320px);
+                }
+
+                .timeline-list {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 16px;
+                    padding-top: 12px;
+                }
+
+                .post-card {
+                    background: rgba(255, 255, 255, 0.95);
+                    border: 1px solid rgba(212, 165, 116, 0.25);
+                    border-radius: 22px;
+                    padding: 20px;
+                    box-shadow: 0 16px 34px rgba(0, 0, 0, 0.08);
+                    transition: transform 0.2s ease, box-shadow 0.2s ease;
+                    cursor: pointer;
+                }
+
+                .post-card:hover {
+                    transform: translateY(-3px);
+                    box-shadow: 0 28px 46px rgba(0, 0, 0, 0.12);
+                }
+
+                .post-header {
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 14px;
+                    margin-bottom: 12px;
+                }
+
+                .post-user-info {
+                    flex: 1;
+                }
+
+                .post-username {
+                    font-weight: 700;
+                    font-size: 16px;
+                    color: #3b2614;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 4px;
+                }
+
+                .post-meta {
+                    color: #7d6a58;
+                    font-size: 13px;
+                    font-weight: 500;
+                }
+
+                .post-text {
+                    color: #3d2d1e;
+                    font-size: 15px;
+                    line-height: 1.7;
+                }
+
+                .post-content.collapsed {
+                    max-height: 4.4em;
+                    overflow: hidden;
+                }
+
+                .show-more-btn {
+                    background: none;
+                    border: none;
+                    color: #d4882a;
+                    cursor: pointer;
+                    font-size: 14px;
+                    padding: 6px 0;
+                    font-weight: 600;
+                }
+
+                .show-more-btn:hover {
+                    text-decoration: underline;
+                }
+
+                .shop-reference {
+                    margin-top: 14px;
+                    padding: 14px 16px;
+                    background: rgba(212, 165, 116, 0.12);
+                    border-radius: 16px;
+                    border: 1px solid rgba(212, 165, 116, 0.25);
+                    cursor: pointer;
+                    transition: background 0.2s ease, transform 0.2s ease;
+                    color: #8a6233;
+                    font-weight: 600;
+                }
+
+                .shop-reference:hover {
+                    background: rgba(212, 165, 116, 0.22);
+                    transform: translateY(-1px);
+                }
+
+                .shop-reference-content {
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                }
+
+                .post-engagement {
+                    display: flex;
+                    justify-content: space-between;
+                    gap: 10px;
+                    margin-top: 18px;
+                    padding-top: 14px;
+                    border-top: 1px solid rgba(212, 165, 116, 0.25);
+                }
+
+                .engagement-btn {
+                    flex: 1;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 8px;
+                    background: rgba(55, 37, 23, 0.05);
+                    border: 1px solid transparent;
+                    border-radius: 14px;
+                    color: #72553a;
+                    cursor: pointer;
+                    padding: 10px 12px;
+                    transition: background 0.2s ease, transform 0.2s ease;
+                }
+
+                .engagement-btn:hover {
+                    background: rgba(55, 37, 23, 0.08);
+                    transform: translateY(-1px);
+                }
+
+                .engagement-btn .liked {
+                    color: #e24f6d;
+                }
+
+                .login-card {
+                    background: rgba(255, 255, 255, 0.92);
+                    border: 1px solid rgba(212, 165, 116, 0.25);
+                    border-radius: 24px;
+                    padding: 32px;
+                    text-align: center;
+                    box-shadow: 0 26px 48px rgba(212, 165, 116, 0.18);
+                }
+
+                .login-card h3 {
+                    margin: 0 0 12px;
+                    font-size: 22px;
+                    color: #3b2614;
+                }
+
+                .login-card p {
+                    margin: 0 0 20px;
+                    color: #7d6a58;
+                }
+
+                .login-btn {
+                    padding: 12px 32px;
+                    border-radius: 999px;
+                    border: none;
+                    font-weight: 700;
+                    background: linear-gradient(135deg, #f6c46b 0%, #e09a3a 100%);
+                    color: #2f1b00;
+                    cursor: pointer;
+                    box-shadow: 0 18px 36px rgba(224, 154, 58, 0.35);
+                    transition: transform 0.2s ease, box-shadow 0.2s ease;
+                }
+
+                .login-btn:hover {
+                    transform: translateY(-1px);
+                    box-shadow: 0 24px 44px rgba(224, 154, 58, 0.45);
+                }
+
+                .char-counter {
+                    font-size: 14px;
+                    font-weight: 600;
+                    color: #7d6a58;
+                    margin-right: 12px;
+                }
+
+                .char-counter.warning {
+                    color: #d4882a;
+                }
+
+                .char-counter.error {
+                    color: #e24f6d;
+                }
+
+                #timelineLoadingIndicator {
+                    text-align: center;
+                    padding: 24px 0;
+                    color: #7d6a58;
+                    font-weight: 600;
+                }
+
+                /* Dark Mode */
+                .dark-mode .composer-card {
+                    background: rgba(26, 26, 26, 0.9);
+                    border-color: rgba(212, 165, 116, 0.35);
+                    box-shadow: 0 26px 48px rgba(0, 0, 0, 0.55);
+                }
+
+                .dark-mode .post-avatar {
+                    border-color: rgba(20, 20, 20, 0.9);
+                }
+
+                .dark-mode .post-textarea {
+                    background: rgba(36, 36, 36, 0.8);
+                    color: #f7f3eb;
+                }
+
+                .dark-mode .post-textarea:focus {
+                    background: rgba(18, 18, 18, 0.98);
+                }
+
+                .dark-mode .post-icon-btn {
+                    background: rgba(212, 165, 116, 0.12);
+                    color: #f6d9a3;
+                    border-color: rgba(212, 165, 116, 0.28);
+                }
+
+                .dark-mode .tweet-btn {
+                    color: #1c1100;
+                }
+
+                .dark-mode #imagePreviewContainer,
+                .dark-mode #shopPreviewContainer {
+                    color: #f6d9a3;
+                }
+
+                .dark-mode .timeline-feed {
+                    background: rgba(22, 22, 22, 0.92);
+                    border-color: rgba(212, 165, 116, 0.3);
+                    box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6);
+                }
+
+                .dark-mode .timeline-tab {
+                    background: rgba(212, 165, 116, 0.08);
+                    border-color: rgba(212, 165, 116, 0.18);
+                    color: #f6d9a3;
+                }
+
+                .dark-mode .timeline-tab.active {
+                    color: #241200;
+                }
+
+                .dark-mode .timeline-scroll {
+                    scrollbar-color: rgba(212, 165, 116, 0.35) transparent;
+                }
+
                 .dark-mode .post-card {
-                    border-bottom-color: #333;
+                    background: rgba(28, 28, 28, 0.96);
+                    border-color: rgba(212, 165, 116, 0.35);
+                    box-shadow: 0 24px 52px rgba(0, 0, 0, 0.6);
                 }
-                .dark-mode .post-card:hover {
-                    background: #2a2a2a;
+
+                .dark-mode .post-username {
+                    color: #f6d9a3;
                 }
+
                 .dark-mode .post-meta,
+                .dark-mode .post-text,
+                .dark-mode .shop-reference,
                 .dark-mode .char-counter,
+                .dark-mode #timelineLoadingIndicator {
+                    color: #f6d9a3;
+                }
+
+                .dark-mode .shop-reference {
+                    background: rgba(212, 165, 116, 0.12);
+                    border-color: rgba(212, 165, 116, 0.32);
+                }
+
+                .dark-mode .post-engagement {
+                    border-top-color: rgba(212, 165, 116, 0.25);
+                }
+
                 .dark-mode .engagement-btn {
-                    color: #aaa;
+                    background: rgba(245, 217, 163, 0.08);
+                    color: #f6d9a3;
                 }
-                .dark-mode .tweet-btn:disabled {
-                    background: #555;
-                    color: #aaa;
+
+                .dark-mode .login-card {
+                    background: rgba(24, 24, 24, 0.94);
+                    border-color: rgba(212, 165, 116, 0.35);
+                    color: #f6d9a3;
                 }
-                .dark-mode .shop-reference { background: #333; }
-                .dark-mode .shop-reference:hover { background: #444; }
-                .dark-mode .shop-reference-content { color: #d4a574; }
-                .dark-mode .login-prompt-area { background: #2a2a2a; }
-                .dark-mode .login-prompt-text { color: #aaa; }
-                
+
+                .dark-mode .login-card p {
+                    color: #d7cfc2;
+                }
+
+                .dark-mode .login-btn {
+                    color: #1f1200;
+                }
+
+                .dark-mode .char-counter.warning {
+                    color: #f6c46b;
+                }
+
+                .dark-mode .char-counter.error {
+                    color: #ff7b96;
+                }
+
+                .dark-mode .image-preview {
+                    border-color: rgba(212, 165, 116, 0.35);
+                }
+
+                .dark-mode .shop-preview-card {
+                    background: rgba(212, 165, 116, 0.14);
+                    border-color: rgba(212, 165, 116, 0.32);
+                    color: #f6d9a3;
+                }
+
+                .dark-mode .shop-preview-address {
+                    color: #d7cfc2;
+                }
+
+                .dark-mode .shop-preview-remove {
+                    color: #d7cfc2;
+                }
+
+                .dark-mode .shop-preview-remove:hover {
+                    background: rgba(245, 217, 163, 0.18);
+                    color: #1f1200;
+                }
+
                 /* 通報モーダルスタイル */
                 .report-modal-overlay {
                     position: fixed;
@@ -385,39 +937,118 @@ const TimelineComponent = {
                     border-color: #444;
                     color: #aaa;
                 }
+
+                @media (max-width: 900px) {
+                    .timeline-hero {
+                        flex-direction: column;
+                        align-items: flex-start;
+                        text-align: left;
+                    }
+
+                    .timeline-scroll {
+                        height: auto;
+                        max-height: 70vh;
+                    }
+                }
+
+                @media (max-width: 600px) {
+                    .timeline-page {
+                        padding: 24px 12px 40px;
+                    }
+
+                    .timeline-hero {
+                        padding: 24px;
+                        border-radius: 24px;
+                    }
+
+                    .composer-card {
+                        padding: 20px;
+                    }
+
+                    .post-input-wrapper {
+                        flex-direction: column;
+                    }
+
+                    .post-avatar {
+                        width: 48px;
+                        height: 48px;
+                        border-radius: 16px;
+                    }
+
+                    .timeline-tabs {
+                        flex-direction: column;
+                        padding: 20px 20px 8px;
+                    }
+
+                    .timeline-tab {
+                        width: 100%;
+                    }
+
+                    .timeline-scroll {
+                        padding: 0 20px 20px;
+                    }
+
+                    .timeline-feed {
+                        border-radius: 22px;
+                    }
+                }
             </style>
-            
-            ${isLoggedIn ? `
-            <div class="post-input-area">
-                <div class="post-input-wrapper">
-                    <div class="post-avatar"><img src="${currentUserIconSrc}" alt="User Icon" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;"></div>
-                    <div class="post-input-content">
-                        <textarea class="post-textarea" placeholder="今日食べる二郎は？" id="postTextarea" maxlength="200"></textarea>
-                        <div id="imagePreviewContainer"></div>
-                        <div id="shopPreviewContainer"></div>
-                        <div class="post-actions">
-                            <div class="post-icons">
-                                <input type="file" id="imageUpload" accept="image/*" style="display: none;">
-                                <button class="post-icon-btn" title="画像" onclick="document.getElementById('imageUpload').click()"><i class="fas fa-image"></i></button>
-                                <button class="post-icon-btn" title="店舗" onclick="TimelineComponent.openShopModal()"><i class="fas fa-store"></i></button>
-                            </div>
-                            <div style="display: flex; align-items: center;">
-                                <span class="char-counter" id="charCounter">0/200</span>
-                                <button class="tweet-btn" id="tweetBtn" onclick="TimelineComponent.postTweet()" disabled>ツイート</button>
+
+            <div class="timeline-page">
+                <div class="timeline-hero">
+                    <div>
+                        <p class="timeline-eyebrow">JIROTTER</p>
+                        <h1 class="timeline-title">今日の二郎をシェアしよう</h1>
+                        <p class="timeline-subtitle">旬の投稿やフォローしている仲間のレポートを一箇所でチェックできます。</p>
+                    </div>
+                    <div class="timeline-hero-badge"><i class="fas fa-utensils"></i>リアルタイム更新</div>
+                </div>
+
+                <section class="timeline-main">
+                ${isLoggedIn ? `
+                <div class="composer-card post-input-area">
+                    <div class="post-input-wrapper">
+                        <div class="post-avatar"><img src="${currentUserIconSrc}" alt="User Icon" style="width: 100%; height: 100%; border-radius: 16px; object-fit: cover;"></div>
+                        <div class="post-input-content">
+                            <textarea class="post-textarea" placeholder="今日食べる二郎は？" id="postTextarea" maxlength="200"></textarea>
+                            <div id="imagePreviewContainer"></div>
+                            <div id="shopPreviewContainer"></div>
+                            <div class="post-actions">
+                                <div class="post-icons">
+                                    <input type="file" id="imageUpload" accept="image/*" style="display: none;">
+                                    <button class="post-icon-btn" title="画像" onclick="document.getElementById('imageUpload').click()"><i class="fas fa-image"></i></button>
+                                    <button class="post-icon-btn" title="店舗" onclick="TimelineComponent.openShopModal()"><i class="fas fa-store"></i></button>
+                                </div>
+                                <div style="display: flex; align-items: center;">
+                                    <span class="char-counter" id="charCounter">0/200</span>
+                                    <button class="tweet-btn" id="tweetBtn" onclick="TimelineComponent.postTweet()" disabled>ツイート</button>
+                                </div>
                             </div>
                         </div>
                     </div>
                 </div>
-            </div>
-            ` : `
-            <div class="login-prompt-area">
-                <div class="login-prompt-text">ログインして二郎を共有しよう</div>
-                <button class="login-btn" onclick="router.navigate('auth', ['login'])">ログイン</button>
-            </div>
-            `}
+                ` : `
+                <div class="login-card">
+                    <h3>ログインして二郎を共有しよう</h3>
+                    <p>お気に入り店舗の記録やフォロー中の最新情報を逃さずチェックできます。</p>
+                    <button class="login-btn" onclick="router.navigate('auth', ['login'])">ログイン</button>
+                </div>
+                `}
 
-            <div class="timeline-container" id="timelineContainer">
-                <div class="timeline" id="timeline"></div>
+                <div class="timeline-feed">
+                    <div class="timeline-tabs" role="tablist">
+                        <button class="timeline-tab tab ${this.state.currentTab === 'recommend' ? 'active' : ''}" data-tab="recommend" role="tab" aria-selected="${this.state.currentTab === 'recommend'}">
+                            <i class="fas fa-fire"></i>みんなの投稿
+                        </button>
+                        <button class="timeline-tab tab ${this.state.currentTab === 'following' ? 'active' : ''}" data-tab="following" role="tab" aria-selected="${this.state.currentTab === 'following'}">
+                            <i class="fas fa-user-friends"></i>フォロー中
+                        </button>
+                    </div>
+                    <div class="timeline-scroll" id="timelineContainer" role="feed" aria-live="polite">
+                        <div class="timeline-list" id="timeline"></div>
+                    </div>
+                </div>
+                </section>
             </div>
         `;
 
@@ -937,15 +1568,13 @@ const TimelineComponent = {
         
         const previewContainer = document.getElementById('shopPreviewContainer');
         previewContainer.innerHTML = `
-            <div class="shop-preview" style="margin-top: 10px; padding: 10px; background: #f5f5f5; border-radius: 8px; display: flex; align-items: center; justify-content: space-between;">
-                <div style="display: flex; align-items: center;">
-                    <i class="fas fa-store" style="margin-right: 8px; color: #d4a574;"></i>
-                    <div>
-                        <div style="font-weight: bold;">${this.state.selectedShop.name}</div>
-                        <div style="font-size: 12px; color: #666;">${this.state.selectedShop.address}</div>
-                    </div>
+            <div class="shop-preview-card" role="note">
+                <i class="fas fa-store"></i>
+                <div class="shop-preview-text">
+                    <div class="shop-preview-name">${API.escapeHtml(this.state.selectedShop.name)}</div>
+                    <div class="shop-preview-address">${API.escapeHtml(this.state.selectedShop.address || '')}</div>
                 </div>
-                <button onclick="TimelineComponent.removeShop()" style="background: none; border: none; color: #666; cursor: pointer;">
+                <button class="shop-preview-remove" type="button" onclick="TimelineComponent.removeShop()" aria-label="店舗選択を解除">
                     <i class="fas fa-times"></i>
                 </button>
             </div>

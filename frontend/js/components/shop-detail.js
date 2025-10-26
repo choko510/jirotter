@@ -38,107 +38,672 @@ const ShopDetailComponent = {
             return;
         }
         
+        const brandKey = this.determineBrand(this.shopData.name);
+        const brandConfig = this.getBrandConfig(brandKey);
+        const brandBadge = `
+            <span class="shop-brand-badge" style="background:${brandConfig.color}; color:${brandConfig.textColor};">
+                <i class="fas fa-tag"></i>${this.escapeHtml(brandConfig.name)}
+            </span>
+        `;
+
+        const metaItems = [];
+        if (this.shopData.business_hours) {
+            metaItems.push({
+                icon: 'fas fa-clock',
+                label: '営業時間',
+                value: this.escapeHtml(this.shopData.business_hours)
+            });
+        }
+        if (this.shopData.closed_day) {
+            metaItems.push({
+                icon: 'fas fa-calendar-check',
+                label: '定休日',
+                value: this.escapeHtml(this.shopData.closed_day)
+            });
+        }
+        if (this.shopData.seats) {
+            metaItems.push({
+                icon: 'fas fa-chair',
+                label: '座席数',
+                value: this.escapeHtml(this.shopData.seats)
+            });
+        }
+
+        const metaHtml = metaItems.length > 0
+            ? metaItems.map(item => `
+                        <div class="shop-meta-card">
+                            <div class="shop-meta-icon"><i class="${item.icon}"></i></div>
+                            <div class="shop-meta-label">${item.label}</div>
+                            <div class="shop-meta-value">${item.value}</div>
+                        </div>
+                    `).join('')
+            : `<div class="shop-meta-empty"><i class="fas fa-info-circle"></i>店舗の詳細情報は順次更新予定です。</div>`;
+
+        const locationButtons = (this.shopData.latitude && this.shopData.longitude) ? `
+                    <button class="action-button secondary" onclick="ShopDetailComponent.openInGoogleMaps()">
+                        <i class="fas fa-external-link-alt"></i>Googleマップで開く
+                    </button>
+                    <button class="action-button secondary" onclick="ShopDetailComponent.showDirections()">
+                        <i class="fas fa-directions"></i>経路を表示
+                    </button>
+        ` : '';
+
+        const sanitizedAddress = this.escapeHtml(this.shopData.address || '住所情報が登録されていません');
+
         contentArea.innerHTML = `
             <style>
-                /* Post-related styles copied from timeline.js */
-                .post-card { padding: 16px; border-bottom: 1px solid #e0e0e0; transition: background 0.2s; }
-                .post-card:hover { background: #f9f9f9; }
-                .post-header { display: flex; gap: 12px; margin-bottom: 12px; cursor: pointer; }
-                .post-avatar { width: 48px; height: 48px; border-radius: 50%; background: #d4a574; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; }
-                .post-user-info { flex: 1; }
-                .post-username { font-weight: bold; }
-                .post-meta { color: #666; font-size: 14px; }
-                .post-engagement { display: flex; justify-content: space-around; margin-top: 12px; padding-top: 12px; }
-                .engagement-btn { display: flex; align-items: center; gap: 8px; background: transparent; border: none; color: #666; cursor: pointer; }
-                .engagement-btn .liked { color: #e0245e; }
-                .post-content { line-height: 1.4; }
-                .post-content.collapsed { max-height: 4.2em; overflow: hidden; }
-                .show-more-btn { background: none; border: none; color: #d4a574; cursor: pointer; font-size: 14px; padding: 4px 0; }
-                .show-more-btn:hover { text-decoration: underline; }
-                .post-image img { width: 100%; border-radius: 16px; margin-top: 12px; }
+                .shop-detail-page {
+                    min-height: calc(100vh - 70px);
+                    padding: 32px 18px 64px;
+                    background: radial-gradient(120% 160% at 50% -20%, #fff8ed 0%, #f4e7d7 45%, #efe1cf 100%);
+                    display: flex;
+                    justify-content: center;
+                }
 
-                /* Dark Mode Overrides for posts */
+                .dark-mode .shop-detail-page {
+                    background: radial-gradient(120% 160% at 50% -20%, #1a130c 0%, #140f0a 45%, #0d0906 100%);
+                }
+
+                .shop-detail-wrapper {
+                    width: 100%;
+                    max-width: 1080px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 32px;
+                }
+
+                .shop-hero {
+                    background: rgba(255, 255, 255, 0.92);
+                    border: 1px solid rgba(212, 165, 116, 0.3);
+                    border-radius: 32px;
+                    padding: 32px;
+                    box-shadow: 0 32px 56px rgba(212, 165, 116, 0.2);
+                    backdrop-filter: blur(18px);
+                    display: flex;
+                    flex-direction: column;
+                    gap: 24px;
+                }
+
+                .dark-mode .shop-hero {
+                    background: rgba(24, 24, 24, 0.92);
+                    border-color: rgba(212, 165, 116, 0.35);
+                    box-shadow: 0 32px 60px rgba(0, 0, 0, 0.55);
+                    color: #f6d9a3;
+                }
+
+                .back-button {
+                    align-self: flex-start;
+                    padding: 10px 20px;
+                    border-radius: 999px;
+                    border: 1px solid rgba(212, 165, 116, 0.35);
+                    background: rgba(212, 165, 116, 0.12);
+                    color: #7b552d;
+                    font-weight: 600;
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 8px;
+                    cursor: pointer;
+                    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+                }
+
+                .back-button:hover {
+                    transform: translateY(-1px);
+                    background: rgba(212, 165, 116, 0.2);
+                    box-shadow: 0 16px 24px rgba(212, 165, 116, 0.25);
+                }
+
+                .dark-mode .back-button {
+                    background: rgba(212, 165, 116, 0.18);
+                    color: #1f1200;
+                    border-color: rgba(212, 165, 116, 0.4);
+                }
+
+                .shop-hero-header {
+                    display: flex;
+                    align-items: baseline;
+                    gap: 16px;
+                    flex-wrap: wrap;
+                }
+
+                .shop-name {
+                    font-size: 34px;
+                    margin: 0;
+                    color: #2f1b00;
+                    font-weight: 800;
+                }
+
+                .dark-mode .shop-name {
+                    color: #f6d9a3;
+                }
+
+                .shop-brand-badge {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 8px;
+                    padding: 6px 16px;
+                    border-radius: 999px;
+                    font-weight: 700;
+                    letter-spacing: 0.05em;
+                    text-transform: uppercase;
+                    box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.45);
+                }
+
+                .shop-brand-badge i {
+                    font-size: 14px;
+                }
+
+                .shop-address {
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    font-size: 15px;
+                    color: #6b5948;
+                    margin: 0;
+                }
+
+                .dark-mode .shop-address {
+                    color: #d7cfc2;
+                }
+
+                .shop-meta-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+                    gap: 16px;
+                }
+
+                .shop-meta-card {
+                    background: rgba(212, 165, 116, 0.12);
+                    border: 1px solid rgba(212, 165, 116, 0.3);
+                    border-radius: 20px;
+                    padding: 16px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 6px;
+                }
+
+                .shop-meta-icon {
+                    font-size: 18px;
+                    color: #d88c32;
+                }
+
+                .shop-meta-label {
+                    font-size: 13px;
+                    letter-spacing: 0.08em;
+                    text-transform: uppercase;
+                    color: #8a735d;
+                    font-weight: 700;
+                }
+
+                .shop-meta-value {
+                    font-size: 16px;
+                    color: #3b2614;
+                    font-weight: 600;
+                }
+
+                .shop-meta-empty {
+                    grid-column: 1 / -1;
+                    background: rgba(255, 255, 255, 0.85);
+                    border: 1px dashed rgba(212, 165, 116, 0.4);
+                    border-radius: 20px;
+                    padding: 18px;
+                    display: flex;
+                    align-items: center;
+                    gap: 12px;
+                    color: #7d6a58;
+                    font-weight: 600;
+                }
+
+                .shop-overview-grid {
+                    display: grid;
+                    grid-template-columns: minmax(0, 2fr) minmax(0, 1fr);
+                    gap: 24px;
+                    align-items: stretch;
+                }
+
+                .shop-map-card {
+                    background: rgba(255, 255, 255, 0.92);
+                    border: 1px solid rgba(212, 165, 116, 0.28);
+                    border-radius: 32px;
+                    padding: 24px;
+                    box-shadow: 0 26px 48px rgba(212, 165, 116, 0.18);
+                    backdrop-filter: blur(16px);
+                    display: flex;
+                    flex-direction: column;
+                    gap: 16px;
+                }
+
+                .dark-mode .shop-map-card {
+                    background: rgba(24, 24, 24, 0.92);
+                    border-color: rgba(212, 165, 116, 0.32);
+                    box-shadow: 0 28px 58px rgba(0, 0, 0, 0.55);
+                }
+
+                .shop-map {
+                    width: 100%;
+                    height: 340px;
+                    border-radius: 24px;
+                    overflow: hidden;
+                }
+
+                .shop-map-note {
+                    font-size: 13px;
+                    color: #7d6a58;
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                }
+
+                .dark-mode .shop-map-note {
+                    color: #d7cfc2;
+                }
+
+                .shop-action-card {
+                    background: rgba(255, 255, 255, 0.9);
+                    border: 1px solid rgba(212, 165, 116, 0.28);
+                    border-radius: 32px;
+                    padding: 24px;
+                    box-shadow: 0 24px 44px rgba(212, 165, 116, 0.18);
+                    display: flex;
+                    flex-direction: column;
+                    gap: 20px;
+                }
+
+                .dark-mode .shop-action-card {
+                    background: rgba(24, 24, 24, 0.9);
+                    border-color: rgba(212, 165, 116, 0.32);
+                    box-shadow: 0 28px 54px rgba(0, 0, 0, 0.55);
+                }
+
+                .shop-action-title {
+                    margin: 0;
+                    font-size: 20px;
+                    font-weight: 700;
+                    color: #3b2614;
+                }
+
+                .dark-mode .shop-action-title {
+                    color: #f6d9a3;
+                }
+
+                .shop-actions {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                }
+
+                .action-button {
+                    width: 100%;
+                    padding: 14px 18px;
+                    border-radius: 18px;
+                    border: 1px solid rgba(212, 165, 116, 0.35);
+                    background: rgba(212, 165, 116, 0.12);
+                    color: #7b552d;
+                    font-weight: 600;
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 10px;
+                    cursor: pointer;
+                    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
+                }
+
+                .action-button:hover {
+                    transform: translateY(-1px);
+                    box-shadow: 0 16px 28px rgba(212, 165, 116, 0.25);
+                }
+
+                .action-button.primary {
+                    background: linear-gradient(135deg, #f6c46b 0%, #e09a3a 100%);
+                    color: #2f1b00;
+                    border: none;
+                    box-shadow: 0 18px 32px rgba(224, 154, 58, 0.35);
+                }
+
+                .action-button.checkin-btn {
+                    background: linear-gradient(135deg, #7dd87d 0%, #45b445 100%);
+                    color: #0f2d0f;
+                    border: none;
+                    box-shadow: 0 18px 32px rgba(69, 180, 69, 0.28);
+                }
+
+                .action-button.secondary {
+                    background: rgba(212, 165, 116, 0.16);
+                    color: #7b552d;
+                }
+
+                .action-button.ghost {
+                    background: transparent;
+                    border-style: dashed;
+                    color: #7b552d;
+                }
+
+                .dark-mode .action-button {
+                    border-color: rgba(212, 165, 116, 0.32);
+                    color: #f6d9a3;
+                    background: rgba(212, 165, 116, 0.14);
+                }
+
+                .dark-mode .action-button.primary {
+                    color: #1f1200;
+                }
+
+                .dark-mode .action-button.ghost {
+                    background: rgba(212, 165, 116, 0.12);
+                    color: #f6d9a3;
+                }
+
+                .shop-action-tip {
+                    font-size: 13px;
+                    color: #7d6a58;
+                }
+
+                .dark-mode .shop-action-tip {
+                    color: #d7cfc2;
+                }
+
+                .shop-posts-section {
+                    background: rgba(255, 255, 255, 0.9);
+                    border: 1px solid rgba(212, 165, 116, 0.28);
+                    border-radius: 32px;
+                    padding: 28px;
+                    box-shadow: 0 28px 52px rgba(212, 165, 116, 0.2);
+                    backdrop-filter: blur(16px);
+                    display: flex;
+                    flex-direction: column;
+                    gap: 20px;
+                }
+
+                .dark-mode .shop-posts-section {
+                    background: rgba(24, 24, 24, 0.92);
+                    border-color: rgba(212, 165, 116, 0.32);
+                    box-shadow: 0 32px 58px rgba(0, 0, 0, 0.55);
+                }
+
+                .shop-posts-header {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 12px;
+                }
+
+                .shop-posts-header h2 {
+                    margin: 0;
+                    font-size: 24px;
+                    color: #3b2614;
+                }
+
+                .dark-mode .shop-posts-header h2 {
+                    color: #f6d9a3;
+                }
+
+                #shopPosts {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 16px;
+                }
+
+                .post-card {
+                    background: rgba(255, 255, 255, 0.95);
+                    border: 1px solid rgba(212, 165, 116, 0.25);
+                    border-radius: 22px;
+                    padding: 20px;
+                    box-shadow: 0 16px 34px rgba(0, 0, 0, 0.08);
+                    transition: transform 0.2s ease, box-shadow 0.2s ease;
+                    cursor: pointer;
+                }
+
+                .post-card:hover {
+                    transform: translateY(-3px);
+                    box-shadow: 0 24px 42px rgba(0, 0, 0, 0.12);
+                }
+
+                .post-header {
+                    display: flex;
+                    align-items: flex-start;
+                    gap: 14px;
+                    margin-bottom: 12px;
+                }
+
+                .post-avatar {
+                    width: 48px;
+                    height: 48px;
+                    border-radius: 16px;
+                    overflow: hidden;
+                    background: linear-gradient(135deg, #f6c46b 0%, #e09a3a 100%);
+                    box-shadow: 0 12px 20px rgba(224, 154, 58, 0.25);
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                }
+
+                .post-avatar img {
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                }
+
+                .post-username {
+                    font-weight: 700;
+                    color: #3b2614;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 4px;
+                }
+
+                .post-meta {
+                    font-size: 13px;
+                    color: #7d6a58;
+                }
+
+                .post-text {
+                    color: #3d2d1e;
+                    font-size: 15px;
+                    line-height: 1.7;
+                }
+
+                .show-more-btn {
+                    background: none;
+                    border: none;
+                    color: #d4882a;
+                    cursor: pointer;
+                    font-weight: 600;
+                    padding: 6px 0;
+                }
+
+                .shop-reference {
+                    margin-top: 14px;
+                    padding: 14px 16px;
+                    background: rgba(212, 165, 116, 0.12);
+                    border-radius: 16px;
+                    border: 1px solid rgba(212, 165, 116, 0.25);
+                    color: #8a6233;
+                    font-weight: 600;
+                }
+
+                .post-engagement {
+                    display: flex;
+                    justify-content: space-between;
+                    gap: 10px;
+                    margin-top: 18px;
+                    padding-top: 14px;
+                    border-top: 1px solid rgba(212, 165, 116, 0.25);
+                }
+
+                .engagement-btn {
+                    flex: 1;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    gap: 8px;
+                    background: rgba(55, 37, 23, 0.05);
+                    border: 1px solid transparent;
+                    border-radius: 14px;
+                    color: #72553a;
+                    cursor: pointer;
+                    padding: 10px 12px;
+                    transition: background 0.2s ease, transform 0.2s ease;
+                }
+
+                .engagement-btn:hover {
+                    background: rgba(55, 37, 23, 0.08);
+                    transform: translateY(-1px);
+                }
+
+                .loading,
+                .no-posts,
+                .error {
+                    text-align: center;
+                    padding: 32px 16px;
+                    color: #7d6a58;
+                }
+
+                .no-posts i {
+                    font-size: 24px;
+                    margin-bottom: 12px;
+                    color: #d88c32;
+                }
+
+                .dark-mode .shop-meta-card {
+                    background: rgba(212, 165, 116, 0.16);
+                    border-color: rgba(212, 165, 116, 0.35);
+                }
+
+                .dark-mode .shop-meta-label {
+                    color: #d7cfc2;
+                }
+
+                .dark-mode .shop-meta-value {
+                    color: #f6d9a3;
+                }
+
+                .dark-mode .shop-meta-empty {
+                    background: rgba(24, 24, 24, 0.9);
+                    border-color: rgba(212, 165, 116, 0.35);
+                    color: #d7cfc2;
+                }
+
+                .dark-mode .shop-map {
+                    border-radius: 24px;
+                }
+
+                .dark-mode .action-button.secondary,
+                .dark-mode .action-button.ghost {
+                    color: #f6d9a3;
+                }
+
+                .dark-mode .shop-posts-section {
+                    color: #f6d9a3;
+                }
+
                 .dark-mode .post-card {
-                    border-bottom-color: #333;
+                    background: rgba(28, 28, 28, 0.95);
+                    border-color: rgba(212, 165, 116, 0.32);
+                    box-shadow: 0 24px 52px rgba(0, 0, 0, 0.55);
                 }
-                .dark-mode .post-card:hover {
-                    background: #2a2a2a;
+
+                .dark-mode .post-username {
+                    color: #f6d9a3;
                 }
+
                 .dark-mode .post-meta,
-                .dark-mode .engagement-btn {
-                    color: #aaa;
+                .dark-mode .post-text,
+                .dark-mode .shop-reference,
+                .dark-mode .engagement-btn,
+                .dark-mode .loading,
+                .dark-mode .no-posts,
+                .dark-mode .error {
+                    color: #d7cfc2;
+                }
+
+                .dark-mode .shop-reference {
+                    background: rgba(212, 165, 116, 0.16);
+                    border-color: rgba(212, 165, 116, 0.35);
+                }
+
+                .dark-mode .post-engagement {
+                    border-top-color: rgba(212, 165, 116, 0.28);
+                }
+
+                @media (max-width: 960px) {
+                    .shop-overview-grid {
+                        grid-template-columns: 1fr;
+                    }
+
+                    .shop-map {
+                        height: 300px;
+                    }
+                }
+
+                @media (max-width: 640px) {
+                    .shop-detail-page {
+                        padding: 24px 12px 48px;
+                    }
+
+                    .shop-hero,
+                    .shop-map-card,
+                    .shop-action-card,
+                    .shop-posts-section {
+                        padding: 22px;
+                        border-radius: 24px;
+                    }
+
+                    .shop-name {
+                        font-size: 28px;
+                    }
                 }
             </style>
-            <div class="shop-detail-container">
-                <div class="shop-header">
-                    <button class="back-button" onclick="router.navigate('search')">
-                        <i class="fas fa-arrow-left"></i> 戻る
-                    </button>
-                    <h1 class="shop-name">${this.escapeHtml(this.shopData.name)}</h1>
-                </div>
-                
-                <div class="shop-info-card">
-                    <div class="shop-map-container">
-                        <div id="shopMap" class="shop-map"></div>
+
+            <div class="shop-detail-page">
+                <div class="shop-detail-wrapper">
+                    <div class="shop-hero">
+                        <button class="back-button" onclick="router.navigate('search')">
+                            <i class="fas fa-arrow-left"></i><span>戻る</span>
+                        </button>
+                        <div class="shop-hero-header">
+                            <h1 class="shop-name">${this.escapeHtml(this.shopData.name)}</h1>
+                            ${brandBadge}
+                        </div>
+                        <p class="shop-address"><i class="fas fa-map-marker-alt"></i>${sanitizedAddress}</p>
+                        <div class="shop-meta-grid">
+                            ${metaHtml}
+                        </div>
                     </div>
-                    
-                    <div class="shop-details">
-                        <div class="shop-info-item">
-                            <i class="fas fa-map-marker-alt"></i>
-                            <span>${this.escapeHtml(this.shopData.address)}</span>
+
+                    <div class="shop-overview-grid">
+                        <div class="shop-map-card">
+                            <div id="shopMap" class="shop-map"></div>
+                            <p class="shop-map-note"><i class="fas fa-location-arrow"></i>ピンをドラッグして周辺の店舗もチェックできます。</p>
                         </div>
-                        
-                        ${this.shopData.business_hours ? `
-                        <div class="shop-info-item">
-                            <i class="fas fa-clock"></i>
-                            <span>${this.escapeHtml(this.shopData.business_hours)}</span>
+                        <div class="shop-action-card">
+                            <h2 class="shop-action-title">アクション</h2>
+                            <div class="shop-actions">
+                                <button class="action-button primary" onclick="ShopDetailComponent.navigateToMap()">
+                                    <i class="fas fa-map"></i>MAPで見る
+                                </button>
+                                <button class="action-button checkin-btn" data-shop-id="${this.shopData.id}" data-checkin-type="manual">
+                                    <i class="fas fa-map-marker-alt"></i>チェックイン
+                                </button>
+                                ${locationButtons}
+                                <button class="action-button ghost" onclick="ShopDetailComponent.shareShop()">
+                                    <i class="fas fa-share-alt"></i>シェア
+                                </button>
+                            </div>
+                            <p class="shop-action-tip"><i class="fas fa-lightbulb"></i>チェックインするとスタンプラリーにも反映されます。</p>
                         </div>
-                        ` : ''}
-                        
-                        ${this.shopData.closed_day ? `
-                        <div class="shop-info-item">
-                            <i class="fas fa-calendar-times"></i>
-                            <span>定休日: ${this.escapeHtml(this.shopData.closed_day)}</span>
-                        </div>
-                        ` : ''}
-                        
-                        ${this.shopData.seats ? `
-                        <div class="shop-info-item">
-                            <i class="fas fa-chair"></i>
-                            <span>座席: ${this.escapeHtml(this.shopData.seats)}</span>
-                        </div>
-                        ` : ''}
                     </div>
-                </div>
-                
-                <div class="shop-actions">
-                    <button class="action-button primary" onclick="ShopDetailComponent.navigateToMap()">
-                        <i class="fas fa-map"></i> MAPで見る
-                    </button>
-                    <button class="action-button checkin-btn" data-shop-id="${this.shopData.id}" data-checkin-type="manual">
-                        <i class="fas fa-map-marker-alt"></i> チェックイン
-                    </button>
-                    ${this.shopData.latitude && this.shopData.longitude ? `
-                    <button class="action-button" onclick="ShopDetailComponent.openInGoogleMaps()">
-                        <i class="fas fa-external-link-alt"></i> Googleマップで開く
-                    </button>
-                    <button class="action-button" onclick="ShopDetailComponent.showDirections()">
-                        <i class="fas fa-directions"></i> 経路を表示
-                    </button>
-                    ` : ''}
-                    <button class="action-button" onclick="ShopDetailComponent.shareShop()">
-                        <i class="fas fa-share-alt"></i> シェア
-                    </button>
-                </div>
-                
-                <div class="shop-posts-section">
-                    <h2>この店での投稿</h2>
-                    <div id="shopPosts" class="posts-container">
-                        <div class="loading">投稿を読み込み中...</div>
+
+                    <div class="shop-posts-section">
+                        <div class="shop-posts-header">
+                            <h2>この店での投稿</h2>
+                        </div>
+                        <div id="shopPosts" class="posts-container">
+                            <div class="loading">投稿を読み込み中...</div>
+                        </div>
                     </div>
                 </div>
             </div>
         `;
+
         
         // 地図を初期化
         this.initializeMap();
