@@ -314,18 +314,21 @@
 
         .bottom-nav-content {
             display: flex;
-            justify-content: space-around;
-            align-items: center;
+            justify-content: space-between;
+            align-items: flex-end;
             max-width: 600px;
             margin: 0 auto;
+            padding: 0 16px;
+            gap: 12px;
         }
 
         .bottom-nav-item {
+            flex: 1;
             display: flex;
             flex-direction: column;
             align-items: center;
             gap: 4px;
-            padding: 8px 16px;
+            padding: 8px 0;
             cursor: pointer;
             transition: color 0.2s;
             color: #666;
@@ -338,7 +341,43 @@
         }
 
         .bottom-nav-icon {
-            font-size: 24px;
+            font-size: 22px;
+        }
+
+        .bottom-nav-checkin {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            gap: 6px;
+            transform: translateY(-18px);
+        }
+
+        .bottom-nav-checkin-button {
+            width: 64px;
+            height: 64px;
+            border-radius: 50%;
+            border: none;
+            background: #d4a574;
+            color: #fff;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 26px;
+            box-shadow: 0 6px 16px rgba(212, 165, 116, 0.35);
+            cursor: pointer;
+        }
+
+        .bottom-nav-checkin-button:hover {
+            background: #c99864;
+        }
+
+        .bottom-nav-checkin-button:active {
+            transform: scale(0.96);
+        }
+
+        .bottom-nav-checkin-label {
+            font-size: 11px;
+            color: #d4a574;
         }
 
         /* モバイルメニュー */
@@ -568,6 +607,26 @@
         .dark-mode .mobile-menu-content,
         .dark-mode .mobile-search {
             background-color: #1a1a1a;
+        }
+
+        .dark-mode .bottom-nav-item {
+            color: #bbb;
+        }
+
+        .dark-mode .bottom-nav-item.active {
+            color: #f0cfa2;
+        }
+
+        .dark-mode .bottom-nav-checkin-label {
+            color: #f0cfa2;
+        }
+
+        .dark-mode .bottom-nav-checkin-button {
+            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
+        }
+
+        .dark-mode .bottom-nav-checkin-button:hover {
+            background: #dcb78a;
         }
 
         .dark-mode .main-header {
@@ -924,19 +983,21 @@
                 <div class="bottom-nav-icon"><i class="fas fa-home"></i></div>
                 <span>ホーム</span>
             </div>
-            <div class="bottom-nav-item" data-route="search">
-                <div class="bottom-nav-icon"><i class="fas fa-search"></i></div>
-                <span>検索</span>
+            <div class="bottom-nav-item" data-route="map">
+                <div class="bottom-nav-icon"><i class="fas fa-map-marked-alt"></i></div>
+                <span>マップ</span>
             </div>
-            <div class="bottom-nav-item" data-route="guide">
-                <div class="bottom-nav-icon"><i class="fas fa-question-circle"></i></div>
-                <span>ガイド</span>
+            <div class="bottom-nav-checkin">
+                <button type="button" class="bottom-nav-checkin-button checkin-btn" data-checkin-type="gps" aria-label="チェックイン">
+                    <i class="fas fa-map-marker-alt"></i>
+                </button>
+                <span class="bottom-nav-checkin-label">チェックイン</span>
             </div>
-            <div class="bottom-nav-item" data-route="notification">
-                <div class="bottom-nav-icon"><i class="fas fa-bell"></i></div>
-                <span>通知</span>
+            <div class="bottom-nav-item" data-route="stamp-rally">
+                <div class="bottom-nav-icon"><i class="fa-solid fa-stamp"></i></div>
+                <span>スタンプラリー</span>
             </div>
-            <div class="bottom-nav-item" onclick="Utils.goToCurrentUserProfile()">
+            <div class="bottom-nav-item" id="bottomNavProfile" onclick="Utils.goToCurrentUserProfile()">
                 <div class="bottom-nav-icon"><i class="fas fa-user"></i></div>
                 <span>プロフィール</span>
             </div>

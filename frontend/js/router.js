@@ -96,6 +96,15 @@ class Router {
                 item.classList.remove('active');
             }
         });
+
+        const profileNavItem = document.getElementById('bottomNavProfile');
+        if (profileNavItem) {
+            if (activeRoute === 'profile') {
+                profileNavItem.classList.add('active');
+            } else {
+                profileNavItem.classList.remove('active');
+            }
+        }
     }
 
     // main-headerの表示/非表示を制御

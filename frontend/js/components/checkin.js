@@ -20,8 +20,9 @@ const CheckinComponent = {
     bindEvents() {
         // ドキュメント全体のイベントリスナー
         document.addEventListener('click', (e) => {
-            if (e.target.classList.contains('checkin-btn')) {
-                this.handleCheckinButtonClick(e.target);
+            const checkinButton = e.target.closest('.checkin-btn');
+            if (checkinButton) {
+                this.handleCheckinButtonClick(checkinButton);
             }
             if (e.target.classList.contains('checkin-modal-close')) {
                 this.closeCheckinModal();
