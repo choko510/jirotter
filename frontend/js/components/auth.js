@@ -178,7 +178,7 @@ const AuthComponent = {
                 <form class="auth-form" id="authForm" onsubmit="AuthComponent.handleSubmit(event)">
                     <div class="form-group">
                         <label class="form-label">ユーザーID</label>
-                        <input type="text" class="form-input" id="id" placeholder="ユーザーIDを入力（英数字のみ）" pattern="[a-zA-Z0-9]+" title="ユーザーIDは英数字のみで入力してください" required>
+                        <input type="text" class="form-input" id="id" placeholder="ユーザーIDを入力（英数字とアンダースコアのみ）" pattern="[a-zA-Z0-9_]+" title="ユーザーIDは英数字とアンダースコア(_)のみで入力してください" required>
                     </div>
                     ${view === 'register' ? `
                         <div class="form-group">

@@ -12,8 +12,8 @@ class UserBase(BaseModel):
     @field_validator('id')
     @classmethod
     def validate_username(cls, v):
-        if not re.match(r'^[a-zA-Z0-9]+$', v):
-            raise ValueError('ユーザーIDは英数字のみで入力してください')
+        if not re.match(r'^[a-zA-Z0-9_]+$', v):
+            raise ValueError('ユーザーIDは英数字とアンダースコア(_)のみで入力してください')
         return v
 
 class UserCreate(UserBase):
@@ -26,8 +26,8 @@ class UserLogin(BaseModel):
     @field_validator('id')
     @classmethod
     def validate_username(cls, v):
-        if not re.match(r'^[a-zA-Z0-9]+$', v):
-            raise ValueError('ユーザーIDは英数字のみで入力してください')
+        if not re.match(r'^[a-zA-Z0-9_]+$', v):
+            raise ValueError('ユーザーIDは英数字とアンダースコア(_)のみで入力してください')
         return v
 
 class UserResponse(BaseModel):
