@@ -1,7 +1,7 @@
 from datetime import datetime, timedelta
 from typing import Optional, Union
 from jose import JWTError, jwt
-from passlib.context import CryptContext
+import bcrypt
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPBearer, HTTPAuthorizationCredentials
 from sqlalchemy.orm import Session
@@ -9,33 +9,36 @@ from config import settings
 from database import get_db
 from app.models import User
 
-# パスワードハッシュ化の設定
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
-
 # HTTPBearerスキームのインスタンス
 security = HTTPBearer(auto_error=False)
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """パスワードの検証"""
-    return pwd_context.verify(plain_password, hashed_password)
+    if isinstance(plain_password, str):
+        plain_bytes = plain_password.encode('utf-8')
+    else:
+        plain_bytes = plain_password
+
+    if isinstance(hashed_password, str):
+        hashed_bytes = hashed_password.encode('utf-8')
+    else:
+        hashed_bytes = hashed_password
+
+    return bcrypt.checkpw(plain_bytes, hashed_bytes)
+
 
 def get_password_hash(password: str) -> str:
     """パスワードのハッシュ化"""
-    # bcryptは72バイトまでのパスワードしかサポートしていないため、
-    # 長いパスワードは自動的に切り詰める
     if isinstance(password, str):
-        # 文字列の場合はUTF-8エンコード
         password_bytes = password.encode('utf-8')
     else:
-        # バイト列の場合はそのまま使用
         password_bytes = password
-    
-    # パスワードが72バイトを超える場合は切り詰める
+
     if len(password_bytes) > 72:
         password_bytes = password_bytes[:72]
-    
-    # 切り詰めたバイト列を文字列に戻してハッシュ化
-    return pwd_context.hash(password_bytes.decode('utf-8'))
+
+    hashed = bcrypt.hashpw(password_bytes, bcrypt.gensalt())
+    return hashed.decode('utf-8')
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:
     """JWTアクセストークンの作成"""

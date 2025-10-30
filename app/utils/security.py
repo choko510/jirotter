@@ -11,8 +11,8 @@ def validate_registration_data(data: dict, db: Session) -> dict:
         errors['id'] = 'ユーザーIDは必須です'
     elif len(data.get('id')) < 3:
         errors['id'] = 'ユーザーIDは3文字以上で入力してください'
-    elif not re.match(r'^[a-zA-Z0-9]+$', data.get('id')):
-        errors['id'] = 'ユーザーIDは英数字のみで入力してください'
+    elif not re.match(r'^[a-zA-Z0-9_]+$', data.get('id')):
+        errors['id'] = 'ユーザーIDは英数字とアンダースコア(_)のみで入力してください'
     
     if not data.get('email'):
         errors['email'] = 'メールアドレスは必須です'
@@ -52,8 +52,8 @@ def validate_login_data(data: dict) -> dict:
     
     if not data.get('id'):
         errors['id'] = 'ユーザーIDは必須です'
-    elif not re.match(r'^[a-zA-Z0-9]+$', data.get('id')):
-        errors['id'] = 'ユーザーIDは英数字のみで入力してください'
+    elif not re.match(r'^[a-zA-Z0-9_]+$', data.get('id')):
+        errors['id'] = 'ユーザーIDは英数字とアンダースコア(_)のみで入力してください'
     
     if not data.get('password'):
         errors['password'] = 'パスワードは必須です'
