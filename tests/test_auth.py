@@ -7,14 +7,40 @@ def test_register_user(test_client, test_db):
         "email": "newuser@example.com",
         "password": "newpassword123"
     }
-    
+
     response = test_client.post("/api/v1/auth/register", json=user_data)
     data = response.json()
-    
+
     assert response.status_code == 201
     assert "access_token" in data
     assert data["user"]["id"] == "newuser"
     assert data["user"]["email"] == "newuser@example.com"
+
+
+def test_register_user_with_underscore_id(test_client, test_db):
+    """アンダースコアを含むユーザーIDでの登録とログインのテスト"""
+    user_data = {
+        "id": "new_user",
+        "email": "new_user@example.com",
+        "password": "newpassword123"
+    }
+
+    response = test_client.post("/api/v1/auth/register", json=user_data)
+    data = response.json()
+
+    assert response.status_code == 201
+    assert data["user"]["id"] == "new_user"
+
+    login_data = {
+        "id": "new_user",
+        "password": "newpassword123"
+    }
+
+    login_response = test_client.post("/api/v1/auth/login", json=login_data)
+    login_data_resp = login_response.json()
+
+    assert login_response.status_code == 200
+    assert login_data_resp["user"]["id"] == "new_user"
 
 def test_register_duplicate_id(test_client, test_db):
     """重複ユーザーIDでの登録テスト"""
