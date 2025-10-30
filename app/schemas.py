@@ -152,6 +152,8 @@ class PostResponse(PostBase):
     image_url: Optional[str] = None  # 後方互換性のために残す
     thumbnail_url: Optional[str] = None  # 低画質画像URL
     original_image_url: Optional[str] = None  # 通常画質画像URL
+    video_url: Optional[str] = None  # 動画URL
+    video_duration: Optional[float] = None  # 動画再生時間（秒）
     shop_id: Optional[int] = None
     shop_name: Optional[str] = None
     shop_address: Optional[str] = None
@@ -184,13 +186,17 @@ class PostResponse(PostBase):
     @field_serializer('original_image_url')
     def serialize_original_image_url(self, value):
         return escape_html(value) if value else value
-    
+
     @field_serializer('shop_name')
     def serialize_shop_name(self, value):
         return escape_html(value) if value else value
-    
+
     @field_serializer('shop_address')
     def serialize_shop_address(self, value):
+        return escape_html(value) if value else value
+
+    @field_serializer('video_url')
+    def serialize_video_url(self, value):
         return escape_html(value) if value else value
 
 class PostsResponse(BaseModel):
@@ -227,10 +233,13 @@ class VisitBase(BaseModel):
     rating: Optional[int] = None
     comment: Optional[str] = None
     image_url: Optional[str] = None
+    wait_time_minutes: Optional[int] = None
+    taste_rating: Optional[int] = None
+    flavor_notes: Optional[str] = None
 
 class VisitCreate(VisitBase):
     shop_id: int
-    
+
     @field_validator('rating')
     @classmethod
     def validate_rating(cls, v):
@@ -245,9 +254,30 @@ class VisitCreate(VisitBase):
             raise ValueError('コメントは500文字以内で入力してください')
         return v
 
+    @field_validator('wait_time_minutes')
+    @classmethod
+    def validate_wait_time(cls, v):
+        if v is not None and (v < 0 or v > 300):
+            raise ValueError('待ち時間は0分から300分の間で入力してください')
+        return v
+
+    @field_validator('taste_rating')
+    @classmethod
+    def validate_taste_rating(cls, v):
+        if v is not None and (v < 1 or v > 5):
+            raise ValueError('味の評価は1から5の間で入力してください')
+        return v
+
+    @field_validator('flavor_notes')
+    @classmethod
+    def validate_flavor_notes(cls, v):
+        if v is not None and len(v) > 500:
+            raise ValueError('味のメモは500文字以内で入力してください')
+        return v
+
 class VisitResponse(VisitBase):
     model_config = ConfigDict(from_attributes=True)
-    
+
     id: int
     user_id: str
     shop_id: int
@@ -271,9 +301,13 @@ class VisitResponse(VisitBase):
     @field_serializer('author_username')
     def serialize_author_username(self, value):
         return escape_html(value)
-    
+
     @field_serializer('image_url')
     def serialize_image_url(self, value):
+        return escape_html(value) if value else value
+
+    @field_serializer('flavor_notes')
+    def serialize_flavor_notes(self, value):
         return escape_html(value) if value else value
 
 class VisitsResponse(BaseModel):

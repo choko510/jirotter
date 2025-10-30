@@ -23,6 +23,7 @@ from app.routes.replies import router as replies_router
 from app.routes.reports import router as reports_router
 from app.routes.checkin import router as checkin_router
 from app.routes.stamps import router as stamps_router
+from app.routes.visits import router as visits_router
 
 class CacheBustingMiddleware(BaseHTTPMiddleware):
     """Debugモード時に静的ファイルにランダムパラメーターを追加してキャッシュを防ぐミドルウェア"""
@@ -189,6 +190,7 @@ def create_app():
     app.include_router(reports_router, prefix=settings.API_V1_STR)
     app.include_router(checkin_router, prefix=settings.API_V1_STR)
     app.include_router(stamps_router, prefix=settings.API_V1_STR)
+    app.include_router(visits_router, prefix=settings.API_V1_STR)
     
     @app.get("/", response_class=HTMLResponse)
     async def read_index():

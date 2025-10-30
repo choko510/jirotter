@@ -1,4 +1,5 @@
 
+import io
 import pytest
 
 def test_create_post_authenticated(test_client, test_db):
@@ -26,6 +27,66 @@ def test_create_post_authenticated(test_client, test_db):
     assert response.status_code == 201
     assert data["content"] == "This is a test post."
     assert data["author_username"] == "testuser"
+
+
+def test_create_post_with_short_video(test_client, test_db):
+    """10秒以内の動画付き投稿作成テスト"""
+    user_data = {
+        "id": "videouser",
+        "email": "video@example.com",
+        "password": "password123!"
+    }
+    response = test_client.post("/api/v1/auth/register", json=user_data)
+    token = response.json()["access_token"]
+
+    headers = {
+        "Authorization": f"Bearer {token}"
+    }
+
+    video_content = io.BytesIO(b"fake video data")
+    files = {
+        "video": ("sample.mp4", video_content, "video/mp4")
+    }
+    data = {
+        "content": "Video post",
+        "video_duration": "9"
+    }
+
+    response = test_client.post("/api/v1/posts", data=data, files=files, headers=headers)
+    data = response.json()
+
+    assert response.status_code == 201
+    assert data["video_url"].endswith(".mp4")
+    assert data["video_duration"] == 9.0
+
+
+def test_create_post_with_long_video_rejected(test_client, test_db):
+    """11秒以上の動画は拒否されるテスト"""
+    user_data = {
+        "id": "longvideouser",
+        "email": "longvideo@example.com",
+        "password": "password123!"
+    }
+    response = test_client.post("/api/v1/auth/register", json=user_data)
+    token = response.json()["access_token"]
+
+    headers = {
+        "Authorization": f"Bearer {token}"
+    }
+
+    video_content = io.BytesIO(b"fake video data")
+    files = {
+        "video": ("sample.mp4", video_content, "video/mp4")
+    }
+    data = {
+        "content": "Long video post",
+        "video_duration": "12"
+    }
+
+    response = test_client.post("/api/v1/posts", data=data, files=files, headers=headers)
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "動画は10秒以内にしてください"
 
 def test_create_post_unauthenticated(test_client):
     """未認証ユーザーによる投稿作成テスト"""
