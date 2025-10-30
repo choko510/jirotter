@@ -14,30 +14,34 @@ security = HTTPBearer(auto_error=False)
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
     """パスワードの検証"""
-    if isinstance(plain_password, str):
-        plain_bytes = plain_password.encode('utf-8')
-    else:
-        plain_bytes = plain_password
+    if not hashed_password:
+        return False
 
-    if isinstance(hashed_password, str):
-        hashed_bytes = hashed_password.encode('utf-8')
-    else:
-        hashed_bytes = hashed_password
+    try:
+        plain_bytes = plain_password.encode('utf-8') if isinstance(plain_password, str) else plain_password
+        hash_bytes = hashed_password.encode('utf-8') if isinstance(hashed_password, str) else hashed_password
+    except Exception:
+        return False
 
-    return bcrypt.checkpw(plain_bytes, hashed_bytes)
+    # bcryptは72バイトまでしかサポートしないため、超過分は切り捨て
+    if len(plain_bytes) > 72:
+        plain_bytes = plain_bytes[:72]
 
+    try:
+        return bcrypt.checkpw(plain_bytes, hash_bytes)
+    except ValueError:
+        # ハッシュ形式が不正な場合など
+        return False
 
 def get_password_hash(password: str) -> str:
     """パスワードのハッシュ化"""
-    if isinstance(password, str):
-        password_bytes = password.encode('utf-8')
-    else:
-        password_bytes = password
+    password_bytes = password.encode('utf-8') if isinstance(password, str) else password
 
     if len(password_bytes) > 72:
         password_bytes = password_bytes[:72]
 
-    hashed = bcrypt.hashpw(password_bytes, bcrypt.gensalt())
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password_bytes, salt)
     return hashed.decode('utf-8')
 
 def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -> str:

@@ -47,13 +47,15 @@ class User(Base):
 class Post(Base):
     """投稿モデル"""
     __tablename__ = 'posts'
-    
+
     id = Column(Integer, primary_key=True)
     content = Column(Text, nullable=False)
     user_id = Column(String(80), ForeignKey('users.id'), nullable=False)
     image_url = Column(String(255), nullable=True)  # 後方互換性のために残す
     thumbnail_url = Column(String(255), nullable=True)  # 低画質画像URL
     original_image_url = Column(String(255), nullable=True)  # 通常画質画像URL
+    video_url = Column(String(255), nullable=True)  # 動画URL
+    video_duration = Column(Float, nullable=True)  # 動画再生時間（秒）
     shop_id = Column(Integer, ForeignKey('ramen_shops.id'), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
 
@@ -134,7 +136,7 @@ class RamenShop(Base):
 class Visit(Base):
     """訪問記録モデル"""
     __tablename__ = 'visits'
-    
+
     id = Column(Integer, primary_key=True)
     user_id = Column(String(80), ForeignKey('users.id'), nullable=False)
     shop_id = Column(Integer, ForeignKey('ramen_shops.id'), nullable=False)
@@ -142,6 +144,9 @@ class Visit(Base):
     rating = Column(Integer)  # 1-5の評価
     comment = Column(Text)
     image_url = Column(String(255))
+    wait_time_minutes = Column(Integer)  # 待ち時間（分）
+    taste_rating = Column(Integer)  # 味の評価（1-5）
+    flavor_notes = Column(Text)  # 味に関するメモ
     created_at = Column(DateTime, default=datetime.utcnow)
     
     # Relationships

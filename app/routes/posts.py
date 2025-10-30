@@ -13,18 +13,23 @@ from app.utils.auth import get_current_user, get_current_active_user, get_curren
 from app.utils.security import validate_post_content, escape_html
 from app.utils.image_processor import process_image
 from app.utils.image_validation import validate_image_file
+from app.utils.video_validation import validate_video_file
 
 router = APIRouter(tags=["posts"])
 
 
 
 UPLOAD_DIR = "uploads"
+VIDEO_DIR = os.path.join(UPLOAD_DIR, "videos")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
+os.makedirs(VIDEO_DIR, exist_ok=True)
 
 @router.post("/posts", response_model=PostResponse, status_code=status.HTTP_201_CREATED)
 async def create_post(
     content: str = Form(...),
     image: Optional[UploadFile] = File(None),
+    video: Optional[UploadFile] = File(None),
+    video_duration: Optional[float] = Form(None),
     shop_id: Optional[int] = Form(None),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
@@ -52,6 +57,8 @@ async def create_post(
     image_url = None
     thumbnail_url = None
     original_image_url = None
+    video_url = None
+    processed_video_duration: Optional[float] = None
     
     if image:
         # ファイルバリデーション
@@ -82,6 +89,61 @@ async def create_post(
                 detail="画像の処理に失敗しました"
             )
 
+    if video:
+        validation_result = validate_video_file(video)
+        if not validation_result["is_valid"]:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=validation_result["error"]
+            )
+
+        if video_duration is None:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="動画の長さを指定してください"
+            )
+
+        try:
+            processed_video_duration = float(video_duration)
+        except (TypeError, ValueError):
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="動画の長さが不正です"
+            )
+
+        if processed_video_duration <= 0:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="動画の長さが不正です"
+            )
+
+        if processed_video_duration > 10:
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail="動画は10秒以内にしてください"
+            )
+
+        original_filename = os.path.basename(video.filename) if video.filename else "video.mp4"
+        name, ext = os.path.splitext(original_filename)
+        if not ext:
+            ext = ".mp4"
+        safe_name = "".join(c for c in name if c.isalnum() or c in ('-', '_')) or "video"
+        timestamp = int(time.time())
+        video_filename = f"{current_user.id}_{safe_name}_{timestamp}{ext}"
+        video_path = os.path.join(VIDEO_DIR, video_filename)
+
+        try:
+            video.file.seek(0)
+            with open(video_path, "wb") as buffer:
+                shutil.copyfileobj(video.file, buffer)
+        except Exception:
+            raise HTTPException(
+                status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+                detail="動画の保存に失敗しました"
+            )
+
+        video_url = f"/uploads/videos/{video_filename}"
+
     try:
         post = Post(
             content=sanitized_content,
@@ -89,6 +151,8 @@ async def create_post(
             image_url=image_url,  # 後方互換性
             thumbnail_url=thumbnail_url,
             original_image_url=original_image_url,
+            video_url=video_url,
+            video_duration=processed_video_duration,
             shop_id=shop_id
         )
         
@@ -190,6 +254,8 @@ async def get_posts(
                 "image_url": post.image_url,  # 後方互換性
                 "thumbnail_url": post.thumbnail_url,
                 "original_image_url": post.original_image_url,
+                "video_url": post.video_url,
+                "video_duration": post.video_duration,
                 "shop_id": post.shop_id,
                 "shop_name": post.shop.name if post.shop else None,
                 "shop_address": post.shop.address if post.shop else None,
@@ -253,6 +319,8 @@ async def get_post(
         "image_url": post.image_url,  # 後方互換性
         "thumbnail_url": post.thumbnail_url,
         "original_image_url": post.original_image_url,
+        "video_url": post.video_url,
+        "video_duration": post.video_duration,
         "shop_id": post.shop_id,
         "shop_name": post.shop.name if post.shop else None,
         "shop_address": post.shop.address if post.shop else None,
@@ -355,6 +423,8 @@ async def get_user_posts(
                 "image_url": post.image_url,  # 後方互換性
                 "thumbnail_url": post.thumbnail_url,
                 "original_image_url": post.original_image_url,
+                "video_url": post.video_url,
+                "video_duration": post.video_duration,
                 "shop_id": post.shop_id,
                 "shop_name": post.shop.name if post.shop else None,
                 "shop_address": post.shop.address if post.shop else None,
