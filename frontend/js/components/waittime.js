@@ -4,8 +4,11 @@ const WaittimeComponent = {
     state: {
         shops: [],
         isLoading: false,
-        sortBy: 'waitTime', // 'waitTime', 'name', 'distance'
-        selectedPrefecture: 'all'
+        sortBy: 'waitTime', // 'waitTime', 'distance'
+        selectedPrefecture: 'all',
+        currentPage: 1,
+        shopsPerPage: 10, // 1ページあたりの店舗数
+        displayedShopsCount: 10 // 最初に表示する店舗数
     },
 
     // レンダリング
@@ -110,6 +113,10 @@ const WaittimeComponent = {
                 
                 .waittime-badge.medium {
                     background: #ff9800;
+                }
+                
+                .waittime-badge.unknown {
+                    background: #9e9e9e;
                 }
                 
                 .waittime-info {
@@ -257,6 +264,55 @@ const WaittimeComponent = {
                     border-color: #d4a574;
                     color: #1a1a1a;
                 }
+                
+                /* もっと見るボタン用スタイル */
+                .load-more-container {
+                    text-align: center;
+                    margin-top: 20px;
+                    padding: 16px 0;
+                }
+                
+                .load-more-btn {
+                    background: #ffffff;
+                    border: 1px solid #d4a574;
+                    color: #d4a574;
+                    padding: 12px 24px;
+                    border-radius: 24px;
+                    cursor: pointer;
+                    transition: all 0.2s;
+                    font-size: 14px;
+                    font-weight: 500;
+                    min-width: 160px;
+                }
+                
+                .load-more-btn:hover {
+                    background: #d4a574;
+                    color: #ffffff;
+                }
+                
+                .load-more-btn:disabled {
+                    background: #f5f5f5;
+                    border-color: #e0e0e0;
+                    color: #999;
+                    cursor: not-allowed;
+                }
+                
+                .dark-mode .load-more-btn {
+                    background: #2a2a2a;
+                    border-color: #d4a574;
+                    color: #d4a574;
+                }
+                
+                .dark-mode .load-more-btn:hover {
+                    background: #d4a574;
+                    color: #1a1a1a;
+                }
+                
+                .dark-mode .load-more-btn:disabled {
+                    background: #333;
+                    border-color: #444;
+                    color: #666;
+                }
             </style>
             
             <div class="waittime-container">
@@ -269,10 +325,7 @@ const WaittimeComponent = {
                     <button class="sort-btn ${this.state.sortBy === 'waitTime' ? 'active' : ''}" data-sort="waitTime">
                         待ち時間順
                     </button>
-                    <button class="sort-btn ${this.state.sortBy === 'name' ? 'active' : ''}" data-sort="name">
-                        名前順
-                    </button>
-                    <button class="sort-btn ${this.state.sortBy === 'distance' ? 'active' : ''}" data-sort="distance">
+                    <button class="sort-btn ${this.state.sortBy === 'distance' ? 'active' : ''}" data-sort="distance" id="distanceSortBtn">
                         距離順
                     </button>
                 </div>
@@ -307,10 +360,24 @@ const WaittimeComponent = {
         let sortedShops = [...this.state.shops];
         if (this.state.sortBy === 'waitTime') {
             sortedShops.sort((a, b) => a.waitTime - b.waitTime);
-        } else if (this.state.sortBy === 'name') {
-            sortedShops.sort((a, b) => a.name.localeCompare(b.name));
         } else if (this.state.sortBy === 'distance') {
-            sortedShops.sort((a, b) => a.distance - b.distance);
+            // 距離情報がある店舗のみを優先的に表示
+            sortedShops.sort((a, b) => {
+                // 両方とも距離情報がある場合
+                if (a.distance < 9999 && b.distance < 9999) {
+                    return a.distance - b.distance;
+                }
+                // aのみ距離情報がある場合
+                if (a.distance < 9999 && b.distance >= 9999) {
+                    return -1;
+                }
+                // bのみ距離情報がある場合
+                if (a.distance >= 9999 && b.distance < 9999) {
+                    return 1;
+                }
+                // 両方とも距離情報がない場合
+                return a.name.localeCompare(b.name);
+            });
         }
         
         // 都道府県でフィルタリング
@@ -318,9 +385,13 @@ const WaittimeComponent = {
             sortedShops = this.filterShopsByPrefecture(sortedShops, this.state.selectedPrefecture);
         }
 
-        return sortedShops.map(shop => {
+        // 表示する店舗数を制限
+        const displayedShops = sortedShops.slice(0, this.state.displayedShopsCount);
+        
+        let html = displayedShops.map(shop => {
             let badgeClass = 'short';
-            if (shop.waitTime > 30) badgeClass = 'long';
+            if (shop.waitTime === 0) badgeClass = 'unknown';
+            else if (shop.waitTime > 30) badgeClass = 'long';
             else if (shop.waitTime > 15) badgeClass = 'medium';
 
             return `
@@ -328,13 +399,13 @@ const WaittimeComponent = {
                     <div class="waittime-shop-header">
                         <div class="waittime-shop-name">${shop.name}</div>
                         <div class="waittime-badge ${badgeClass}">
-                            ${shop.waitTime}分
+                            ${shop.waitTime > 0 ? shop.waitTime + '分' : '不明'}
                         </div>
                     </div>
                     <div class="waittime-info">
                         <div class="waittime-details">
                             <div class="waittime-detail">
-                                <i class="fas fa-map-marker-alt"></i> ${shop.distance}km
+                                <i class="fas fa-map-marker-alt"></i> ${shop.distance >= 9999 ? '不明' : shop.distance + 'km'}
                             </div>
                             <div class="waittime-detail">
                                 <i class="fas fa-clock"></i> ${shop.lastUpdate}
@@ -347,6 +418,19 @@ const WaittimeComponent = {
                 </div>
             `;
         }).join('');
+        
+        // もっと見るボタンを追加
+        if (sortedShops.length > this.state.displayedShopsCount) {
+            html += `
+                <div class="load-more-container">
+                    <button class="load-more-btn" onclick="WaittimeComponent.loadMoreShops()">
+                        もっと見る (${sortedShops.length - this.state.displayedShopsCount}件)
+                    </button>
+                </div>
+            `;
+        }
+        
+        return html;
     },
 
     // イベントバインド
@@ -355,7 +439,21 @@ const WaittimeComponent = {
         document.querySelectorAll('.sort-btn').forEach(btn => {
             btn.addEventListener('click', (e) => {
                 const sortBy = e.target.dataset.sort;
+                
+                // 距離順ソートのチェック
+                if (sortBy === 'distance') {
+                    // 位置情報が取得できているかチェック
+                    const hasValidDistance = this.state.shops.some(shop => shop.distance < 9999);
+                    if (!hasValidDistance) {
+                        alert('距離情報を利用するには位置情報へのアクセスを許可してください。');
+                        return;
+                    }
+                }
+                
                 this.state.sortBy = sortBy;
+                
+                // 表示数をリセット
+                this.resetDisplayCount();
                 
                 // アクティブ状態を更新
                 document.querySelectorAll('.sort-btn').forEach(b => b.classList.remove('active'));
@@ -387,17 +485,88 @@ const WaittimeComponent = {
         }
         
         try {
-            // APIからデータを取得
+            // 現在地を取得
+            if (navigator.geolocation) {
+                navigator.geolocation.getCurrentPosition(
+                    (position) => {
+                        // 位置情報取得成功後、再度データを読み込む
+                        this.loadWaittimeDataWithLocation(position.coords.latitude, position.coords.longitude);
+                    },
+                    (error) => {
+                        console.error('位置情報の取得に失敗しました:', error);
+                        // 位置情報が取得できない場合は通常のAPIを呼び出す
+                        this.loadWaittimeDataWithoutLocation();
+                    }
+                );
+            } else {
+                // ブラウザが位置情報をサポートしていない場合
+                this.loadWaittimeDataWithoutLocation();
+            }
+        } catch (error) {
+            console.error('待ち時間データの読み込みに失敗しました:', error);
+            this.state.isLoading = false;
+            const listElement = document.getElementById('waittimeList');
+            if (listElement) {
+                listElement.innerHTML = `
+                    <div class="error">
+                        <p>データの読み込みに失敗しました</p>
+                        <button onclick="WaittimeComponent.loadWaittimeData()" style="margin-top: 16px; padding: 8px 16px; background: #d4a574; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                            再読み込み
+                        </button>
+                    </div>
+                `;
+            }
+        }
+    },
+    
+    // 位置情報付きで待ち時間データを読み込み
+    async loadWaittimeDataWithLocation(latitude, longitude) {
+        try {
+            const apiUrl = `/api/v1/ramen/waittime?latitude=${latitude}&longitude=${longitude}`;
+            const data = await API.request(apiUrl);
+            
+            // 取得したデータを状態に保存
+            this.state.shops = data.shops.map(shop => ({
+                id: shop.id,
+                name: shop.name,
+                address: shop.address,
+                waitTime: shop.wait_time || 0,
+                distance: shop.distance || 0,
+                lastUpdate: shop.last_update ? API.formatTime(shop.last_update) : '不明'
+            }));
+            
+            // 表示数をリセット
+            this.resetDisplayCount();
+            
+            this.state.isLoading = false;
+            const updatedHtml = this.renderWaittimeList();
+            const listElement = document.getElementById('waittimeList');
+            if (listElement) {
+                listElement.innerHTML = updatedHtml;
+            }
+        } catch (error) {
+            console.error('待ち時間データの読み込みに失敗しました:', error);
+            this.loadWaittimeDataWithoutLocation();
+        }
+    },
+    
+    // 位置情報なしで待ち時間データを読み込み
+    async loadWaittimeDataWithoutLocation() {
+        try {
             const data = await API.request('/api/v1/ramen/waittime');
             
             // 取得したデータを状態に保存
             this.state.shops = data.shops.map(shop => ({
                 id: shop.id,
                 name: shop.name,
+                address: shop.address,
                 waitTime: shop.wait_time || 0,
-                distance: shop.distance || 0,
+                distance: shop.distance || 9999, // 距離情報がない場合は大きな値を設定
                 lastUpdate: shop.last_update ? API.formatTime(shop.last_update) : '不明'
             }));
+            
+            // 表示数をリセット
+            this.resetDisplayCount();
             
             this.state.isLoading = false;
             const updatedHtml = this.renderWaittimeList();
@@ -459,6 +628,9 @@ const WaittimeComponent = {
     filterByPrefecture(prefecture) {
         this.state.selectedPrefecture = prefecture;
         
+        // 表示数をリセット
+        this.resetDisplayCount();
+        
         // アクティブ状態を更新
         document.querySelectorAll('.prefecture-filter-btn').forEach(btn => {
             btn.classList.remove('active');
@@ -486,6 +658,24 @@ const WaittimeComponent = {
             const address = shop.address || '';
             return address.includes(prefecture);
         });
+    },
+    
+    // もっと見るボタンがクリックされたときの処理
+    loadMoreShops() {
+        // 表示する店舗数を増やす
+        this.state.displayedShopsCount += this.state.shopsPerPage;
+        
+        // 再レンダリング
+        const updatedHtml = this.renderWaittimeList();
+        const listElement = document.getElementById('waittimeList');
+        if (listElement) {
+            listElement.innerHTML = updatedHtml;
+        }
+    },
+    
+    // 表示数をリセットする関数
+    resetDisplayCount() {
+        this.state.displayedShopsCount = this.state.shopsPerPage;
     }
 };
 

@@ -66,13 +66,15 @@ def load_ramen_data_on_startup(db: Session):
     main.pyのstartupイベントで呼び出す。
     """
     if db.query(RamenShop).count() > 0:
-        print("Ramen data already exists. Skipping load.")
+        print("Ramen data already exists. Resetting wait times to 0.")
+        # 既存のデータの待ち時間を0にリセット
+        db.query(RamenShop).update({RamenShop.wait_time: 0})
+        db.commit()
         return
     
     csv_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "ramen.csv")
     
     try:
-        import random
         with open(csv_path, 'r', encoding='utf-8-sig') as file:
             csv_reader = csv.DictReader(file)
             shops_to_add = []
@@ -80,8 +82,8 @@ def load_ramen_data_on_startup(db: Session):
                 try:
                     latitude = float(row['緯度'])
                     longitude = float(row['経度'])
-                    # 待ち時間にランダムな値を設定（0-60分）
-                    wait_time = random.randint(0, 60)
+                    # 待ち時間の初期値は0（データがない状態）として設定
+                    # 実際の待ち時間はチェックイン機能で更新される
                     shops_to_add.append(
                         RamenShop(
                             name=row['店名'],
@@ -91,7 +93,7 @@ def load_ramen_data_on_startup(db: Session):
                             seats=row['座席'],
                             latitude=latitude,
                             longitude=longitude,
-                            wait_time=wait_time
+                            wait_time=0
                         )
                     )
                 except (ValueError, KeyError) as e:

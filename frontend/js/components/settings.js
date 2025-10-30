@@ -439,28 +439,6 @@ const SettingsComponent = {
                     </div>
                 </div>
                 
-                <div class="settings-section">
-                    <div class="settings-section-header">サポート</div>
-                    <div class="settings-item" onclick="SettingsComponent.showHelp()">
-                        <div class="settings-item-left">
-                            <div class="settings-item-title">ヘルプセンター</div>
-                            <div class="settings-item-desc">よくある質問と使い方</div>
-                        </div>
-                        <div class="settings-item-right">
-                            <span class="settings-arrow">›</span>
-                        </div>
-                    </div>
-                    <div class="settings-item" onclick="SettingsComponent.showAbout()">
-                        <div class="settings-item-left">
-                            <div class="settings-item-title">このアプリについて</div>
-                            <div class="settings-item-desc">バージョンとライセンス情報</div>
-                        </div>
-                        <div class="settings-item-right">
-                            <span class="settings-arrow">›</span>
-                        </div>
-                    </div>
-                </div>
-                
                 ${isLoggedIn ? `
                     <div class="danger-zone">
                         <div class="settings-section">
@@ -546,16 +524,6 @@ const SettingsComponent = {
     // 言語設定
     showLanguageSettings() {
         alert('言語設定機能は現在開発中です');
-    },
-
-    // ヘルプ表示
-    showHelp() {
-        window.open('/explanation', '_blank');
-    },
-
-    // アプリについて
-    showAbout() {
-        alert('ラーメンSNS v1.0.0\n© 2023 Ramen SNS Team');
     },
 
     // ログアウト確認
