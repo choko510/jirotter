@@ -66,10 +66,10 @@ const GuideComponent = {
             <h3><i class="fas fa-home"></i> ホーム画面</h3>
             <p>ホーム画面では、他のユーザーが投稿したラーメンのレビューや写真を見ることができます。</p>
             <ul>
-                <li>「おすすめ」タブ: 人気の投稿やおすすめの店舗が表示されます</li>
-                <li>「フォロー中」タブ: フォローしているユーザーの投稿が表示されます</li>
+                <li>「おすすめ」タブ：人気の投稿やおすすめの店舗が表示されます</li>
+                <li>「フォロー中」タブ：フォローしているユーザーの投稿が表示されます</li>
                 <li>投稿をクリックすると詳細を確認できます</li>
-                <li>「いいね」やコメントをすることもできます</li>
+                <li>「いいね」や「コメント」をすることもできます</li>
             </ul>
         `;
         guideContent.appendChild(section1);
@@ -81,10 +81,10 @@ const GuideComponent = {
             <h3><i class="fas fa-map-marked-alt"></i> MAP機能</h3>
             <p>MAP機能では、近くのラーメン店を地図上で確認できます。</p>
             <ul>
-                <li>現在地周辺のラーメン店がマーカーで表示されます</li>
+                <li>現在地周辺のラーメン店がマーカーで表示されます（必ず正しいとは限りません）</li>
                 <li>マーカーをクリックすると店舗情報が表示されます</li>
-                <li>検索機能で特定のエリアや店舗名で検索できます</li>
-                <li>フィルター機能で種類や営業時間で絞り込みができます</li>
+                <li>検索機能で特定のエリアや店舗名で検索することができます</li>
+                <li>フィルター機能で種類や営業時間で絞り込みが可能です</li>
             </ul>
         `;
         guideContent.appendChild(section2);
@@ -96,10 +96,10 @@ const GuideComponent = {
             <h3><i class="fas fa-map-pin"></i> チェックイン機能</h3>
             <p>ラーメン店に訪れた際にチェックインすることができます。</p>
             <ul>
-                <li>店舗を検索してチェックインします</li>
-                <li>写真を撮影して投稿できます</li>
-                <li>レビューを記入して感想を共有できます</li>
-                <li>待ち時間を記録して他のユーザーに情報を提供できます</li>
+                <li>⒈店舗を検索してチェックインすることができます</li>
+                <li>⒉写真を撮影して投稿しましょう</li>
+                <li>⒊レビューを記入して感想を共有しましょう</li>
+                <li>⒋待ち時間を記録して他のユーザーに情報提供が可能</li>
             </ul>
         `;
         guideContent.appendChild(section3);
@@ -109,11 +109,11 @@ const GuideComponent = {
         section4.className = 'guide-section-block';
         section4.innerHTML = `
             <h3><i class="fas fa-stamp"></i> スタンプラリー</h3>
-            <p>スタンプラリー機能でラーメン巡りを楽しむことができます。</p>
+            <p>スタンプラリー機能を使い、全国の二郎系ラーメン巡りを楽しむことができます。</p>
             <ul>
                 <li>様々なテーマのスタンプラリーが開催されています</li>
                 <li>対象店舗を訪れてチェックインするとスタンプが押されます</li>
-                <li>全てのスタンプを集めると特典が得られる場合があります</li>
+                <li>スタンプを集めると特典を得る場合があります</li>
                 <li>達成状況はプロフィールページで確認できます</li>
             </ul>
         `;
@@ -129,7 +129,7 @@ const GuideComponent = {
                 <li>ユーザー名やプロフィール画像を設定できます</li>
                 <li>好きなラーメンの種類やこだわりをプロフィールに記載できます</li>
                 <li>プライバシー設定で公開範囲を調整できます</li>
-                <li>通知設定で受け取る通知を選択できます</li>
+                <li>通知設定で受け取る通知を受け取るか、受け取らないか選択できます</li>
             </ul>
         `;
         guideContent.appendChild(section5);
@@ -176,11 +176,11 @@ const GuideComponent = {
         section1.className = 'guide-section-block';
         section1.innerHTML = `
             <h3><i class="fas fa-ticket"></i> 列の並び方・食券の買い方</h3>
-            <p>主な並び方は以下の通りです（お店によって異なります）</p>
+            <p>主なパターンは以下の通りです（お店によって異なります）</p>
             <ul>
-                <li>列に並んで店内に入る時に食券を買う</li>
-                <li>食券を先に購入してから列に並ぶ</li>
-                <li>列に並んで店員に指示されてから食券を買う</li>
+                <li>・列に並んで店内に入る時に食券を買う</li>
+                <li>・食券を先に購入してから列に並ぶ</li>
+                <li>・列に並んで店員に指示されてから食券を買う</li>
             </ul>
             <div class="guide-note">
                 <i class="fas fa-lightbulb"></i>
@@ -198,7 +198,7 @@ const GuideComponent = {
         section2.className = 'guide-section-block';
         section2.innerHTML = `
             <h3><i class="fas fa-chair"></i> 席に着いたら</h3>
-            <p><i class="fas fa-hand-sparkles"></i> おしぼり、<i class="fas fa-glass-water"></i> 水、<i class="fas fa-chopsticks"></i> 箸、<i class="fas fa-spoon"></i> レンゲはセルフです</p>
+            <p>おしぼり、水、箸、レンゲは自分で取ります</p>
             <p>お店によってこのタイミングで麺の量を聞かれます</p>
             <div class="guide-tip">
                 <i class="fas fa-circle-check"></i>
@@ -252,7 +252,7 @@ const GuideComponent = {
         section4.innerHTML = `
             <h3><i class="fas fa-clock"></i> 食べるスピード</h3>
             <p>二郎には「ロット」という一度に調理・提供するラーメンの単位があります。なので食べるのが遅すぎるとこのロットが乱れてしまいます。</p>
-            <p>早食いをしろ！というわけではありませんが、<span class="guide-highlight"><i class="fas fa-mobile-screen"></i> だらだらスマホを見たり、<i class="fas fa-comments"></i> おしゃべりをして食べるのが遅くなることはやめましょう</span></p>
+            <p>早食いをしろ！というわけではありませんが、<span class="guide-highlight">スマホを長時間見たり、おしゃべりをして食べるのが遅くなることはやめましょう</span></p>
         `;
         guideContent.appendChild(section4);
         

@@ -3,6 +3,7 @@ class Router {
     constructor() {
         this.routes = {};
         this.currentRoute = null;
+        this.previousRoute = null; // 前のルートを保持
         this.init();
     }
 
@@ -71,8 +72,21 @@ class Router {
 
     // ナビゲーション
     navigate(route, params = []) {
+        // 現在のルートを保存
+        this.previousRoute = this.currentRoute;
+        
         const hash = params.length > 0 ? `#${route}/${params.join('/')}` : `#${route}`;
         window.location.hash = hash;
+    }
+    
+    // 前のページに戻る
+    goBack() {
+        if (this.previousRoute) {
+            this.navigate(this.previousRoute);
+        } else {
+            // 前のルートがない場合はホームに戻る
+            this.navigate('timeline');
+        }
     }
 
     // アクティブナビゲーションの更新

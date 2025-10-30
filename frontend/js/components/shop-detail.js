@@ -71,7 +71,7 @@ const ShopDetailComponent = {
             </style>
             <div class="shop-detail-container">
                 <div class="shop-header">
-                    <button class="back-button" onclick="router.navigate('timeline')">
+                    <button class="back-button" onclick="router.goBack()">
                         <i class="fas fa-arrow-left"></i> 戻る
                     </button>
                     <h1 class="shop-name">${this.escapeHtml(this.shopData.name)}</h1>
@@ -365,7 +365,7 @@ const ShopDetailComponent = {
                 <div>
                     <h2>エラー</h2>
                     <p>${message}</p>
-                    <button onclick="router.navigate('timeline')" style="margin-top: 16px; padding: 8px 16px; background: #d4a574; color: white; border: none; border-radius: 4px; cursor: pointer;">ホームに戻る</button>
+                    <button onclick="router.goBack()" style="margin-top: 16px; padding: 8px 16px; background: #d4a574; color: white; border: none; border-radius: 4px; cursor: pointer;">戻る</button>
                 </div>
             </div>
         `;

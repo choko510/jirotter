@@ -804,6 +804,15 @@ document.addEventListener('DOMContentLoaded', function() {
     Theme.init(); // テーマの初期化
     Utils.updateUserProfileUI();
     
+    // ロゴにクリックイベントを追加してホームに遷移
+    const appIcon = document.getElementById('appIcon');
+    if (appIcon) {
+        appIcon.addEventListener('click', function() {
+            router.navigate('timeline');
+        });
+        appIcon.style.cursor = 'pointer'; // カーソルをポインターに変更
+    }
+    
     // アプリケーション起動時にCSRFトークンを取得
     API.getCsrfToken().catch(error => {
         console.error('初期CSRFトークンの取得に失敗しました:', error);
