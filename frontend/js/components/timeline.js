@@ -8,6 +8,7 @@ const TimelineComponent = {
         hasMorePosts: true,
         isLoadingMore: false,
         isRefreshing: false,
+        isPulling: false,
         pullStartY: 0,
         pullCurrentY: 0,
         pullDistance: 0,
@@ -16,7 +17,8 @@ const TimelineComponent = {
         selectedImage: null,
         autoRefreshInterval: null,
         lastRefreshTime: null,
-        selectedShop: null
+        selectedShop: null,
+        manualRefreshTriggered: false
     },
 
     _initialized: false,
@@ -50,7 +52,10 @@ const TimelineComponent = {
     isAutoRefreshEnabled() {
         try {
             const settings = JSON.parse(localStorage.getItem('appSettings'));
-            return settings && settings.autoRefresh === true;
+            if (!settings || typeof settings.autoRefresh === 'undefined') {
+                return true;
+            }
+            return settings.autoRefresh === true;
         } catch (e) {
             console.error("Failed to get auto refresh setting", e);
             return false;
@@ -62,10 +67,10 @@ const TimelineComponent = {
         this.stopAutoRefresh(); // 既存の自動更新をクリア
         
         if (this.isAutoRefreshEnabled()) {
-            // 1分ごとに自動更新
+            // 5分ごとに自動更新
             this.state.autoRefreshInterval = setInterval(() => {
                 this.refreshTimeline();
-            }, 60000);
+            }, 300000);
         }
     },
 
@@ -80,10 +85,20 @@ const TimelineComponent = {
     // タイムラインを更新（新着投稿のみ）
     async refreshTimeline() {
         if (this.state.isLoadingMore || this.state.isRefreshing) return;
-        
+
         this.state.isRefreshing = true;
         this.state.lastRefreshTime = new Date();
-        
+
+        if (this.state.manualRefreshTriggered) {
+            const indicator = document.getElementById('pullToRefreshIndicator');
+            if (indicator) {
+                indicator.classList.add('active');
+                indicator.classList.add('refreshing');
+                indicator.style.height = '60px';
+                indicator.textContent = '更新中...';
+            }
+        }
+
         try {
             // 現在の最新投稿IDを保持
             const latestPostId = this.state.posts.length > 0 ? this.state.posts[0].id : null;
@@ -111,7 +126,173 @@ const TimelineComponent = {
             console.error('Error refreshing timeline:', error);
         } finally {
             this.state.isRefreshing = false;
+
+            if (this.state.manualRefreshTriggered) {
+                const indicator = document.getElementById('pullToRefreshIndicator');
+                if (indicator) {
+                    indicator.textContent = '最新の投稿を取得しました';
+                }
+                setTimeout(() => {
+                    const indicatorElement = document.getElementById('pullToRefreshIndicator');
+                    if (indicatorElement) {
+                        indicatorElement.style.height = '0px';
+                        indicatorElement.classList.remove('refreshing');
+                        indicatorElement.classList.remove('active');
+                        indicatorElement.textContent = '引っ張って更新';
+                    }
+                }, 1000);
+                this.state.manualRefreshTriggered = false;
+            }
         }
+    },
+
+    setupPullToRefresh() {
+        const container = document.getElementById('timelineContainer');
+        const timeline = document.getElementById('timeline');
+        const indicator = document.getElementById('pullToRefreshIndicator');
+
+        if (!container || !timeline || !indicator) return;
+
+        if (container.dataset.pullListenersAttached === 'true') {
+            return;
+        }
+
+        container.dataset.pullListenersAttached = 'true';
+
+        const onPointerStart = (event) => this.onPullStart(event);
+        const onPointerMove = (event) => this.onPullMove(event);
+        const onPointerEnd = (event) => this.onPullEnd(event);
+
+        container.addEventListener('touchstart', onPointerStart, { passive: true });
+        container.addEventListener('touchmove', onPointerMove, { passive: false });
+        container.addEventListener('touchend', onPointerEnd);
+        container.addEventListener('touchcancel', onPointerEnd);
+
+        container.addEventListener('mousedown', onPointerStart);
+        container.addEventListener('mousemove', onPointerMove);
+        container.addEventListener('mouseup', onPointerEnd);
+        container.addEventListener('mouseleave', onPointerEnd);
+    },
+
+    onPullStart(event) {
+        const container = document.getElementById('timelineContainer');
+        if (!container || this.state.isRefreshing) return;
+
+        if (event.type === 'mousedown' && event.button !== 0) {
+            return;
+        }
+
+        if (container.scrollTop > 0) {
+            this.state.isPulling = false;
+            return;
+        }
+
+        const startY = this.getEventClientY(event);
+        if (startY === null) {
+            this.state.isPulling = false;
+            return;
+        }
+
+        this.state.isPulling = true;
+        this.state.pullStartY = startY;
+        this.state.pullCurrentY = startY;
+        this.state.pullDistance = 0;
+
+        const indicator = document.getElementById('pullToRefreshIndicator');
+        if (indicator) {
+            indicator.style.height = '0px';
+            indicator.textContent = '引っ張って更新';
+            indicator.classList.add('active');
+        }
+    },
+
+    onPullMove(event) {
+        if (!this.state.isPulling || this.state.isRefreshing) return;
+
+        const container = document.getElementById('timelineContainer');
+        const timeline = document.getElementById('timeline');
+        const indicator = document.getElementById('pullToRefreshIndicator');
+        if (!container || !timeline || !indicator) return;
+
+        if (container.scrollTop > 0) {
+            this.onPullEnd(event);
+            return;
+        }
+
+        const currentY = this.getEventClientY(event);
+        if (currentY === null) return;
+
+        const distance = Math.max(0, currentY - this.state.pullStartY);
+        if (distance <= 0) return;
+
+        if (event.cancelable) {
+            event.preventDefault();
+        }
+
+        const limitedDistance = Math.min(distance, this.state.maxPullDistance);
+        this.state.pullCurrentY = currentY;
+        this.state.pullDistance = limitedDistance;
+
+        timeline.style.transition = 'none';
+        timeline.style.transform = `translateY(${limitedDistance}px)`;
+
+        indicator.style.height = `${limitedDistance}px`;
+        indicator.textContent = limitedDistance >= this.state.pullThreshold ? '離して更新' : '引っ張って更新';
+    },
+
+    onPullEnd(event) {
+        if (!this.state.isPulling) return;
+
+        this.state.isPulling = false;
+        const shouldRefresh = this.state.pullDistance >= this.state.pullThreshold && !this.state.isRefreshing;
+
+        this.resetPullStyles(shouldRefresh);
+
+        if (shouldRefresh) {
+            this.state.manualRefreshTriggered = true;
+            this.refreshTimeline();
+        }
+    },
+
+    resetPullStyles(keepIndicatorVisible = false) {
+        const timeline = document.getElementById('timeline');
+        const indicator = document.getElementById('pullToRefreshIndicator');
+
+        if (timeline) {
+            timeline.style.transition = 'transform 0.2s ease';
+            timeline.style.transform = 'translateY(0px)';
+            setTimeout(() => {
+                timeline.style.transition = '';
+            }, 200);
+        }
+
+        if (indicator) {
+            if (keepIndicatorVisible) {
+                indicator.style.height = '60px';
+                indicator.classList.add('active');
+                indicator.textContent = '更新中...';
+            } else {
+                indicator.style.height = '0px';
+                indicator.classList.remove('active');
+                indicator.classList.remove('refreshing');
+                indicator.textContent = '引っ張って更新';
+            }
+        }
+
+        this.state.pullDistance = 0;
+    },
+
+    getEventClientY(event) {
+        if (event.touches && event.touches.length > 0) {
+            return event.touches[0].clientY;
+        }
+        if (event.changedTouches && event.changedTouches.length > 0) {
+            return event.changedTouches[0].clientY;
+        }
+        if (typeof event.clientY === 'number') {
+            return event.clientY;
+        }
+        return null;
     },
 
     // 新着投稿をDOMの先頭に追加
@@ -183,7 +364,28 @@ const TimelineComponent = {
                 .char-counter { color: #666; font-size: 14px; margin-right: 12px; }
                 .char-counter.warning { color: #ff9800; }
                 .char-counter.error { color: #f44336; }
-                .timeline-container { position: relative; overflow-y: auto; height: calc(100vh - 180px); }
+                .timeline-container { position: relative; overflow-y: auto; height: calc(100vh - 180px); overscroll-behavior: contain; }
+                .pull-to-refresh-indicator {
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    color: #666;
+                    font-size: 14px;
+                    height: 0;
+                    transition: height 0.2s ease, opacity 0.2s ease;
+                    opacity: 0;
+                    overflow: hidden;
+                }
+                .pull-to-refresh-indicator.active {
+                    opacity: 1;
+                }
+                .pull-to-refresh-indicator.refreshing {
+                    opacity: 1;
+                    font-weight: 600;
+                }
+                .dark-mode .pull-to-refresh-indicator {
+                    color: #aaa;
+                }
                 .post-card { padding: 16px; border-bottom: 1px solid #e0e0e0; transition: background 0.2s; }
                 .post-card:hover { background: #f9f9f9; }
                 .post-header { display: flex; gap: 12px; margin-bottom: 12px; cursor: pointer; }
@@ -417,6 +619,7 @@ const TimelineComponent = {
             `}
 
             <div class="timeline-container" id="timelineContainer">
+                <div class="pull-to-refresh-indicator" id="pullToRefreshIndicator">引っ張って更新</div>
                 <div class="timeline" id="timeline"></div>
             </div>
         `;
@@ -474,9 +677,12 @@ const TimelineComponent = {
             });
             imageUpload.addEventListener('change', (event) => this.handleImageSelect(event));
         }
-        
+
         // GPS権限を確認
         this.checkGPSPermission();
+
+        // プル・トゥ・リフレッシュ設定
+        this.setupPullToRefresh();
     },
 
     debounce(func, delay) {
