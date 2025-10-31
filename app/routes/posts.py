@@ -1,6 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query, File, UploadFile, Form
 from sqlalchemy.orm import Session, joinedload
-from sqlalchemy import desc, func
+from sqlalchemy import desc, func, or_
 from typing import Dict, Any, List, Optional
 import shutil
 import os
@@ -174,11 +174,22 @@ async def get_posts(
     page: int = Query(1, ge=1, description="ページ番号"),
     per_page: int = Query(20, ge=1, le=100, description="1ページあたりの投稿数"),
     timeline_type: str = Query("recommend", description="タイムラインの種類: recommend または following"),
+    keyword: Optional[str] = Query(None, description="投稿本文に含まれるキーワード"),
+    shop_id: Optional[int] = Query(None, ge=1, description="紐づく店舗ID"),
     current_user: Optional[User] = Depends(get_current_user_optional),
     db: Session = Depends(get_db)
 ):
     """投稿一覧取得エンドポイント"""
     try:
+        # 基本のクエリを準備
+        posts_query = db.query(Post).options(
+            joinedload(Post.author),
+            joinedload(Post.replies).joinedload(Reply.author),
+            joinedload(Post.shop)
+        )
+
+        filter_conditions = []
+
         # フォロー中のタイムラインを取得する場合
         if timeline_type == "following":
             if not current_user:
@@ -186,40 +197,62 @@ async def get_posts(
                     status_code=status.HTTP_401_UNAUTHORIZED,
                     detail="フォロー中のタイムラインを表示するにはログインが必要です"
                 )
-            
+
             # フォロー中のユーザーIDリストを取得
             following_ids = db.query(Follow.followed_id).filter(
                 Follow.follower_id == current_user.id
             ).all()
             following_ids = [fid[0] for fid in following_ids]
-            
+
             # 自分自身も含める
             following_ids.append(current_user.id)
-            
-            # フォロー中のユーザーの投稿を取得
-            posts_query = db.query(Post).filter(
-                Post.user_id.in_(following_ids)
-            ).options(
-                joinedload(Post.author),
-                joinedload(Post.replies).joinedload(Reply.author),
-                joinedload(Post.shop)
+
+            filter_conditions.append(Post.user_id.in_(following_ids))
+
+        shop = None
+        or_conditions = []
+
+        if shop_id is not None:
+            shop = db.query(RamenShop).filter(RamenShop.id == shop_id).first()
+            if not shop:
+                raise HTTPException(
+                    status_code=status.HTTP_404_NOT_FOUND,
+                    detail="指定されたラーメン店が見つかりません"
+                )
+            or_conditions.append(Post.shop_id == shop_id)
+
+        # 店舗名や指定キーワードで投稿本文を検索
+        text_terms = []
+        if keyword:
+            cleaned_keyword = keyword.strip()
+            if cleaned_keyword:
+                text_terms.append(cleaned_keyword)
+
+        if shop and shop.name:
+            shop_name = shop.name.strip()
+            if shop_name:
+                text_terms.append(shop_name)
+
+        if text_terms:
+            unique_terms = []
+            seen_terms = set()
+            for term in text_terms:
+                if term not in seen_terms:
+                    seen_terms.add(term)
+                    unique_terms.append(term)
+
+            or_conditions.extend(
+                Post.content.ilike(f"%{term}%") for term in unique_terms
             )
-            
-            total = db.query(Post).filter(
-                Post.user_id.in_(following_ids)
-            ).count()
-        else:
-            # おすすめタイムライン（全投稿）
-            total = db.query(Post).count()
-            
-            # N+1問題を解決するためにeager loadingを使用
-            posts_query = db.query(Post).options(
-                joinedload(Post.author),
-                joinedload(Post.replies).joinedload(Reply.author),
-                joinedload(Post.shop)
-            )
-        
-        pages = (total + per_page - 1) // per_page
+
+        if or_conditions:
+            filter_conditions.append(or_(*or_conditions))
+
+        if filter_conditions:
+            posts_query = posts_query.filter(*filter_conditions)
+
+        total = posts_query.count()
+        pages = (total + per_page - 1) // per_page if total else 0
 
         posts = posts_query.order_by(desc(Post.created_at)).offset(
             (page - 1) * per_page
