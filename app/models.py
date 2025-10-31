@@ -14,11 +14,16 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     bio = Column(Text, nullable=True)
     profile_image_url = Column(String(255), nullable=True)
+    points = Column(Integer, default=0, nullable=False)
+    internal_score = Column(Integer, default=100, nullable=False)
+    rank = Column(String(80), nullable=False, default='味覚ビギナー')
+    account_status = Column(String(20), nullable=False, default='active')
 
     # Relationships
     posts = relationship('Post', backref='author', lazy=True, cascade='all, delete-orphan')
     likes = relationship('Like', backref='user', lazy=True, cascade='all, delete-orphan')
     replies = relationship('Reply', backref='author', lazy=True, cascade='all, delete-orphan')
+    point_logs = relationship('UserPointLog', backref='user', lazy=True, cascade='all, delete-orphan')
 
     following = relationship(
         'Follow',
@@ -156,7 +161,7 @@ class Visit(Base):
 class Report(Base):
     """通報モデル"""
     __tablename__ = 'reports'
-    
+
     id = Column(Integer, primary_key=True)
     post_id = Column(Integer, ForeignKey('posts.id'), nullable=False)
     reporter_id = Column(String(80), ForeignKey('users.id'), nullable=False)
@@ -167,6 +172,19 @@ class Report(Base):
     # Relationships
     post = relationship('Post', backref='reports')
     reporter = relationship('User', backref='reports_made')
+
+
+class UserPointLog(Base):
+    """ユーザーポイント履歴モデル"""
+    __tablename__ = 'user_point_logs'
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(String(80), ForeignKey('users.id'), nullable=False, index=True)
+    delta = Column(Integer, nullable=False)
+    event_type = Column(String(50), nullable=False)
+    reason = Column(String(255), nullable=False)
+    context = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
 
 
 class Checkin(Base):

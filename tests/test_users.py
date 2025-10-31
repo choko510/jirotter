@@ -18,6 +18,11 @@ def test_get_user_profile(test_client, test_db):
     assert data["username"] == "uprofile" # 初期状態ではusernameはidと同じ
     assert "followers_count" in data
     assert "following_count" in data
+    assert data["points"] == 0
+    assert data["rank"] == "味覚ビギナー"
+    assert data["account_status"] == "active"
+    assert "rank_color" in data
+    assert "status_message" in data
 
 def test_get_nonexistent_user_profile(test_client, test_db):
     """存在しないユーザープロフィールの取得テスト"""
@@ -72,8 +77,10 @@ def test_follow_and_unfollow_user(test_client, test_db):
 
     # フォロー状態の確認
     response = test_client.get("/api/v1/users/ufollowed", headers=headers)
-    assert response.json()["is_following"] is True
-    assert response.json()["followers_count"] == 1
+    profile_after_follow = response.json()
+    assert profile_after_follow["is_following"] is True
+    assert profile_after_follow["followers_count"] == 1
+    assert profile_after_follow["points"] == 20
 
     # アンフォロー
     response = test_client.post("/api/v1/users/ufollowed/unfollow", headers=headers)
@@ -81,8 +88,10 @@ def test_follow_and_unfollow_user(test_client, test_db):
 
     # アンフォロー状態の確認
     response = test_client.get("/api/v1/users/ufollowed", headers=headers)
-    assert response.json()["is_following"] is False
-    assert response.json()["followers_count"] == 0
+    profile_after_unfollow = response.json()
+    assert profile_after_unfollow["is_following"] is False
+    assert profile_after_unfollow["followers_count"] == 0
+    assert profile_after_unfollow["points"] == 20
 
 
 def test_follow_self(test_client, test_db):

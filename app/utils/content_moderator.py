@@ -4,7 +4,8 @@ import asyncio
 from typing import Dict, List, Optional, Tuple
 import aiohttp
 from sqlalchemy.orm import Session
-from app.models import Post, Report
+from app.models import Post, Report, User
+from app.utils.scoring import apply_penalty
 
 class ContentModerator:
     """AIによるコンテンツ審査を行うクラス"""
@@ -119,6 +120,20 @@ class ContentModerator:
         # 違反と判断された場合
         if analysis.get("is_violation", False) and analysis.get("confidence", 0) > 0.7:
             try:
+                offender = db.query(User).filter(User.id == post.user_id).first()
+                if offender:
+                    apply_penalty(
+                        db,
+                        offender,
+                        "content_violation",
+                        analysis.get("severity", "medium") or "medium",
+                        metadata={
+                            "post_id": post_id,
+                            "reported_reason": reason,
+                        },
+                        override_reason=analysis.get("reason"),
+                    )
+
                 # 投稿を削除
                 db.delete(post)
                 db.commit()

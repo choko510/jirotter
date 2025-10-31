@@ -17,6 +17,7 @@ from app.schemas import (
     WaitTimeReportRequest, WaitTimeReportResponse
 )
 from app.utils.auth import get_current_active_user
+from app.utils.scoring import award_points, ensure_user_can_contribute
 
 router = APIRouter(tags=["checkin"])
 
@@ -331,6 +332,7 @@ async def create_checkin(
     db: Session = Depends(get_db)
 ):
     """チェックインを作成"""
+    ensure_user_can_contribute(current_user)
     # 店舗の存在確認
     shop = db.query(RamenShop).filter(RamenShop.id == checkin_data.shop_id).first()
     if not shop:
@@ -411,7 +413,18 @@ async def create_checkin(
     if checkin_data.wait_time_reported is not None:
         shop.wait_time = checkin_data.wait_time_reported
         shop.last_update = datetime.utcnow()
-    
+
+    award_points(
+        db,
+        current_user,
+        "checkin",
+        metadata={
+            "shop_id": shop.id,
+            "checkin_id": checkin.id,
+            "wait_time_reported": checkin_data.wait_time_reported,
+        },
+    )
+
     db.commit()  # 検証ログと店舗情報をコミット
     
     # レスポンスを作成するために必要な情報を追加
@@ -517,6 +530,7 @@ async def report_wait_time(
     db: Session = Depends(get_db)
 ):
     """待ち時間を報告"""
+    ensure_user_can_contribute(current_user)
     # 店舗の存在確認
     shop = db.query(RamenShop).filter(RamenShop.id == report_data.shop_id).first()
     if not shop:
@@ -542,6 +556,18 @@ async def report_wait_time(
             checkin.wait_time_reported = report_data.wait_time
             checkin.wait_time_confidence = report_data.confidence
     
+    award_points(
+        db,
+        current_user,
+        "waittime_report",
+        metadata={
+            "shop_id": shop.id,
+            "previous_wait_time": previous_wait_time,
+            "reported_wait_time": report_data.wait_time,
+            "confidence": report_data.confidence,
+        },
+    )
+
     db.commit()
     
     return WaitTimeReportResponse(

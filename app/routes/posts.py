@@ -14,6 +14,7 @@ from app.utils.security import validate_post_content, escape_html
 from app.utils.image_processor import process_image
 from app.utils.image_validation import validate_image_file
 from app.utils.video_validation import validate_video_file
+from app.utils.scoring import award_points, ensure_user_can_contribute
 
 router = APIRouter(tags=["posts"])
 
@@ -35,6 +36,7 @@ async def create_post(
     db: Session = Depends(get_db)
 ):
     """投稿作成エンドポイント"""
+    ensure_user_can_contribute(current_user)
     # 投稿内容のバリデーションとサニタイズ
     errors, sanitized_content = validate_post_content(content)
     if errors:
@@ -155,11 +157,35 @@ async def create_post(
             video_duration=processed_video_duration,
             shop_id=shop_id
         )
-        
+
         db.add(post)
+        db.flush()
+
+        if video_url:
+            award_points(
+                db,
+                current_user,
+                "video_post",
+                metadata={
+                    "post_id": post.id,
+                    "shop_id": shop_id,
+                    "video_duration": processed_video_duration,
+                },
+            )
+        elif original_image_url or thumbnail_url:
+            award_points(
+                db,
+                current_user,
+                "image_post",
+                metadata={
+                    "post_id": post.id,
+                    "shop_id": shop_id,
+                },
+            )
+
         db.commit()
         db.refresh(post)
-        
+
         return post
         
     except Exception as e:

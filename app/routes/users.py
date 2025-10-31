@@ -12,6 +12,7 @@ from app.schemas import UserProfileResponse, UserResponse, UserUpdate
 from app.utils.auth import get_current_user, get_current_user_optional
 from app.utils.image_validation import validate_image_file
 from app.utils.image_processor import process_profile_icon
+from app.utils.scoring import award_points, get_rank_snapshot, get_status_message
 
 router = APIRouter(tags=["users"])
 
@@ -32,6 +33,8 @@ async def get_user_profile(
     followers_count = user.followers.count()
     following_count = user.following.count()
     posts_count = db.query(Post.id).filter(Post.user_id == user.id).count()
+    rank_snapshot = get_rank_snapshot(user)
+    status_message = get_status_message(user)
 
     is_following = False
     if current_user:
@@ -47,6 +50,18 @@ async def get_user_profile(
         created_at=user.created_at,
         bio=user.bio,
         profile_image_url=user.profile_image_url,
+        points=user.points,
+        rank=user.rank,
+        internal_score=user.internal_score,
+        account_status=user.account_status,
+        rank_color=rank_snapshot["rank_color"],
+        rank_description=rank_snapshot["rank_description"],
+        next_rank_name=rank_snapshot["next_rank_name"],
+        next_rank_points=rank_snapshot["next_rank_points"],
+        points_to_next_rank=rank_snapshot["points_to_next_rank"],
+        current_rank_floor=rank_snapshot["current_rank_floor"],
+        rank_progress_percentage=rank_snapshot["rank_progress_percentage"],
+        status_message=status_message,
         followers_count=followers_count,
         following_count=following_count,
         posts_count=posts_count,
@@ -82,6 +97,8 @@ async def update_user_profile(
     followers_count = current_user.followers.count()
     following_count = current_user.following.count()
     posts_count = db.query(Post.id).filter(Post.user_id == current_user.id).count()
+    rank_snapshot = get_rank_snapshot(current_user)
+    status_message = get_status_message(current_user)
 
     return UserProfileResponse(
         id=current_user.id,
@@ -90,6 +107,18 @@ async def update_user_profile(
         created_at=current_user.created_at,
         bio=current_user.bio,
         profile_image_url=current_user.profile_image_url,
+        points=current_user.points,
+        rank=current_user.rank,
+        internal_score=current_user.internal_score,
+        account_status=current_user.account_status,
+        rank_color=rank_snapshot["rank_color"],
+        rank_description=rank_snapshot["rank_description"],
+        next_rank_name=rank_snapshot["next_rank_name"],
+        next_rank_points=rank_snapshot["next_rank_points"],
+        points_to_next_rank=rank_snapshot["points_to_next_rank"],
+        current_rank_floor=rank_snapshot["current_rank_floor"],
+        rank_progress_percentage=rank_snapshot["rank_progress_percentage"],
+        status_message=status_message,
         followers_count=followers_count,
         following_count=following_count,
         posts_count=posts_count,
@@ -163,6 +192,14 @@ async def follow_user(
 
     new_follow = Follow(follower_id=current_user.id, followed_id=user_to_follow.id)
     db.add(new_follow)
+
+    award_points(
+        db,
+        user_to_follow,
+        "new_follower",
+        metadata={"follower_id": current_user.id},
+    )
+
     db.commit()
 
 @router.post("/users/{user_id}/unfollow", status_code=status.HTTP_204_NO_CONTENT)

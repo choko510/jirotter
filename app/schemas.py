@@ -32,13 +32,17 @@ class UserLogin(BaseModel):
 
 class UserResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-    
+
     id: str
     username: str
     email: EmailStr
     created_at: datetime
     bio: Optional[str] = None
     profile_image_url: Optional[str] = None
+    points: int
+    rank: str
+    internal_score: int
+    account_status: str
 
 class UserUpdate(BaseModel):
     username: Optional[str] = None
@@ -80,6 +84,14 @@ class UserProfileResponse(UserResponse):
     following_count: int
     posts_count: int
     is_following: bool # Indicates if the current user is following this user
+    rank_color: str
+    rank_description: str
+    next_rank_name: Optional[str] = None
+    next_rank_points: Optional[int] = None
+    points_to_next_rank: Optional[int] = None
+    current_rank_floor: int
+    rank_progress_percentage: float
+    status_message: str
 
 class Token(BaseModel):
     access_token: str

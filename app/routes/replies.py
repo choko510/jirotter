@@ -7,6 +7,7 @@ from app.models import Reply, Post, User
 from app.schemas import ReplyCreate, ReplyResponse
 from app.utils.auth import get_current_active_user
 from app.utils.security import validate_reply_content, escape_html
+from app.utils.scoring import ensure_user_can_contribute
 
 router = APIRouter(tags=["replies"])
 
@@ -18,6 +19,7 @@ async def create_reply_for_post(
     current_user: User = Depends(get_current_active_user)
 ):
     """返信作成エンドポイント"""
+    ensure_user_can_contribute(current_user)
     post = db.query(Post).filter(Post.id == post_id).first()
     if not post:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")

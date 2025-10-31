@@ -58,6 +58,121 @@ const ProfileComponent = {
                     flex: 1;
                 }
 
+                .profile-rank-card {
+                    border-radius: 18px;
+                    border: 1px solid #e5e7eb;
+                    background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+                    padding: 18px 20px;
+                    box-shadow: 0 18px 32px rgba(15, 23, 42, 0.1);
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                }
+
+                .rank-card-header {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 12px;
+                }
+
+                .rank-badge {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 6px 14px;
+                    border-radius: 999px;
+                    color: #ffffff;
+                    font-weight: 700;
+                    letter-spacing: 0.08em;
+                    font-size: 12px;
+                    text-transform: uppercase;
+                    box-shadow: 0 12px 22px rgba(15, 23, 42, 0.16);
+                }
+
+                .rank-points {
+                    font-size: 20px;
+                    font-weight: 700;
+                    color: #1f2933;
+                }
+
+                .rank-description {
+                    margin: 0;
+                    color: #4b5563;
+                    font-size: 14px;
+                    line-height: 1.6;
+                }
+
+                .rank-progress-bar {
+                    position: relative;
+                    width: 100%;
+                    height: 10px;
+                    background: #e5e7eb;
+                    border-radius: 999px;
+                    overflow: hidden;
+                }
+
+                .rank-progress-bar-fill {
+                    height: 100%;
+                    border-radius: 999px;
+                    transition: width 0.3s ease;
+                }
+
+                .rank-progress-label {
+                    font-size: 12px;
+                    color: #6b7280;
+                    letter-spacing: 0.04em;
+                }
+
+                .rank-score-chip {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 8px;
+                    padding: 6px 12px;
+                    border-radius: 999px;
+                    background: rgba(55, 65, 81, 0.08);
+                    color: #374151;
+                    font-size: 12px;
+                    width: max-content;
+                }
+
+                .rank-score-chip strong {
+                    font-size: 16px;
+                    color: #111827;
+                }
+
+                .rank-status {
+                    font-size: 13px;
+                    line-height: 1.6;
+                    padding: 10px 12px;
+                    border-radius: 12px;
+                    border: 1px solid transparent;
+                }
+
+                .rank-status.rank-status--active {
+                    background: rgba(34, 197, 94, 0.08);
+                    border-color: rgba(34, 197, 94, 0.2);
+                    color: #047857;
+                }
+
+                .rank-status.rank-status--warning {
+                    background: rgba(251, 191, 36, 0.1);
+                    border-color: rgba(251, 191, 36, 0.3);
+                    color: #92400e;
+                }
+
+                .rank-status.rank-status--restricted {
+                    background: rgba(248, 113, 113, 0.1);
+                    border-color: rgba(248, 113, 113, 0.3);
+                    color: #b91c1c;
+                }
+
+                .rank-status.rank-status--banned {
+                    background: rgba(239, 68, 68, 0.15);
+                    border-color: rgba(239, 68, 68, 0.4);
+                    color: #7f1d1d;
+                }
+
                 .profile-name {
                     font-size: 26px;
                     font-weight: 700;
@@ -363,6 +478,37 @@ const ProfileComponent = {
                     color: #f9fafb;
                 }
 
+                .dark-mode .profile-rank-card {
+                    background: linear-gradient(135deg, rgba(17, 24, 39, 0.95) 0%, rgba(31, 41, 55, 0.95) 100%);
+                    border-color: #1f2937;
+                    box-shadow: 0 22px 40px rgba(0, 0, 0, 0.55);
+                }
+
+                .dark-mode .rank-points {
+                    color: #f9fafb;
+                }
+
+                .dark-mode .rank-description {
+                    color: #d1d5db;
+                }
+
+                .dark-mode .rank-progress-bar {
+                    background: #374151;
+                }
+
+                .dark-mode .rank-progress-label {
+                    color: #9ca3af;
+                }
+
+                .dark-mode .rank-score-chip {
+                    background: rgba(249, 250, 251, 0.1);
+                    color: #e5e7eb;
+                }
+
+                .dark-mode .rank-score-chip strong {
+                    color: #fef3c7;
+                }
+
                 .dark-mode .profile-id {
                     color: #9ca3af;
                 }
@@ -594,7 +740,24 @@ const ProfileComponent = {
         }
 
         if (this.state.user) {
-            const { id, username, followers_count, following_count, posts_count, is_following } = this.state.user;
+            const {
+                id,
+                username,
+                followers_count,
+                following_count,
+                posts_count,
+                is_following,
+                rank,
+                points,
+                rank_color,
+                rank_description,
+                next_rank_name,
+                points_to_next_rank,
+                rank_progress_percentage,
+                status_message,
+                internal_score,
+                account_status
+            } = this.state.user;
 
             const userCookie = API.getCookie('user');
             let currentUser = null;
@@ -636,6 +799,39 @@ const ProfileComponent = {
             bioDiv.className = 'profile-bio';
             bioDiv.textContent = this.state.user.bio || '';
             infoDiv.appendChild(bioDiv);
+
+            const badgeColor = rank_color || '#f59e0b';
+            const progress = Math.min(100, Math.max(0, Number(rank_progress_percentage) || 0));
+            const progressDisplay = Math.round(progress);
+            const sanitizedRankName = API.escapeHtml(rank || 'ランク未設定');
+            const sanitizedRankDescription = API.escapeHtml(rank_description || 'ラーメン体験を共有してポイントを貯めましょう！');
+            const sanitizedStatusMessage = API.escapeHtml(status_message || '');
+            const normalizedStatus = (account_status || 'active').toLowerCase();
+            const statusClass = `rank-status rank-status--${normalizedStatus}`;
+            const sanitizedNextRankName = API.escapeHtml(next_rank_name || '');
+            const nextRankLabel = next_rank_name
+                ? `次のランク「${sanitizedNextRankName}」まであと${points_to_next_rank ?? 0}pt`
+                : '最高ランクに到達しています！';
+
+            const rankCard = document.createElement('div');
+            rankCard.className = 'profile-rank-card';
+            rankCard.innerHTML = `
+                <div class="rank-card-header">
+                    <span class="rank-badge" style="background:${badgeColor};">${sanitizedRankName}</span>
+                    <span class="rank-points">${points ?? 0} pt</span>
+                </div>
+                <p class="rank-description">${sanitizedRankDescription}</p>
+                <div class="rank-progress-bar">
+                    <div class="rank-progress-bar-fill" style="width:${progress}%; background:${badgeColor};"></div>
+                </div>
+                <div class="rank-progress-label">進捗 ${progressDisplay}% ・ ${nextRankLabel}</div>
+                <div class="rank-score-chip">
+                    <span>コミュニティスコア</span>
+                    <strong>${internal_score ?? 0}</strong>
+                </div>
+                <div class="${statusClass}">${sanitizedStatusMessage}</div>
+            `;
+            infoDiv.appendChild(rankCard);
 
             const statsDiv = document.createElement('div');
             statsDiv.className = 'profile-stats';
