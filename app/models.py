@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Float, Boolean, JSON, Index
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Float, Boolean, JSON, Index, UniqueConstraint
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
@@ -14,11 +14,17 @@ class User(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     bio = Column(Text, nullable=True)
     profile_image_url = Column(String(255), nullable=True)
+    points = Column(Integer, default=0, nullable=False)
+    internal_score = Column(Integer, default=100, nullable=False)
+    rank = Column(String(80), nullable=False, default='味覚ビギナー')
+    account_status = Column(String(20), nullable=False, default='active')
 
     # Relationships
     posts = relationship('Post', backref='author', lazy=True, cascade='all, delete-orphan')
     likes = relationship('Like', backref='user', lazy=True, cascade='all, delete-orphan')
     replies = relationship('Reply', backref='author', lazy=True, cascade='all, delete-orphan')
+    point_logs = relationship('UserPointLog', backref='user', lazy=True, cascade='all, delete-orphan')
+    titles = relationship('UserTitle', backref='user', lazy=True, cascade='all, delete-orphan')
 
     following = relationship(
         'Follow',
@@ -156,7 +162,7 @@ class Visit(Base):
 class Report(Base):
     """通報モデル"""
     __tablename__ = 'reports'
-    
+
     id = Column(Integer, primary_key=True)
     post_id = Column(Integer, ForeignKey('posts.id'), nullable=False)
     reporter_id = Column(String(80), ForeignKey('users.id'), nullable=False)
@@ -167,6 +173,39 @@ class Report(Base):
     # Relationships
     post = relationship('Post', backref='reports')
     reporter = relationship('User', backref='reports_made')
+
+
+class UserPointLog(Base):
+    """ユーザーポイント履歴モデル"""
+    __tablename__ = 'user_point_logs'
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(String(80), ForeignKey('users.id'), nullable=False, index=True)
+    delta = Column(Integer, nullable=False)
+    event_type = Column(String(50), nullable=False)
+    reason = Column(String(255), nullable=False)
+    context = Column(JSON, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+
+class UserTitle(Base):
+    """ユーザーが獲得した称号を管理するモデル"""
+    __tablename__ = 'user_titles'
+    __table_args__ = (
+        UniqueConstraint('user_id', 'title_key', name='uq_user_titles_user_key'),
+        Index('ix_user_titles_user_id', 'user_id'),
+    )
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(String(80), ForeignKey('users.id'), nullable=False)
+    title_key = Column(String(80), nullable=False)
+    title_name = Column(String(120), nullable=False)
+    title_description = Column(String(255), nullable=False)
+    category = Column(String(40), nullable=False)
+    icon = Column(String(16), nullable=True)
+    theme_color = Column(String(20), nullable=False, default='#f97316')
+    prestige = Column(Integer, nullable=False, default=0)
+    earned_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 
 class Checkin(Base):

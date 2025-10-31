@@ -1,4 +1,8 @@
 import pytest
+from datetime import datetime
+
+from app.models import Checkin, RamenShop, User, UserTitle
+from app.utils.scoring import award_points
 
 # ユーザーを作成するためのヘルパー関数
 def create_user(test_client, user_id, email, password="password123!"):
@@ -18,6 +22,11 @@ def test_get_user_profile(test_client, test_db):
     assert data["username"] == "uprofile" # 初期状態ではusernameはidと同じ
     assert "followers_count" in data
     assert "following_count" in data
+    assert data["points"] == 0
+    assert data["rank"] == "味覚ビギナー"
+    assert data["account_status"] == "active"
+    assert "rank_color" in data
+    assert "status_message" in data
 
 def test_get_nonexistent_user_profile(test_client, test_db):
     """存在しないユーザープロフィールの取得テスト"""
@@ -72,8 +81,10 @@ def test_follow_and_unfollow_user(test_client, test_db):
 
     # フォロー状態の確認
     response = test_client.get("/api/v1/users/ufollowed", headers=headers)
-    assert response.json()["is_following"] is True
-    assert response.json()["followers_count"] == 1
+    profile_after_follow = response.json()
+    assert profile_after_follow["is_following"] is True
+    assert profile_after_follow["followers_count"] == 1
+    assert profile_after_follow["points"] == 20
 
     # アンフォロー
     response = test_client.post("/api/v1/users/ufollowed/unfollow", headers=headers)
@@ -81,8 +92,10 @@ def test_follow_and_unfollow_user(test_client, test_db):
 
     # アンフォロー状態の確認
     response = test_client.get("/api/v1/users/ufollowed", headers=headers)
-    assert response.json()["is_following"] is False
-    assert response.json()["followers_count"] == 0
+    profile_after_unfollow = response.json()
+    assert profile_after_unfollow["is_following"] is False
+    assert profile_after_unfollow["followers_count"] == 0
+    assert profile_after_unfollow["points"] == 20
 
 
 def test_follow_self(test_client, test_db):
@@ -122,3 +135,78 @@ def test_get_followers_and_following(test_client, test_db):
     assert response.status_code == 200
     assert len(following) == 1
     assert following[0]["id"] == "uff2"
+
+
+def test_title_awarded_on_checkin(test_client, test_db):
+    create_user(test_client, "utitle", "utitle@example.com")
+    user = test_db.query(User).filter(User.id == "utitle").first()
+
+    shop = RamenShop(
+        name="テストラーメン",
+        address="テスト住所",
+        latitude=35.0,
+        longitude=135.0,
+    )
+    test_db.add(shop)
+    test_db.commit()
+    test_db.refresh(shop)
+
+    checkin = Checkin(
+        user_id=user.id,
+        shop_id=shop.id,
+        checkin_date=datetime.utcnow(),
+    )
+    test_db.add(checkin)
+    test_db.commit()
+
+    award_points(
+        test_db,
+        user,
+        "checkin",
+        metadata={"shop_id": shop.id, "checkin_id": checkin.id},
+    )
+    test_db.commit()
+
+    titles = test_db.query(UserTitle).filter(UserTitle.user_id == user.id).all()
+    assert any(title.title_key == "first_checkin" for title in titles)
+
+    response = test_client.get("/api/v1/users/utitle")
+    assert response.status_code == 200
+    data = response.json()
+    unlocked_titles = [t for t in data["titles"] if t["unlocked"]]
+    assert any(t["key"] == "first_checkin" for t in unlocked_titles)
+    assert data["featured_title"]["key"] == "first_checkin"
+
+
+def test_user_rankings_endpoint(test_client, test_db):
+    user1 = create_user(test_client, "urank1", "urank1@example.com")
+    user2 = create_user(test_client, "urank2", "urank2@example.com")
+    user3 = create_user(test_client, "urank3", "urank3@example.com")
+
+    db_user1 = test_db.query(User).filter(User.id == "urank1").first()
+    db_user2 = test_db.query(User).filter(User.id == "urank2").first()
+    db_user3 = test_db.query(User).filter(User.id == "urank3").first()
+
+    db_user1.points = 320
+    db_user2.points = 210
+    db_user3.points = 90
+    test_db.commit()
+
+    response = test_client.get(
+        "/api/v1/users/rankings?limit=5",
+        headers={"Authorization": f"Bearer {user1['access_token']}"}
+    )
+
+    assert response.status_code == 200
+    data = response.json()
+
+    assert "top_users" in data and len(data["top_users"]) >= 3
+    assert data["you"]["id"] == "urank1"
+    assert data["you"]["position"] == 1
+    assert data["total_users"] >= 3
+    assert isinstance(data["title_catalog"], list) and len(data["title_catalog"]) > 0
+
+    first_entry = data["top_users"][0]
+    assert "points" in first_entry and first_entry["points"] >= 0
+    assert "rank" in first_entry
+    assert "total_titles" in first_entry

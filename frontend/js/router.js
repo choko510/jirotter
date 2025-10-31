@@ -194,7 +194,12 @@ document.addEventListener('DOMContentLoaded', function() {
     if (typeof StampRallyComponent !== 'undefined') {
         router.register('stamp-rally', StampRallyComponent);
     }
-    
+
+    // ランキングページのルートを登録
+    if (typeof RankingsComponent !== 'undefined') {
+        router.register('rankings', RankingsComponent);
+    }
+
     // プロフィールページのルートを登録（新しいバージョン）
     if (typeof ProfileComponent !== 'undefined') {
         router.register('profile', ProfileComponent);

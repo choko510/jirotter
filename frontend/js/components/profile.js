@@ -58,6 +58,278 @@ const ProfileComponent = {
                     flex: 1;
                 }
 
+                .profile-rank-card {
+                    border-radius: 18px;
+                    border: 1px solid #e5e7eb;
+                    background: linear-gradient(135deg, #ffffff 0%, #f9fafb 100%);
+                    padding: 18px 20px;
+                    box-shadow: 0 18px 32px rgba(15, 23, 42, 0.1);
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                }
+
+                .rank-card-header {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 12px;
+                }
+
+                .rank-badge {
+                    display: inline-flex;
+                    align-items: center;
+                    justify-content: center;
+                    padding: 6px 14px;
+                    border-radius: 999px;
+                    color: #ffffff;
+                    font-weight: 700;
+                    letter-spacing: 0.08em;
+                    font-size: 12px;
+                    text-transform: uppercase;
+                    box-shadow: 0 12px 22px rgba(15, 23, 42, 0.16);
+                }
+
+                .rank-points {
+                    font-size: 20px;
+                    font-weight: 700;
+                    color: #1f2933;
+                }
+
+                .rank-description {
+                    margin: 0;
+                    color: #4b5563;
+                    font-size: 14px;
+                    line-height: 1.6;
+                }
+
+                .rank-progress-bar {
+                    position: relative;
+                    width: 100%;
+                    height: 10px;
+                    background: #e5e7eb;
+                    border-radius: 999px;
+                    overflow: hidden;
+                }
+
+                .rank-progress-bar-fill {
+                    height: 100%;
+                    border-radius: 999px;
+                    transition: width 0.3s ease;
+                }
+
+                .rank-progress-label {
+                    font-size: 12px;
+                    color: #6b7280;
+                    letter-spacing: 0.04em;
+                }
+
+                .rank-score-chip {
+                    display: inline-flex;
+                    align-items: center;
+                    gap: 8px;
+                    padding: 6px 12px;
+                    border-radius: 999px;
+                    background: rgba(55, 65, 81, 0.08);
+                    color: #374151;
+                    font-size: 12px;
+                    width: max-content;
+                }
+
+                .rank-score-chip strong {
+                    font-size: 16px;
+                    color: #111827;
+                }
+
+                .rank-status {
+                    font-size: 13px;
+                    line-height: 1.6;
+                    padding: 10px 12px;
+                    border-radius: 12px;
+                    border: 1px solid transparent;
+                }
+
+                .rank-status.rank-status--active {
+                    background: rgba(34, 197, 94, 0.08);
+                    border-color: rgba(34, 197, 94, 0.2);
+                    color: #047857;
+                }
+
+                .rank-status.rank-status--warning {
+                    background: rgba(251, 191, 36, 0.1);
+                    border-color: rgba(251, 191, 36, 0.3);
+                    color: #92400e;
+                }
+
+                .rank-status.rank-status--restricted {
+                    background: rgba(248, 113, 113, 0.1);
+                    border-color: rgba(248, 113, 113, 0.3);
+                    color: #b91c1c;
+                }
+
+                .rank-status.rank-status--banned {
+                    background: rgba(239, 68, 68, 0.15);
+                    border-color: rgba(239, 68, 68, 0.4);
+                    color: #7f1d1d;
+                }
+
+                .profile-featured-title {
+                    margin-top: 12px;
+                    border-radius: 16px;
+                    border: 1px solid #e5e7eb;
+                    padding: 16px;
+                    background: linear-gradient(135deg, #f9fafb 0%, #ffffff 100%);
+                    display: flex;
+                    align-items: center;
+                    gap: 16px;
+                }
+
+                .profile-featured-title__icon {
+                    width: 48px;
+                    height: 48px;
+                    border-radius: 14px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 26px;
+                    background: rgba(17, 24, 39, 0.08);
+                }
+
+                .profile-featured-title__body {
+                    flex: 1;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 4px;
+                }
+
+                .profile-featured-title__name {
+                    font-size: 16px;
+                    font-weight: 700;
+                    color: #111827;
+                }
+
+                .profile-featured-title__description {
+                    font-size: 13px;
+                    color: #6b7280;
+                }
+
+                .profile-featured-title__link {
+                    border-radius: 999px;
+                    border: 1px solid #d1d5db;
+                    background: #ffffff;
+                    color: #374151;
+                    padding: 8px 16px;
+                    font-size: 13px;
+                    cursor: pointer;
+                    transition: background 0.2s ease, color 0.2s ease;
+                }
+
+                .profile-featured-title__link:hover {
+                    background: #f3f4f6;
+                }
+
+                .profile-title-gallery {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+                    gap: 18px;
+                }
+
+                .profile-title-card {
+                    border-radius: 16px;
+                    border: 1px solid #e5e7eb;
+                    background: #ffffff;
+                    padding: 18px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                    position: relative;
+                    transition: transform 0.2s ease, box-shadow 0.2s ease;
+                }
+
+                .profile-title-card:hover {
+                    transform: translateY(-2px);
+                    box-shadow: 0 16px 32px rgba(15, 23, 42, 0.12);
+                }
+
+                .profile-title-card--locked {
+                    opacity: 0.8;
+                    background: #f9fafb;
+                }
+
+                .profile-title-header {
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                }
+
+                .profile-title-badge {
+                    width: 44px;
+                    height: 44px;
+                    border-radius: 14px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    font-size: 24px;
+                    background: rgba(17, 24, 39, 0.08);
+                }
+
+                .profile-title-name {
+                    font-size: 16px;
+                    font-weight: 700;
+                    color: #111827;
+                }
+
+                .profile-title-description {
+                    font-size: 13px;
+                    color: #4b5563;
+                    line-height: 1.6;
+                }
+
+                .profile-title-progress {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 6px;
+                }
+
+                .profile-title-progress-bar {
+                    width: 100%;
+                    height: 8px;
+                    border-radius: 999px;
+                    background: rgba(17, 24, 39, 0.08);
+                    overflow: hidden;
+                }
+
+                .profile-title-progress-fill {
+                    height: 100%;
+                    border-radius: 999px;
+                    transition: width 0.3s ease;
+                }
+
+                .profile-title-requirements {
+                    font-size: 12px;
+                    color: #6b7280;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 2px;
+                }
+
+                .profile-title-footer {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    font-size: 12px;
+                    color: #6b7280;
+                }
+
+                .profile-title-empty {
+                    padding: 24px;
+                    border-radius: 14px;
+                    border: 1px dashed #d1d5db;
+                    background: #f9fafb;
+                    text-align: center;
+                    color: #6b7280;
+                }
+
                 .profile-name {
                     font-size: 26px;
                     font-weight: 700;
@@ -363,6 +635,64 @@ const ProfileComponent = {
                     color: #f9fafb;
                 }
 
+                .dark-mode .profile-rank-card {
+                    background: linear-gradient(135deg, rgba(17, 24, 39, 0.95) 0%, rgba(31, 41, 55, 0.95) 100%);
+                    border-color: #1f2937;
+                    box-shadow: 0 22px 40px rgba(0, 0, 0, 0.55);
+                }
+
+                .dark-mode .rank-points {
+                    color: #f9fafb;
+                }
+
+                .dark-mode .rank-description {
+                    color: #d1d5db;
+                }
+
+                .dark-mode .rank-progress-bar {
+                    background: #374151;
+                }
+
+                .dark-mode .rank-progress-label {
+                    color: #9ca3af;
+                }
+
+                .dark-mode .rank-score-chip {
+                    background: rgba(249, 250, 251, 0.1);
+                    color: #e5e7eb;
+                }
+
+                .dark-mode .rank-score-chip strong {
+                    color: #fef3c7;
+                }
+
+                .dark-mode .profile-featured-title {
+                    background: linear-gradient(135deg, rgba(31, 41, 55, 0.9) 0%, rgba(17, 24, 39, 0.9) 100%);
+                    border-color: #374151;
+                }
+
+                .dark-mode .profile-featured-title__icon {
+                    background: rgba(255, 255, 255, 0.12);
+                }
+
+                .dark-mode .profile-featured-title__name {
+                    color: #f3f4f6;
+                }
+
+                .dark-mode .profile-featured-title__description {
+                    color: #d1d5db;
+                }
+
+                .dark-mode .profile-featured-title__link {
+                    background: #1f2937;
+                    border-color: #374151;
+                    color: #f9fafb;
+                }
+
+                .dark-mode .profile-featured-title__link:hover {
+                    background: #111827;
+                }
+
                 .dark-mode .profile-id {
                     color: #9ca3af;
                 }
@@ -428,6 +758,34 @@ const ProfileComponent = {
                 }
 
                 .dark-mode .profile-post-empty {
+                    background: rgba(17, 24, 39, 0.75);
+                    border-color: #1f2937;
+                    color: #d1d5db;
+                }
+
+                .dark-mode .profile-title-card {
+                    background: #111827;
+                    border-color: #1f2937;
+                }
+
+                .dark-mode .profile-title-card--locked {
+                    background: rgba(17, 24, 39, 0.85);
+                    opacity: 0.9;
+                }
+
+                .dark-mode .profile-title-description {
+                    color: #d1d5db;
+                }
+
+                .dark-mode .profile-title-requirements {
+                    color: #9ca3af;
+                }
+
+                .dark-mode .profile-title-footer {
+                    color: #9ca3af;
+                }
+
+                .dark-mode .profile-title-empty {
                     background: rgba(17, 24, 39, 0.75);
                     border-color: #1f2937;
                     color: #d1d5db;
@@ -594,7 +952,24 @@ const ProfileComponent = {
         }
 
         if (this.state.user) {
-            const { id, username, followers_count, following_count, posts_count, is_following } = this.state.user;
+            const {
+                id,
+                username,
+                followers_count,
+                following_count,
+                posts_count,
+                is_following,
+                rank,
+                points,
+                rank_color,
+                rank_description,
+                next_rank_name,
+                points_to_next_rank,
+                rank_progress_percentage,
+                status_message,
+                internal_score,
+                account_status
+            } = this.state.user;
 
             const userCookie = API.getCookie('user');
             let currentUser = null;
@@ -636,6 +1011,83 @@ const ProfileComponent = {
             bioDiv.className = 'profile-bio';
             bioDiv.textContent = this.state.user.bio || '';
             infoDiv.appendChild(bioDiv);
+
+            const badgeColor = rank_color || '#f59e0b';
+            const progress = Math.min(100, Math.max(0, Number(rank_progress_percentage) || 0));
+            const progressDisplay = Math.round(progress);
+            const sanitizedRankName = API.escapeHtml(rank || 'ランク未設定');
+            const sanitizedRankDescription = API.escapeHtml(rank_description || 'ラーメン体験を共有してポイントを貯めましょう！');
+            const sanitizedStatusMessage = API.escapeHtml(status_message || '');
+            const normalizedStatus = (account_status || 'active').toLowerCase();
+            const statusClass = `rank-status rank-status--${normalizedStatus}`;
+            const sanitizedNextRankName = API.escapeHtml(next_rank_name || '');
+            const nextRankLabel = next_rank_name
+                ? `次のランク「${sanitizedNextRankName}」まであと${points_to_next_rank ?? 0}pt`
+                : '最高ランクに到達しています！';
+
+            const rankCard = document.createElement('div');
+            rankCard.className = 'profile-rank-card';
+            rankCard.innerHTML = `
+                <div class="rank-card-header">
+                    <span class="rank-badge" style="background:${badgeColor};">${sanitizedRankName}</span>
+                    <span class="rank-points">${points ?? 0} pt</span>
+                </div>
+                <p class="rank-description">${sanitizedRankDescription}</p>
+                <div class="rank-progress-bar">
+                    <div class="rank-progress-bar-fill" style="width:${progress}%; background:${badgeColor};"></div>
+                </div>
+                <div class="rank-progress-label">進捗 ${progressDisplay}% ・ ${nextRankLabel}</div>
+                <div class="rank-score-chip">
+                    <span>コミュニティスコア</span>
+                    <strong>${internal_score ?? 0}</strong>
+                </div>
+                <div class="${statusClass}">${sanitizedStatusMessage}</div>
+            `;
+            infoDiv.appendChild(rankCard);
+
+            const featuredTitleWrapper = document.createElement('div');
+            featuredTitleWrapper.className = 'profile-featured-title';
+
+            const featuredTitle = this.state.user.featured_title;
+            const featuredColor = featuredTitle?.theme_color || '#f97316';
+
+            const featuredIcon = document.createElement('div');
+            featuredIcon.className = 'profile-featured-title__icon';
+            featuredIcon.style.background = this.getColorWithAlpha(featuredColor, 0.18);
+            featuredIcon.style.color = featuredColor;
+            featuredIcon.textContent = featuredTitle?.icon || '☆';
+            featuredTitleWrapper.appendChild(featuredIcon);
+
+            const featuredBody = document.createElement('div');
+            featuredBody.className = 'profile-featured-title__body';
+
+            const featuredName = document.createElement('div');
+            featuredName.className = 'profile-featured-title__name';
+            featuredName.textContent = featuredTitle?.name || 'まだ称号がありません';
+            featuredBody.appendChild(featuredName);
+
+            const featuredDescription = document.createElement('div');
+            featuredDescription.className = 'profile-featured-title__description';
+            featuredDescription.textContent = featuredTitle?.description || '称号を獲得するとここにハイライト表示されます。';
+            featuredBody.appendChild(featuredDescription);
+
+            if (featuredTitle?.earned_at) {
+                const earned = document.createElement('div');
+                earned.className = 'profile-featured-title__description';
+                earned.textContent = `獲得日: ${this.formatDate(featuredTitle.earned_at)}`;
+                featuredBody.appendChild(earned);
+            }
+
+            featuredTitleWrapper.appendChild(featuredBody);
+
+            const rankingButton = document.createElement('button');
+            rankingButton.type = 'button';
+            rankingButton.className = 'profile-featured-title__link';
+            rankingButton.textContent = 'ランキングを確認';
+            rankingButton.addEventListener('click', () => router.navigate('rankings'));
+            featuredTitleWrapper.appendChild(rankingButton);
+
+            infoDiv.appendChild(featuredTitleWrapper);
 
             const statsDiv = document.createElement('div');
             statsDiv.className = 'profile-stats';
@@ -714,6 +1166,7 @@ const ProfileComponent = {
             tabs.appendChild(createTab('投稿', 'posts', true));
             tabs.appendChild(createTab('フォロワー', 'followers'));
             tabs.appendChild(createTab('フォロー中', 'following'));
+            tabs.appendChild(createTab('称号', 'titles'));
             profilePage.appendChild(tabs);
 
             const profileContent = document.createElement('div');
@@ -853,11 +1306,133 @@ const ProfileComponent = {
             setTimeout(() => {
                 this.setupLazyLoading();
             }, 100);
+        } else if (tabName === 'titles') {
+            this.renderTitlesGallery();
         } else if (tabName === 'followers') {
             this.showFollowers();
         } else if (tabName === 'following') {
             this.showFollowing();
         }
+    },
+
+    renderTitlesGallery() {
+        const content = document.getElementById('profileContent');
+        if (!content) return;
+
+        const titles = Array.isArray(this.state.user?.titles) ? this.state.user.titles : [];
+
+        if (titles.length === 0) {
+            const empty = document.createElement('div');
+            empty.className = 'profile-title-empty';
+            empty.innerHTML = '称号データがありません。<br>チェックインや投稿で実績を集めましょう。';
+            content.appendChild(empty);
+            return;
+        }
+
+        const gallery = document.createElement('div');
+        gallery.className = 'profile-title-gallery';
+
+        titles.forEach(title => {
+            const card = document.createElement('article');
+            card.className = 'profile-title-card';
+            if (!title.unlocked) {
+                card.classList.add('profile-title-card--locked');
+            }
+
+            const color = title.theme_color || '#2563eb';
+            const progressValue = title.unlocked ? 100 : Math.min(100, Math.max(0, Number(title.progress) || 0));
+
+            const header = document.createElement('div');
+            header.className = 'profile-title-header';
+
+            const badge = document.createElement('div');
+            badge.className = 'profile-title-badge';
+            badge.style.background = this.getColorWithAlpha(color, 0.18);
+            badge.style.color = color;
+            badge.textContent = title.icon || '🏅';
+            header.appendChild(badge);
+
+            const name = document.createElement('div');
+            name.className = 'profile-title-name';
+            name.textContent = title.name || title.key;
+            header.appendChild(name);
+
+            card.appendChild(header);
+
+            const description = document.createElement('div');
+            description.className = 'profile-title-description';
+            description.textContent = title.description || '';
+            card.appendChild(description);
+
+            const progress = document.createElement('div');
+            progress.className = 'profile-title-progress';
+
+            const progressBar = document.createElement('div');
+            progressBar.className = 'profile-title-progress-bar';
+            const progressFill = document.createElement('div');
+            progressFill.className = 'profile-title-progress-fill';
+            progressFill.style.background = color;
+            progressFill.style.width = `${progressValue}%`;
+            progressBar.appendChild(progressFill);
+            progress.appendChild(progressBar);
+
+            const progressLabel = document.createElement('div');
+            progressLabel.className = 'profile-title-description';
+            progressLabel.textContent = `${title.progress_label || '進捗'}: ${progressValue}%`;
+            progress.appendChild(progressLabel);
+
+            card.appendChild(progress);
+
+            if (Array.isArray(title.requirements) && title.requirements.length > 0) {
+                const requirements = document.createElement('div');
+                requirements.className = 'profile-title-requirements';
+                title.requirements.forEach(req => {
+                    const row = document.createElement('span');
+                    const label = req.label || req.metric;
+                    row.textContent = `${label}: ${this.formatNumber(req.current || 0)} / ${this.formatNumber(req.required || 0)}`;
+                    requirements.appendChild(row);
+                });
+                card.appendChild(requirements);
+            }
+
+            const footer = document.createElement('div');
+            footer.className = 'profile-title-footer';
+            const left = document.createElement('span');
+            left.textContent = title.unlocked ? `獲得日: ${this.formatDate(title.earned_at)}` : '未獲得';
+            const right = document.createElement('span');
+            right.textContent = `プレミア度: ${title.prestige || 0}`;
+            footer.appendChild(left);
+            footer.appendChild(right);
+            card.appendChild(footer);
+
+            gallery.appendChild(card);
+        });
+
+        content.appendChild(gallery);
+    },
+
+    formatNumber(value) {
+        if (typeof value !== 'number') {
+            value = Number(value) || 0;
+        }
+        return value.toLocaleString('ja-JP');
+    },
+
+    formatDate(value) {
+        if (!value) return '-';
+        const date = new Date(value);
+        if (Number.isNaN(date.getTime())) return '-';
+        return `${date.getFullYear()}/${String(date.getMonth() + 1).padStart(2, '0')}/${String(date.getDate()).padStart(2, '0')}`;
+    },
+
+    getColorWithAlpha(color, alpha = 0.18) {
+        if (!color) return `rgba(17, 24, 39, ${alpha})`;
+        const sanitized = color.replace('#', '');
+        if (sanitized.length !== 6) return `rgba(17, 24, 39, ${alpha})`;
+        const r = parseInt(sanitized.slice(0, 2), 16);
+        const g = parseInt(sanitized.slice(2, 4), 16);
+        const b = parseInt(sanitized.slice(4, 6), 16);
+        return `rgba(${r}, ${g}, ${b}, ${alpha})`;
     },
 
     async showFollowers() {
