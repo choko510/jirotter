@@ -17,6 +17,11 @@ from app.schemas import (
     WaitTimeReportRequest, WaitTimeReportResponse
 )
 from app.utils.auth import get_current_active_user
+from app.utils.scoring import (
+    ensure_user_can_post,
+    reward_checkin,
+    reward_wait_time_report,
+)
 
 router = APIRouter(tags=["checkin"])
 
@@ -331,6 +336,8 @@ async def create_checkin(
     db: Session = Depends(get_db)
 ):
     """チェックインを作成"""
+    ensure_user_can_post(current_user, db)
+
     # 店舗の存在確認
     shop = db.query(RamenShop).filter(RamenShop.id == checkin_data.shop_id).first()
     if not shop:
@@ -413,7 +420,17 @@ async def create_checkin(
         shop.last_update = datetime.utcnow()
     
     db.commit()  # 検証ログと店舗情報をコミット
-    
+
+    # ポイント付与
+    try:
+        reward_checkin(db, current_user)
+        if checkin_data.wait_time_reported is not None:
+            reward_wait_time_report(db, current_user)
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        print(f"チェックインのスコア更新に失敗しました: {exc}")
+
     # レスポンスを作成するために必要な情報を追加
     checkin_dict = {
         'id': checkin.id,
@@ -517,6 +534,8 @@ async def report_wait_time(
     db: Session = Depends(get_db)
 ):
     """待ち時間を報告"""
+    ensure_user_can_post(current_user, db)
+
     # 店舗の存在確認
     shop = db.query(RamenShop).filter(RamenShop.id == report_data.shop_id).first()
     if not shop:
@@ -542,6 +561,7 @@ async def report_wait_time(
             checkin.wait_time_reported = report_data.wait_time
             checkin.wait_time_confidence = report_data.confidence
     
+    reward_wait_time_report(db, current_user)
     db.commit()
     
     return WaitTimeReportResponse(

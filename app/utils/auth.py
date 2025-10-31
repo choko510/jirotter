@@ -102,7 +102,11 @@ async def get_current_active_user(
     current_user: User = Depends(get_current_user)
 ) -> User:
     """現在のアクティブユーザーを取得する依存関係"""
-    # 将来的にユーザーステータス（is_activeなど）を追加する場合に備えて実装
+    if current_user.is_banned:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="アカウントが停止されています"
+        )
     return current_user
 
 # オプショナル認証（認証されている場合はユーザー情報を、されていない場合はNoneを返す）

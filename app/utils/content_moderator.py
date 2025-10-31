@@ -5,6 +5,7 @@ from typing import Dict, List, Optional, Tuple
 import aiohttp
 from sqlalchemy.orm import Session
 from app.models import Post, Report
+from app.utils.scoring import apply_violation_penalty
 
 class ContentModerator:
     """AIによるコンテンツ審査を行うクラス"""
@@ -119,6 +120,7 @@ class ContentModerator:
         # 違反と判断された場合
         if analysis.get("is_violation", False) and analysis.get("confidence", 0) > 0.7:
             try:
+                apply_violation_penalty(db, post.author, analysis.get("severity", "medium"))
                 # 投稿を削除
                 db.delete(post)
                 db.commit()

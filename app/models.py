@@ -15,6 +15,13 @@ class User(Base):
     bio = Column(Text, nullable=True)
     profile_image_url = Column(String(255), nullable=True)
 
+    # Gamification / moderation
+    ranking_points = Column(Integer, nullable=False, default=0)
+    reputation_score = Column(Integer, nullable=False, default=100)
+    is_restricted = Column(Boolean, nullable=False, default=False)
+    restricted_until = Column(DateTime, nullable=True)
+    is_banned = Column(Boolean, nullable=False, default=False)
+
     # Relationships
     posts = relationship('Post', backref='author', lazy=True, cascade='all, delete-orphan')
     likes = relationship('Like', backref='user', lazy=True, cascade='all, delete-orphan')

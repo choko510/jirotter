@@ -32,13 +32,18 @@ class UserLogin(BaseModel):
 
 class UserResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
-    
+
     id: str
     username: str
     email: EmailStr
     created_at: datetime
     bio: Optional[str] = None
     profile_image_url: Optional[str] = None
+    ranking_points: int
+    reputation_score: int
+    is_restricted: bool
+    restricted_until: Optional[datetime] = None
+    is_banned: bool
 
 class UserUpdate(BaseModel):
     username: Optional[str] = None
@@ -80,6 +85,18 @@ class UserProfileResponse(UserResponse):
     following_count: int
     posts_count: int
     is_following: bool # Indicates if the current user is following this user
+
+
+class UserRankingEntry(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    rank: int
+    id: str
+    username: str
+    profile_image_url: Optional[str] = None
+    ranking_points: int
+    reputation_score: int
+    is_banned: bool
 
 class Token(BaseModel):
     access_token: str

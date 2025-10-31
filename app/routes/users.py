@@ -1,6 +1,6 @@
 import os
 
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, Depends, HTTPException, Query, status, UploadFile, File
 from sqlalchemy.orm import Session
 from typing import List
 
@@ -8,10 +8,11 @@ from database import get_db
 from sqlalchemy import or_
 
 from app.models import User, Follow, Post, Report
-from app.schemas import UserProfileResponse, UserResponse, UserUpdate
+from app.schemas import UserProfileResponse, UserResponse, UserUpdate, UserRankingEntry
 from app.utils.auth import get_current_user, get_current_user_optional
 from app.utils.image_validation import validate_image_file
 from app.utils.image_processor import process_profile_icon
+from app.utils.scoring import reward_new_follower
 
 router = APIRouter(tags=["users"])
 
@@ -47,6 +48,11 @@ async def get_user_profile(
         created_at=user.created_at,
         bio=user.bio,
         profile_image_url=user.profile_image_url,
+        ranking_points=user.ranking_points,
+        reputation_score=user.reputation_score,
+        is_restricted=user.is_restricted,
+        restricted_until=user.restricted_until,
+        is_banned=user.is_banned,
         followers_count=followers_count,
         following_count=following_count,
         posts_count=posts_count,
@@ -90,6 +96,11 @@ async def update_user_profile(
         created_at=current_user.created_at,
         bio=current_user.bio,
         profile_image_url=current_user.profile_image_url,
+        ranking_points=current_user.ranking_points,
+        reputation_score=current_user.reputation_score,
+        is_restricted=current_user.is_restricted,
+        restricted_until=current_user.restricted_until,
+        is_banned=current_user.is_banned,
         followers_count=followers_count,
         following_count=following_count,
         posts_count=posts_count,
@@ -165,6 +176,13 @@ async def follow_user(
     db.add(new_follow)
     db.commit()
 
+    try:
+        reward_new_follower(db, user_to_follow)
+        db.commit()
+    except Exception as exc:
+        db.rollback()
+        print(f"フォロワー増加のスコア更新に失敗しました: {exc}")
+
 @router.post("/users/{user_id}/unfollow", status_code=status.HTTP_204_NO_CONTENT)
 async def unfollow_user(
     user_id: str,
@@ -189,6 +207,29 @@ async def unfollow_user(
 
     db.delete(follow)
     db.commit()
+
+
+@router.get("/users/ranking", response_model=List[UserRankingEntry])
+async def get_user_ranking(
+    limit: int = Query(20, ge=1, le=100, description="取得するユーザー数"),
+    db: Session = Depends(get_db)
+):
+    """ランキング上位のユーザーを取得"""
+    users = db.query(User).order_by(User.ranking_points.desc(), User.created_at.asc()).limit(limit).all()
+
+    ranking: List[UserRankingEntry] = []
+    for index, user in enumerate(users, start=1):
+        ranking.append(UserRankingEntry(
+            rank=index,
+            id=user.id,
+            username=user.username,
+            profile_image_url=user.profile_image_url,
+            ranking_points=user.ranking_points,
+            reputation_score=user.reputation_score,
+            is_banned=user.is_banned
+        ))
+
+    return ranking
 
 @router.get("/users/{user_id}/followers", response_model=List[UserResponse])
 async def get_followers(user_id: str, db: Session = Depends(get_db)):

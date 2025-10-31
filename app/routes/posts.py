@@ -14,6 +14,7 @@ from app.utils.security import validate_post_content, escape_html
 from app.utils.image_processor import process_image
 from app.utils.image_validation import validate_image_file
 from app.utils.video_validation import validate_video_file
+from app.utils.scoring import ensure_user_can_post, reward_image_post
 
 router = APIRouter(tags=["posts"])
 
@@ -33,8 +34,10 @@ async def create_post(
     shop_id: Optional[int] = Form(None),
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db)
-):
+): 
     """投稿作成エンドポイント"""
+    ensure_user_can_post(current_user, db)
+
     # 投稿内容のバリデーションとサニタイズ
     errors, sanitized_content = validate_post_content(content)
     if errors:
@@ -155,11 +158,19 @@ async def create_post(
             video_duration=processed_video_duration,
             shop_id=shop_id
         )
-        
+
         db.add(post)
         db.commit()
         db.refresh(post)
-        
+
+        if original_image_url:
+            try:
+                reward_image_post(db, current_user)
+                db.commit()
+            except Exception as exc:
+                db.rollback()
+                print(f"画像投稿のスコア更新に失敗しました: {exc}")
+
         return post
         
     except Exception as e:
