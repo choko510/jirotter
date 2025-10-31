@@ -2,6 +2,8 @@
 import io
 import pytest
 
+from app.models import RamenShop
+
 def test_create_post_authenticated(test_client, test_db):
     """認証済みユーザーによる投稿作成テスト"""
     # ユーザー登録
@@ -206,6 +208,55 @@ def test_get_single_post(test_client, test_db):
     assert response.status_code == 200
     assert data["id"] == created_post["id"]
     assert data["content"] == "This is a test post."
+
+
+def test_get_posts_filtered_by_shop(test_client, test_db, auth_headers):
+    """店舗IDに紐づく投稿と店名を含む投稿のみが返ることを確認"""
+
+    shop = RamenShop(
+        name="テストラーメン",
+        address="東京都千代田区1-1-1",
+        latitude=35.0,
+        longitude=139.0
+    )
+    test_db.add(shop)
+    test_db.commit()
+    test_db.refresh(shop)
+
+    # 店舗に紐付いた投稿
+    post_with_shop = {
+        "content": "店舗で食べました",
+        "shop_id": str(shop.id)
+    }
+    response = test_client.post("/api/v1/posts", data=post_with_shop, headers=auth_headers)
+    assert response.status_code == 201
+    associated_post_id = response.json()["id"]
+
+    # 店名を本文に含む投稿
+    post_with_name = {
+        "content": f"今日は{shop.name}に行きました"
+    }
+    response = test_client.post("/api/v1/posts", data=post_with_name, headers=auth_headers)
+    assert response.status_code == 201
+    named_post_id = response.json()["id"]
+
+    # 関係のない投稿
+    unrelated_post = {
+        "content": "別のお店の感想"
+    }
+    response = test_client.post("/api/v1/posts", data=unrelated_post, headers=auth_headers)
+    assert response.status_code == 201
+    unrelated_post_id = response.json()["id"]
+
+    response = test_client.get(f"/api/v1/posts?shop_id={shop.id}")
+    assert response.status_code == 200
+    data = response.json()
+
+    returned_ids = [post["id"] for post in data["posts"]]
+
+    assert associated_post_id in returned_ids
+    assert named_post_id in returned_ids
+    assert unrelated_post_id not in returned_ids
 
 def test_get_nonexistent_post(test_client):
     """存在しない投稿取得テスト"""
