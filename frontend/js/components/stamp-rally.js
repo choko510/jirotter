@@ -10,7 +10,19 @@ const StampRallyComponent = {
         hasMoreShops: true,
         selectedBrand: 'all',
         selectedPrefecture: 'all',
-        currentView: 'list' // 'list' or 'progress'
+        currentView: 'list', // 'list' or 'progress'
+        progressMessage: ''
+    },
+
+    REGION_PREFECTURES: {
+        '北海道': ['北海道'],
+        '東北': ['青森県', '岩手県', '宮城県', '秋田県', '山形県', '福島県'],
+        '関東': ['茨城県', '栃木県', '群馬県', '埼玉県', '千葉県', '東京都', '神奈川県'],
+        '中部': ['新潟県', '富山県', '石川県', '福井県', '山梨県', '長野県', '岐阜県', '静岡県', '愛知県'],
+        '近畿': ['三重県', '滋賀県', '京都府', '大阪府', '兵庫県', '奈良県', '和歌山県'],
+        '中国': ['鳥取県', '島根県', '岡山県', '広島県', '山口県'],
+        '四国': ['徳島県', '香川県', '愛媛県', '高知県'],
+        '九州・沖縄': ['福岡県', '佐賀県', '長崎県', '熊本県', '大分県', '宮崎県', '鹿児島県', '沖縄県']
     },
 
     // ブランド設定（MapComponentと共通）
@@ -169,6 +181,38 @@ const StampRallyComponent = {
                     flex-wrap: wrap;
                     gap: 8px;
                     padding: 10px;
+                }
+
+                .progress-accordion {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                }
+
+                .region-progress-details {
+                    border: 1px solid #e0e0e0;
+                    border-radius: 8px;
+                    background: #fff;
+                    overflow: hidden;
+                }
+
+                .region-progress-summary {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    font-weight: bold;
+                    padding: 12px 16px;
+                    cursor: pointer;
+                    background: #fafafa;
+                }
+
+                .region-progress-summary span:last-child {
+                    font-size: 12px;
+                    color: #666;
+                }
+
+                .region-progress-details .progress-grid {
+                    padding: 16px;
                 }
                 
                 .brand-filter-btn,
@@ -476,7 +520,7 @@ const StampRallyComponent = {
                 .dark-mode .empty-state h3 {
                     color: #e0e0e0;
                 }
-                
+
                 .dark-mode .view-switcher {
                     border-color: #d4a574;
                 }
@@ -504,6 +548,20 @@ const StampRallyComponent = {
                 }
 
                 .dark-mode .progress-card p {
+                    color: #aaa;
+                }
+
+                .dark-mode .region-progress-details {
+                    background: #2a2a2a;
+                    border-color: #333;
+                }
+
+                .dark-mode .region-progress-summary {
+                    background: #1f1f1f;
+                    color: #e0e0e0;
+                }
+
+                .dark-mode .region-progress-summary span:last-child {
                     color: #aaa;
                 }
 
@@ -583,19 +641,89 @@ const StampRallyComponent = {
             return '<div class="loading">進捗を読み込み中...</div>';
         }
 
-        let progressHtml = '<div class="progress-grid">';
-        this.state.progress.forEach(item => {
-            const percentage = item.total_shops > 0 ? (item.visited_shops / item.total_shops) * 100 : 0;
-            progressHtml += `
-                <div class="progress-card">
-                    <h4>${item.prefecture}</h4>
-                    <div class="progress-bar-container">
-                        <div class="progress-bar" style="width: ${percentage}%;"></div>
-                    </div>
-                    <p>${item.visited_shops} / ${item.total_shops} 店舗</p>
+        if (this.state.progressMessage) {
+            return `
+                <div class="empty-state">
+                    <i class="fas fa-info-circle"></i>
+                    <h3>進捗を表示できません</h3>
+                    <p>${this.escapeHtml(this.state.progressMessage)}</p>
                 </div>
             `;
-        });
+        }
+
+        if (this.state.progress.length === 0) {
+            return `
+                <div class="empty-state">
+                    <i class="fas fa-chart-line"></i>
+                    <h3>進捗データがありません</h3>
+                    <p>チェックインを行うと進捗が表示されます</p>
+                </div>
+            `;
+        }
+
+        const assignedPrefectures = new Set();
+        let progressHtml = '<div class="progress-accordion">';
+        for (const [region, prefectures] of Object.entries(this.REGION_PREFECTURES)) {
+            const regionItems = this.state.progress.filter(item => prefectures.includes(item.prefecture));
+            if (regionItems.length === 0) continue;
+
+            regionItems.forEach(item => assignedPrefectures.add(item.prefecture));
+
+            const regionVisited = regionItems.reduce((sum, item) => sum + item.visited_shops, 0);
+            const regionTotal = regionItems.reduce((sum, item) => sum + item.total_shops, 0);
+
+            progressHtml += `
+                <details class="region-progress-details" open>
+                    <summary class="region-progress-summary">
+                        <span>${this.escapeHtml(region)}</span>
+                        <span>${regionVisited} / ${regionTotal} 店舗</span>
+                    </summary>
+                    <div class="progress-grid">
+                        ${regionItems.map(item => {
+                            const percentage = item.total_shops > 0 ? (item.visited_shops / item.total_shops) * 100 : 0;
+                            return `
+                                <div class="progress-card">
+                                    <h4>${this.escapeHtml(item.prefecture)}</h4>
+                                    <div class="progress-bar-container">
+                                        <div class="progress-bar" style="width: ${percentage}%;"></div>
+                                    </div>
+                                    <p>${item.visited_shops} / ${item.total_shops} 店舗</p>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </details>
+            `;
+        }
+
+        const remainingItems = this.state.progress.filter(item => !assignedPrefectures.has(item.prefecture));
+        if (remainingItems.length > 0) {
+            const regionVisited = remainingItems.reduce((sum, item) => sum + item.visited_shops, 0);
+            const regionTotal = remainingItems.reduce((sum, item) => sum + item.total_shops, 0);
+
+            progressHtml += `
+                <details class="region-progress-details" open>
+                    <summary class="region-progress-summary">
+                        <span>その他</span>
+                        <span>${regionVisited} / ${regionTotal} 店舗</span>
+                    </summary>
+                    <div class="progress-grid">
+                        ${remainingItems.map(item => {
+                            const percentage = item.total_shops > 0 ? (item.visited_shops / item.total_shops) * 100 : 0;
+                            return `
+                                <div class="progress-card">
+                                    <h4>${this.escapeHtml(item.prefecture)}</h4>
+                                    <div class="progress-bar-container">
+                                        <div class="progress-bar" style="width: ${percentage}%;"></div>
+                                    </div>
+                                    <p>${item.visited_shops} / ${item.total_shops} 店舗</p>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                </details>
+            `;
+        }
         progressHtml += '</div>';
 
         return progressHtml;
@@ -646,30 +774,23 @@ const StampRallyComponent = {
 
     // 都道府県フィルターをレンダリング
     renderPrefectureFilters() {
-        const regions = {
-            '北海道': ['北海道'],
-            '東北': ['青森県', '岩手県', '宮城県', '秋田県', '山形県', '福島県'],
-            '関東': ['茨城県', '栃木県', '群馬県', '埼玉県', '千葉県', '東京都', '神奈川県'],
-            '中部': ['新潟県', '富山県', '石川県', '福井県', '山梨県', '長野県', '岐阜県', '静岡県', '愛知県'],
-            '近畿': ['三重県', '滋賀県', '京都府', '大阪府', '兵庫県', '奈良県', '和歌山県'],
-            '中国': ['鳥取県', '島根県', '岡山県', '広島県', '山口県'],
-            '四国': ['徳島県', '香川県', '愛媛県', '高知県'],
-            '九州・沖縄': ['福岡県', '佐賀県', '長崎県', '熊本県', '大分県', '宮崎県', '鹿児島県', '沖縄県']
-        };
-
         let buttonsHtml = `
             <button class="prefecture-filter-btn ${this.state.selectedPrefecture === 'all' ? 'active' : ''}" data-prefecture="all">
                 全国
             </button>
         `;
 
-        for (const region in regions) {
+        for (const region in this.REGION_PREFECTURES) {
+            const shouldOpen = this.state.selectedPrefecture === 'all'
+                ? region === '関東'
+                : this.REGION_PREFECTURES[region].includes(this.state.selectedPrefecture);
+
             buttonsHtml += `
-                <details class="region-details">
-                    <summary class="region-summary">${region}</summary>
+                <details class="region-details"${shouldOpen ? ' open' : ''}>
+                    <summary class="region-summary">${this.escapeHtml(region)}</summary>
                     <div class="prefecture-buttons">
             `;
-            regions[region].forEach(prefecture => {
+            this.REGION_PREFECTURES[region].forEach(prefecture => {
                 buttonsHtml += `
                     <button class="prefecture-filter-btn ${this.state.selectedPrefecture === prefecture ? 'active' : ''}" data-prefecture="${prefecture}">
                         ${prefecture}
@@ -703,7 +824,7 @@ const StampRallyComponent = {
 
         // ブランドと都道府県でフィルタリング
         let filteredShops = this.state.shops;
-        
+
         // ブランドでフィルタリング
         if (this.state.selectedBrand !== 'all') {
             filteredShops = filteredShops.filter(shop => {
@@ -711,8 +832,18 @@ const StampRallyComponent = {
                 return brand === this.state.selectedBrand;
             });
         }
-        
-        return this.state.shops.map(shop => {
+
+        if (filteredShops.length === 0) {
+            return `
+                <div class="empty-state">
+                    <i class="fas fa-store"></i>
+                    <h3>店舗が見つかりません</h3>
+                    <p>条件を変更して再度お試しください</p>
+                </div>
+            `;
+        }
+
+        return filteredShops.map(shop => {
             const isChecked = this.state.checkins.some(checkin => checkin.shop_id === shop.id);
             const brand = this.determineBrand(shop.name);
             const brandConfig = this.BRAND_CONFIG[brand];
@@ -765,7 +896,9 @@ const StampRallyComponent = {
     // ブランドでフィルタリング
     filterByBrand(brand) {
         this.state.selectedBrand = brand;
-        
+        this.state.currentPage = 1;
+        this.state.hasMoreShops = true;
+
         // アクティブ状態を更新
         document.querySelectorAll('.brand-filter-btn').forEach(btn => {
             btn.classList.remove('active');
@@ -773,11 +906,15 @@ const StampRallyComponent = {
                 btn.classList.add('active');
             }
         });
-        
+
         // 再レンダリング
         const shopsGrid = document.getElementById('shopsGrid');
         if (shopsGrid) {
             shopsGrid.innerHTML = this.renderShopsGrid();
+        }
+
+        if (this.state.currentView === 'list') {
+            this.loadData();
         }
     },
 
@@ -814,13 +951,30 @@ const StampRallyComponent = {
 
         try {
             if (this.state.currentView === 'list') {
+                this.state.progressMessage = '';
+                const perPage = 20;
+                const prefectureFilter = this.state.selectedBrand === 'all'
+                    ? this.state.selectedPrefecture
+                    : 'all';
                 const [shopsResponse, checkinsResponse] = await Promise.all([
-                    this.loadShops(1, 20, this.state.selectedPrefecture),
+                    this.loadShops(1, perPage, prefectureFilter),
                     this.loadCheckins()
                 ]);
                 this.state.shops = shopsResponse;
                 this.state.checkins = checkinsResponse;
+                this.state.currentPage = 1;
+                this.state.hasMoreShops = shopsResponse.length === perPage;
             } else {
+                const token = API.getCookie('authToken');
+                if (!token) {
+                    this.state.progress = [];
+                    this.state.progressMessage = '進捗を表示するにはログインが必要です。';
+                    this.state.isLoading = false;
+                    this.updateUI();
+                    return;
+                }
+
+                this.state.progressMessage = '';
                 const data = await API.request('/api/v1/stamps/progress');
                 this.state.progress = data.progress;
             }
@@ -829,7 +983,13 @@ const StampRallyComponent = {
         } catch (error) {
             console.error('データ読み込みエラー:', error);
             this.state.isLoading = false;
-            this.showError('データの読み込みに失敗しました');
+            if (this.state.currentView === 'progress') {
+                this.state.progress = [];
+                this.state.progressMessage = error.message || '進捗の取得に失敗しました。';
+                this.updateUI();
+            } else {
+                this.showError('データの読み込みに失敗しました');
+            }
         }
     },
 
@@ -873,12 +1033,18 @@ const StampRallyComponent = {
         this.state.isLoading = true;
         
         try {
-            const newShops = await this.loadShops(this.state.currentPage, 20, this.state.selectedPrefecture);
-            
+            const prefectureFilter = this.state.selectedBrand === 'all'
+                ? this.state.selectedPrefecture
+                : 'all';
+            const newShops = await this.loadShops(this.state.currentPage, 20, prefectureFilter);
+
             if (newShops.length === 0) {
                 this.state.hasMoreShops = false;
             } else {
                 this.state.shops = [...this.state.shops, ...newShops];
+                if (newShops.length < 20) {
+                    this.state.hasMoreShops = false;
+                }
                 this.updateUI();
             }
             
