@@ -1,4 +1,4 @@
-from pydantic import BaseModel, EmailStr, ConfigDict, field_validator, field_serializer
+from pydantic import BaseModel, EmailStr, ConfigDict, Field, field_validator, field_serializer
 from datetime import datetime
 from typing import Optional, List
 import re
@@ -77,6 +77,38 @@ class UserUpdate(BaseModel):
             return value
         return v
 
+class UserTitleRequirement(BaseModel):
+    metric: str
+    label: str
+    current: int
+    required: int
+
+
+class UserTitleSummary(BaseModel):
+    key: str
+    name: str
+    description: str
+    category: str
+    icon: Optional[str] = None
+    theme_color: str
+    prestige: int
+    unlocked: bool
+    earned_at: Optional[datetime] = None
+    progress: float
+    progress_label: str
+    requirements: List[UserTitleRequirement] = Field(default_factory=list)
+
+
+class UserTitleBrief(BaseModel):
+    key: str
+    name: str
+    description: str
+    icon: Optional[str] = None
+    theme_color: Optional[str] = None
+    prestige: int
+    earned_at: Optional[datetime] = None
+
+
 class UserProfileResponse(UserResponse):
     bio: Optional[str] = None
     profile_image_url: Optional[str] = None
@@ -92,11 +124,39 @@ class UserProfileResponse(UserResponse):
     current_rank_floor: int
     rank_progress_percentage: float
     status_message: str
+    featured_title: Optional[UserTitleBrief] = None
+    titles: List[UserTitleSummary] = Field(default_factory=list)
 
 class Token(BaseModel):
     access_token: str
     token_type: str = "bearer"
     user: UserResponse
+
+
+class UserRankingEntry(BaseModel):
+    id: str
+    username: str
+    profile_image_url: Optional[str] = None
+    points: int
+    rank: str
+    rank_color: str
+    rank_description: str
+    position: int
+    rank_progress_percentage: float
+    next_rank_name: Optional[str] = None
+    points_to_next_rank: Optional[int] = None
+    followers_count: int
+    total_titles: int
+    featured_title: Optional[UserTitleBrief] = None
+    recent_titles: List[UserTitleBrief] = Field(default_factory=list)
+
+
+class UserRankingResponse(BaseModel):
+    top_users: List[UserRankingEntry]
+    you: Optional[UserRankingEntry] = None
+    total_users: int
+    last_updated: datetime
+    title_catalog: List[UserTitleSummary] = Field(default_factory=list)
 
 # Reply Schemas
 class ReplyBase(BaseModel):

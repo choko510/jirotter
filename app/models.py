@@ -1,4 +1,4 @@
-from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Float, Boolean, JSON, Index
+from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Float, Boolean, JSON, Index, UniqueConstraint
 from sqlalchemy.orm import relationship
 from datetime import datetime
 from database import Base
@@ -24,6 +24,7 @@ class User(Base):
     likes = relationship('Like', backref='user', lazy=True, cascade='all, delete-orphan')
     replies = relationship('Reply', backref='author', lazy=True, cascade='all, delete-orphan')
     point_logs = relationship('UserPointLog', backref='user', lazy=True, cascade='all, delete-orphan')
+    titles = relationship('UserTitle', backref='user', lazy=True, cascade='all, delete-orphan')
 
     following = relationship(
         'Follow',
@@ -185,6 +186,26 @@ class UserPointLog(Base):
     reason = Column(String(255), nullable=False)
     context = Column(JSON, nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow, index=True)
+
+
+class UserTitle(Base):
+    """ユーザーが獲得した称号を管理するモデル"""
+    __tablename__ = 'user_titles'
+    __table_args__ = (
+        UniqueConstraint('user_id', 'title_key', name='uq_user_titles_user_key'),
+        Index('ix_user_titles_user_id', 'user_id'),
+    )
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(String(80), ForeignKey('users.id'), nullable=False)
+    title_key = Column(String(80), nullable=False)
+    title_name = Column(String(120), nullable=False)
+    title_description = Column(String(255), nullable=False)
+    category = Column(String(40), nullable=False)
+    icon = Column(String(16), nullable=True)
+    theme_color = Column(String(20), nullable=False, default='#f97316')
+    prestige = Column(Integer, nullable=False, default=0)
+    earned_at = Column(DateTime, default=datetime.utcnow, nullable=False)
 
 
 class Checkin(Base):

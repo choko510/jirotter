@@ -1,20 +1,124 @@
 import os
+from datetime import datetime
+from typing import List, Optional
 
-from fastapi import APIRouter, Depends, HTTPException, status, UploadFile, File
+from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
 from sqlalchemy.orm import Session
-from typing import List
 
 from database import get_db
-from sqlalchemy import or_
+from sqlalchemy import and_, func, or_
 
-from app.models import User, Follow, Post, Report
-from app.schemas import UserProfileResponse, UserResponse, UserUpdate
+from app.models import Follow, Post, Report, User
+from app.schemas import (
+    UserProfileResponse,
+    UserRankingEntry,
+    UserRankingResponse,
+    UserResponse,
+    UserTitleSummary,
+    UserUpdate,
+)
 from app.utils.auth import get_current_user, get_current_user_optional
-from app.utils.image_validation import validate_image_file
 from app.utils.image_processor import process_profile_icon
+from app.utils.image_validation import validate_image_file
+from app.utils.achievements import (
+    build_default_title_catalog,
+    get_recent_titles,
+    get_user_titles_summary,
+    select_featured_title,
+    serialize_title_brief,
+)
 from app.utils.scoring import award_points, get_rank_snapshot, get_status_message
 
 router = APIRouter(tags=["users"])
+
+
+def _build_ranking_entry(db: Session, user: User, position: int) -> UserRankingEntry:
+    rank_snapshot = get_rank_snapshot(user)
+    titles_summary = get_user_titles_summary(db, user)
+    featured_entry = select_featured_title(titles_summary)
+    featured_title = serialize_title_brief(featured_entry)
+    recent_titles = [
+        brief
+        for brief in (
+            serialize_title_brief(record)
+            for record in get_recent_titles(user, limit=3)
+        )
+        if brief is not None
+    ]
+
+    followers_count = user.followers.count() if hasattr(user.followers, "count") else 0
+
+    return UserRankingEntry(
+        id=user.id,
+        username=user.username,
+        profile_image_url=user.profile_image_url,
+        points=rank_snapshot["points"],
+        rank=rank_snapshot["rank"],
+        rank_color=rank_snapshot["rank_color"],
+        rank_description=rank_snapshot["rank_description"],
+        position=position,
+        rank_progress_percentage=rank_snapshot["rank_progress_percentage"],
+        next_rank_name=rank_snapshot.get("next_rank_name"),
+        points_to_next_rank=rank_snapshot.get("points_to_next_rank"),
+        followers_count=followers_count,
+        total_titles=sum(1 for entry in titles_summary if entry.get("unlocked")),
+        featured_title=featured_title,
+        recent_titles=recent_titles,
+    )
+
+@router.get("/users/rankings", response_model=UserRankingResponse)
+async def get_user_rankings(
+    limit: int = Query(20, ge=1, le=100, description="ランキング上位の取得件数"),
+    db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user_optional),
+):
+    """ユーザーランキングと称号カタログを取得する"""
+    top_users = (
+        db.query(User)
+        .order_by(User.points.desc(), User.created_at.asc())
+        .limit(limit)
+        .all()
+    )
+
+    top_entries = [
+        _build_ranking_entry(db, user, index)
+        for index, user in enumerate(top_users, start=1)
+    ]
+
+    total_users = db.query(func.count(User.id)).scalar() or 0
+
+    you_entry = None
+    if current_user:
+        you_entry = next((entry for entry in top_entries if entry.id == current_user.id), None)
+        if you_entry is None:
+            current_points = current_user.points or 0
+            higher_points = db.query(func.count(User.id)).filter(User.points > current_points).scalar() or 0
+            same_points_earlier = (
+                db.query(func.count(User.id))
+                .filter(
+                    User.points == current_points,
+                    User.created_at < current_user.created_at,
+                    User.id != current_user.id,
+                )
+                .scalar()
+                or 0
+            )
+            position = int(higher_points + same_points_earlier + 1)
+            you_entry = _build_ranking_entry(db, current_user, position)
+
+    if current_user:
+        title_catalog = get_user_titles_summary(db, current_user)
+    else:
+        title_catalog = build_default_title_catalog()
+
+    return UserRankingResponse(
+        top_users=top_entries,
+        you=you_entry,
+        total_users=int(total_users),
+        last_updated=datetime.utcnow(),
+        title_catalog=title_catalog,
+    )
+
 
 @router.get("/users/{user_id}", response_model=UserProfileResponse)
 async def get_user_profile(
@@ -35,6 +139,9 @@ async def get_user_profile(
     posts_count = db.query(Post.id).filter(Post.user_id == user.id).count()
     rank_snapshot = get_rank_snapshot(user)
     status_message = get_status_message(user)
+    titles_summary = get_user_titles_summary(db, user)
+    featured_entry = select_featured_title(titles_summary)
+    featured_title = serialize_title_brief(featured_entry)
 
     is_following = False
     if current_user:
@@ -62,6 +169,8 @@ async def get_user_profile(
         current_rank_floor=rank_snapshot["current_rank_floor"],
         rank_progress_percentage=rank_snapshot["rank_progress_percentage"],
         status_message=status_message,
+        featured_title=featured_title,
+        titles=titles_summary,
         followers_count=followers_count,
         following_count=following_count,
         posts_count=posts_count,
@@ -99,6 +208,9 @@ async def update_user_profile(
     posts_count = db.query(Post.id).filter(Post.user_id == current_user.id).count()
     rank_snapshot = get_rank_snapshot(current_user)
     status_message = get_status_message(current_user)
+    titles_summary = get_user_titles_summary(db, current_user)
+    featured_entry = select_featured_title(titles_summary)
+    featured_title = serialize_title_brief(featured_entry)
 
     return UserProfileResponse(
         id=current_user.id,
@@ -119,6 +231,8 @@ async def update_user_profile(
         current_rank_floor=rank_snapshot["current_rank_floor"],
         rank_progress_percentage=rank_snapshot["rank_progress_percentage"],
         status_message=status_message,
+        featured_title=featured_title,
+        titles=titles_summary,
         followers_count=followers_count,
         following_count=following_count,
         posts_count=posts_count,
@@ -226,6 +340,7 @@ async def unfollow_user(
 
     db.delete(follow)
     db.commit()
+
 
 @router.get("/users/{user_id}/followers", response_model=List[UserResponse])
 async def get_followers(user_id: str, db: Session = Depends(get_db)):

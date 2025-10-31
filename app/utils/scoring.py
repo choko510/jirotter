@@ -6,6 +6,7 @@ from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
 from app.models import User, UserPointLog
+from app.utils.achievements import evaluate_new_titles, serialize_title_record
 
 
 RANK_DEFINITIONS = [
@@ -168,6 +169,7 @@ def _apply_point_delta(
     reason: str,
     metadata: Optional[Dict[str, object]] = None,
     internal_score_delta: int = 0,
+    allow_titles: bool = True,
 ) -> Optional[Dict[str, object]]:
     if delta == 0 and internal_score_delta == 0:
         return None
@@ -187,6 +189,10 @@ def _apply_point_delta(
         "delta": delta,
         "internal_score_delta": internal_score_delta,
     })
+
+    newly_awarded = evaluate_new_titles(db, user) if allow_titles else []
+    if newly_awarded:
+        snapshot["new_titles"] = [serialize_title_record(title) for title in newly_awarded]
     return snapshot
 
 
@@ -203,6 +209,7 @@ def award_points(db: Session, user: User, event_type: str, metadata: Optional[Di
         reason=str(rule["reason"]),
         metadata=metadata,
         internal_score_delta=int(rule.get("internal", 0)),
+        allow_titles=True,
     )
 
 
@@ -233,6 +240,7 @@ def apply_penalty(
         reason=reason,
         metadata=metadata,
         internal_score_delta=int(penalty_rule.get("internal", 0)),
+        allow_titles=False,
     )
 
 
