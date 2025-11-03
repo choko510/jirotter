@@ -4,6 +4,7 @@ const StampRallyComponent = {
     state: {
         shops: [],
         checkins: [],
+        visits: [],
         progress: [],
         isLoading: false,
         currentPage: 1,
@@ -304,6 +305,31 @@ const StampRallyComponent = {
                     gap: 10px;
                     margin-bottom: 15px;
                 }
+
+                .shop-visit-images {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
+                    gap: 10px;
+                    margin-bottom: 15px;
+                }
+
+                .shop-visit-image {
+                    position: relative;
+                    width: 100%;
+                    padding-top: 66.66%;
+                    border-radius: 8px;
+                    overflow: hidden;
+                    background: #f0f0f0;
+                }
+
+                .shop-visit-image img {
+                    position: absolute;
+                    top: 0;
+                    left: 0;
+                    width: 100%;
+                    height: 100%;
+                    object-fit: cover;
+                }
                 
                 .checkin-status {
                     display: flex;
@@ -487,6 +513,10 @@ const StampRallyComponent = {
                 .dark-mode .shop-card {
                     background: #2a2a2a;
                     border-color: #333;
+                }
+
+                .dark-mode .shop-visit-image {
+                    background: #333;
                 }
                 
                 .dark-mode .shop-card-header {
@@ -806,6 +836,28 @@ const StampRallyComponent = {
         return buttonsHtml;
     },
 
+    // 指定した店舗の訪問画像一覧を取得
+    getVisitImagesForShop(shopId, limit = 4) {
+        if (!Array.isArray(this.state.visits) || this.state.visits.length === 0) {
+            return [];
+        }
+
+        const images = [];
+        const seen = new Set();
+
+        for (const visit of this.state.visits) {
+            if (visit.shop_id === shopId && visit.image_url && !seen.has(visit.image_url)) {
+                seen.add(visit.image_url);
+                images.push(visit.image_url);
+                if (images.length >= limit) {
+                    break;
+                }
+            }
+        }
+
+        return images;
+    },
+
     // 店舗グリッドをレンダリング
     renderShopsGrid() {
         if (this.state.isLoading) {
@@ -845,6 +897,7 @@ const StampRallyComponent = {
 
         return filteredShops.map(shop => {
             const isChecked = this.state.checkins.some(checkin => checkin.shop_id === shop.id);
+            const visitImages = this.getVisitImagesForShop(shop.id);
             const brand = this.determineBrand(shop.name);
             const brandConfig = this.BRAND_CONFIG[brand];
 
@@ -862,6 +915,15 @@ const StampRallyComponent = {
                                 ${isChecked ? '訪問済み' : '未訪問'}
                             </div>
                         </div>
+                        ${(isChecked && visitImages.length > 0) ? `
+                        <div class="shop-visit-images">
+                            ${visitImages.map((imageUrl, index) => `
+                                <div class="shop-visit-image">
+                                    <img src="${this.escapeHtml(imageUrl)}" alt="${this.escapeHtml(shop.name)}の訪問写真${visitImages.length > 1 ? index + 1 : ''}">
+                                </div>
+                            `).join('')}
+                        </div>
+                        ` : ''}
                         <div class="shop-actions">
                             <button class="shop-action-btn checkin-btn"
                                     data-shop-id="${shop.id}"
@@ -956,12 +1018,14 @@ const StampRallyComponent = {
                 const prefectureFilter = this.state.selectedBrand === 'all'
                     ? this.state.selectedPrefecture
                     : 'all';
-                const [shopsResponse, checkinsResponse] = await Promise.all([
+                const [shopsResponse, checkinsResponse, visitsResponse] = await Promise.all([
                     this.loadShops(1, perPage, prefectureFilter),
-                    this.loadCheckins()
+                    this.loadCheckins(),
+                    this.loadVisits()
                 ]);
                 this.state.shops = shopsResponse;
                 this.state.checkins = checkinsResponse;
+                this.state.visits = visitsResponse;
                 this.state.currentPage = 1;
                 this.state.hasMoreShops = shopsResponse.length === perPage;
             } else {
@@ -1021,6 +1085,22 @@ const StampRallyComponent = {
             return data.checkins || [];
         } catch (error) {
             console.error('チェックインデータ読み込みエラー:', error);
+            return [];
+        }
+    },
+
+    // 訪問データを読み込み
+    async loadVisits() {
+        try {
+            const token = API.getCookie('authToken');
+            if (!token) {
+                return [];
+            }
+
+            const data = await API.request('/api/v1/visits/me');
+            return data.visits || [];
+        } catch (error) {
+            console.error('訪問データ読み込みエラー:', error);
             return [];
         }
     },
