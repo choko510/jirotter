@@ -24,6 +24,7 @@ from app.routes.reports import router as reports_router
 from app.routes.checkin import router as checkin_router
 from app.routes.stamps import router as stamps_router
 from app.routes.visits import router as visits_router
+from app.routes.shop_submissions import router as shop_submissions_router
 
 class CacheBustingMiddleware(BaseHTTPMiddleware):
     """Debugモード時に静的ファイルにランダムパラメーターを追加してキャッシュを防ぐミドルウェア"""
@@ -191,102 +192,60 @@ def create_app():
     app.include_router(checkin_router, prefix=settings.API_V1_STR)
     app.include_router(stamps_router, prefix=settings.API_V1_STR)
     app.include_router(visits_router, prefix=settings.API_V1_STR)
-    
-    @app.get("/", response_class=HTMLResponse)
-    async def read_index():
-        """index.htmlを返すエンドポイント"""
-        index_path = os.path.join(os.path.dirname(__file__), "..", "frontend/index.html")
-        with open(index_path, "r", encoding="utf-8") as f:
+    app.include_router(shop_submissions_router, prefix=settings.API_V1_STR)
+
+    def render_html(filename: str) -> HTMLResponse:
+        template_path = os.path.join(os.path.dirname(__file__), "..", f"frontend/{filename}")
+        with open(template_path, "r", encoding="utf-8") as f:
             content = f.read()
-        
-        # Debugモードの場合、静的ファイルURLにキャッシュ破壊パラメータを追加
+
         if settings.DEBUG:
             import re
-            
-            # キャッシュ破壊用パラメータを生成
+
             timestamp = int(time.time())
             random_str = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
             cache_bust_param = f"v={timestamp}_{random_str}"
-            
-            # CSSファイルのURLを置換
-            content = re.sub(
-                r'(href="css/[^"]+)"',
-                lambda m: f'{m.group(1)}?{cache_bust_param}"',
-                content
-            )
-            
-            # JSファイルのURLを置換
-            content = re.sub(
-                r'(src="js/[^"]+)"',
-                lambda m: f'{m.group(1)}?{cache_bust_param}"',
-                content
-            )
-            
-            # アセットファイルのURLを置換
-            content = re.sub(
-                r'(src="assets/[^"]+)"',
-                lambda m: f'{m.group(1)}?{cache_bust_param}"',
-                content
-            )
-        
-        # 開発環境ではキャッシュを無効化
+
+            def _append_cache_bust(pattern: str, source: str) -> str:
+                return re.sub(
+                    pattern,
+                    lambda m: f"{m.group(1)}?{cache_bust_param}\"",
+                    source,
+                )
+
+            content = _append_cache_bust(r'(href="css/[^"]+)"', content)
+            content = _append_cache_bust(r'(src="js/[^"]+)"', content)
+            content = _append_cache_bust(r'(src="assets/[^"]+)"', content)
+
         headers = {}
         if settings.DEVELOPMENT:
             headers = {
                 "Cache-Control": "no-cache, no-store, must-revalidate",
                 "Pragma": "no-cache",
-                "Expires": "0"
+                "Expires": "0",
             }
-        
+
         return HTMLResponse(content=content, headers=headers)
+
+    @app.get("/", response_class=HTMLResponse)
+    async def read_index():
+        """index.htmlを返すエンドポイント"""
+        return render_html("index.html")
 
     @app.get("/explanation", response_class=HTMLResponse)
     async def explanation_page():
         """explanation.htmlを返すエンドポイント"""
-        index_path = os.path.join(os.path.dirname(__file__), "..", "frontend/explanation.html")
-        with open(index_path, "r", encoding="utf-8") as f:
-            content = f.read()
-        
-        # Debugモードの場合、静的ファイルURLにキャッシュ破壊パラメータを追加
-        if settings.DEBUG:
-            import re
-            
-            # キャッシュ破壊用パラメータを生成
-            timestamp = int(time.time())
-            random_str = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
-            cache_bust_param = f"v={timestamp}_{random_str}"
-            
-            # CSSファイルのURLを置換
-            content = re.sub(
-                r'(href="css/[^"]+)"',
-                lambda m: f'{m.group(1)}?{cache_bust_param}"',
-                content
-            )
-            
-            # JSファイルのURLを置換
-            content = re.sub(
-                r'(src="js/[^"]+)"',
-                lambda m: f'{m.group(1)}?{cache_bust_param}"',
-                content
-            )
-            
-            # アセットファイルのURLを置換
-            content = re.sub(
-                r'(src="assets/[^"]+)"',
-                lambda m: f'{m.group(1)}?{cache_bust_param}"',
-                content
-            )
-        
-        # 開発環境ではキャッシュを無効化
-        headers = {}
-        if settings.DEVELOPMENT:
-            headers = {
-                "Cache-Control": "no-cache, no-store, must-revalidate",
-                "Pragma": "no-cache",
-                "Expires": "0"
-            }
-        
-        return HTMLResponse(content=content, headers=headers)
+        return render_html("explanation.html")
+
+    @app.get("/contribute", response_class=HTMLResponse)
+    async def contribute_page():
+        """店舗情報投稿ページを返すエンドポイント"""
+        return render_html("contribute.html")
+
+    @app.get("/admin/review", response_class=HTMLResponse)
+    async def admin_review_page():
+        """管理者向け審査ページを返すエンドポイント"""
+        return render_html("admin-review.html")
 
     @app.get("/api")
     async def root():

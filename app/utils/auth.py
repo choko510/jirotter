@@ -110,6 +110,19 @@ async def get_current_active_user(
 
     return current_user
 
+
+async def get_current_admin_user(
+    current_user: User = Depends(get_current_active_user)
+) -> User:
+    """管理者権限を持つ現在のユーザーを取得する依存関係"""
+    if not getattr(current_user, "is_admin", False):
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="管理者権限が必要です",
+        )
+
+    return current_user
+
 # オプショナル認証（認証されている場合はユーザー情報を、されていない場合はNoneを返す）
 async def get_current_user_optional(
     credentials: Optional[HTTPAuthorizationCredentials] = Depends(security),
