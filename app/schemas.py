@@ -1,6 +1,6 @@
-from pydantic import BaseModel, EmailStr, ConfigDict, Field, field_validator, field_serializer
+from pydantic import BaseModel, EmailStr, ConfigDict, Field, field_validator, field_serializer, model_validator
 from datetime import datetime
-from typing import Optional, List
+from typing import Optional, List, Dict, Literal
 import re
 from app.utils.security import escape_html
 
@@ -298,6 +298,96 @@ class RamenShopResponse(RamenShopBase):
 class RamenShopsResponse(BaseModel):
     shops: List[RamenShopResponse]
     total: int
+
+
+class SubmissionUserInfo(BaseModel):
+    id: str
+    username: str
+
+
+class RamenShopSubmissionBase(BaseModel):
+    change_type: Literal["update", "new"]
+    shop_id: Optional[int] = None
+    name: Optional[str] = Field(None, max_length=255)
+    address: Optional[str] = Field(None, max_length=255)
+    business_hours: Optional[str] = Field(None, max_length=255)
+    closed_day: Optional[str] = Field(None, max_length=255)
+    seats: Optional[str] = Field(None, max_length=255)
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    note: Optional[str] = Field(None, max_length=500)
+
+    @model_validator(mode="after")
+    def validate_submission(self):
+        if self.change_type == "update":
+            if not self.shop_id:
+                raise ValueError("既存店舗の更新にはshop_idが必要です")
+
+            changes = self.collect_changes()
+            if not changes:
+                raise ValueError("更新する項目を1つ以上入力してください")
+
+        if self.change_type == "new":
+            missing_fields = [
+                field
+                for field, value in {
+                    "name": self.name,
+                    "address": self.address,
+                    "latitude": self.latitude,
+                    "longitude": self.longitude,
+                }.items()
+                if value in (None, "")
+            ]
+            if missing_fields:
+                raise ValueError("新規店舗の登録には店舗名、住所、緯度、経度が必要です")
+
+        return self
+
+    def collect_changes(self) -> Dict[str, object]:
+        changes = {
+            key: value
+            for key, value in {
+                "name": self.name,
+                "address": self.address,
+                "business_hours": self.business_hours,
+                "closed_day": self.closed_day,
+                "seats": self.seats,
+                "latitude": self.latitude,
+                "longitude": self.longitude,
+            }.items()
+            if value is not None and value != ""
+        }
+
+        if "latitude" in changes:
+            changes["latitude"] = float(changes["latitude"])
+        if "longitude" in changes:
+            changes["longitude"] = float(changes["longitude"])
+
+        return changes
+
+
+class RamenShopSubmissionCreate(RamenShopSubmissionBase):
+    pass
+
+
+class RamenShopSubmissionResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    change_type: Literal["update", "new"]
+    shop_id: Optional[int] = None
+    status: str
+    note: Optional[str] = None
+    proposed_changes: Dict[str, object] = Field(default_factory=dict)
+    created_at: datetime
+    reviewed_at: Optional[datetime] = None
+    review_comment: Optional[str] = None
+    proposer: SubmissionUserInfo
+    reviewer: Optional[SubmissionUserInfo] = None
+
+
+class RamenShopSubmissionReview(BaseModel):
+    comment: Optional[str] = Field(None, max_length=500)
 
 # Visit Schemas
 class VisitBase(BaseModel):

@@ -1,0 +1,93 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>店舗申請の審査 | Jirotter 管理者</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css">
+    <link rel="stylesheet" href="css/submission.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/earlyaccess/notosansjapanese.css">
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js" defer></script>
+    <script src="js/app.js" defer></script>
+    <script src="js/admin-review.js" defer></script>
+</head>
+<body class="submission-body">
+    <header class="page-header">
+        <div class="header-inner">
+            <a href="/" class="brand">Jirotter</a>
+            <nav class="header-nav">
+                <a href="/" class="nav-link">ホーム</a>
+                <a href="/contribute" class="nav-link">店舗を提案</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="admin-layout">
+        <section class="list-panel">
+            <div class="card">
+                <div class="card-title">審査待ちの申請</div>
+                <p class="form-helper">左のリストから申請を選択すると詳細が表示されます。</p>
+                <div id="pending-list" class="pending-list"></div>
+            </div>
+        </section>
+
+        <section class="detail-panel">
+            <div class="card">
+                <div id="admin-feedback" class="form-feedback" role="alert" hidden></div>
+                <div id="admin-placeholder" class="placeholder">
+                    <h2>申請を選択してください</h2>
+                    <p>ここに申請内容の詳細が表示されます。承認すると店舗データが更新され、投稿者には貢献ポイントが付与されます。</p>
+                </div>
+                <div id="admin-detail" hidden>
+                    <header class="detail-header">
+                        <div>
+                            <h2 id="detail-title"></h2>
+                            <p id="detail-meta" class="detail-meta"></p>
+                        </div>
+                        <span id="detail-status" class="history-status"></span>
+                    </header>
+
+                    <section class="detail-section">
+                        <h3>申請内容</h3>
+                        <dl class="detail-grid">
+                            <div><dt>申請ID</dt><dd id="detail-id"></dd></div>
+                            <div><dt>店舗ID</dt><dd id="detail-shop-id"></dd></div>
+                            <div><dt>種別</dt><dd id="detail-type"></dd></div>
+                            <div><dt>申請者</dt><dd id="detail-proposer"></dd></div>
+                            <div><dt>送信日時</dt><dd id="detail-created"></dd></div>
+                            <div><dt>メモ</dt><dd id="detail-note"></dd></div>
+                        </dl>
+                    </section>
+
+                    <section class="detail-section">
+                        <h3>提案された変更点</h3>
+                        <table class="change-table" id="change-table">
+                            <thead>
+                                <tr><th>項目</th><th>提案値</th><th>現在の値</th></tr>
+                            </thead>
+                            <tbody></tbody>
+                        </table>
+                    </section>
+
+                    <section class="detail-section">
+                        <h3>地図</h3>
+                        <div class="map-wrapper detail-map">
+                            <div id="admin-map"></div>
+                        </div>
+                    </section>
+
+                    <section class="detail-section">
+                        <h3>審査メモ</h3>
+                        <textarea id="review-comment" rows="3" maxlength="500" placeholder="審査結果の理由やメモを記入"></textarea>
+                    </section>
+
+                    <div class="admin-actions">
+                        <button id="approve-btn" class="primary-button">承認して反映</button>
+                        <button id="reject-btn" class="secondary-button danger">差し戻す</button>
+                    </div>
+                </div>
+            </div>
+        </section>
+    </main>
+</body>
+</html>
