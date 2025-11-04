@@ -200,6 +200,10 @@ document.addEventListener('DOMContentLoaded', function() {
         router.register('rankings', RankingsComponent);
     }
 
+    if (typeof ExternalLinkComponent !== 'undefined') {
+        router.register('external-link', ExternalLinkComponent);
+    }
+
     // プロフィールページのルートを登録（新しいバージョン）
     if (typeof ProfileComponent !== 'undefined') {
         router.register('profile', ProfileComponent);
