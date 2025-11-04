@@ -9,7 +9,7 @@ pytest
 alembic
 pydantic[email]
 aiohttp
-openai
+google-genai
 pytest-playwright
 Pillow
 user-agents

@@ -3,8 +3,8 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func, distinct
 
 from database import get_db
-from app.models import RamenShop, Checkin, User
-from app.schemas import StampProgressResponse
+from app.models import RamenShop, Checkin, User, Visit
+from app.schemas import StampProgressResponse, VisitedShopsResponse, VisitedShopsByPrefecture, VisitedShopItem
 from app.utils.auth import get_current_user
 
 router = APIRouter(tags=["stamps"])
@@ -68,4 +68,81 @@ async def get_stamp_rally_progress(
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"進捗の取得に失敗しました: {str(e)}"
+        )
+
+
+@router.get("/stamps/visited", response_model=VisitedShopsResponse)
+async def get_visited_shops(
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """
+    ユーザーが訪問済みの店舗を都道府県別にグループ化して取得する。
+    """
+    try:
+        # 1. ユーザーのチェックインデータを取得（店舗情報と結合）
+        checkins_with_shops = db.query(Checkin, RamenShop).join(
+            RamenShop, Checkin.shop_id == RamenShop.id
+        ).filter(
+            Checkin.user_id == current_user.id
+        ).all()
+
+        # 2. ユーザーの訪問記録を取得（画像用）
+        visits = db.query(Visit).filter(
+            Visit.user_id == current_user.id
+        ).all()
+
+        # 訪問画像を店舗IDごとにグループ化
+        visit_images_by_shop = {}
+        for visit in visits:
+            if visit.shop_id not in visit_images_by_shop:
+                visit_images_by_shop[visit.shop_id] = []
+            if visit.image_url and visit.image_url not in visit_images_by_shop[visit.shop_id]:
+                visit_images_by_shop[visit.shop_id].append(visit.image_url)
+
+        # 3. 都道府県別に店舗をグループ化
+        prefecture_shops = {pref: [] for pref in PREFECTURES}
+        
+        for checkin, shop in checkins_with_shops:
+            # 都道府県を判定
+            shop_prefecture = None
+            for pref in PREFECTURES:
+                if pref in shop.address:
+                    shop_prefecture = pref
+                    break
+            
+            if shop_prefecture:
+                # 訪問画像を取得（最大4件）
+                shop_images = visit_images_by_shop.get(shop.id, [])[:4]
+                
+                visited_shop = VisitedShopItem(
+                    id=shop.id,
+                    name=shop.name,
+                    address=shop.address,
+                    checkin_date=checkin.checkin_date,
+                    visit_images=shop_images
+                )
+                prefecture_shops[shop_prefecture].append(visited_shop)
+
+        # 4. レスポンスデータを構築
+        visited_shops_data = []
+        total_shops = 0
+        
+        for pref in PREFECTURES:
+            if prefecture_shops[pref]:
+                visited_shops_data.append(VisitedShopsByPrefecture(
+                    prefecture=pref,
+                    shops=prefecture_shops[pref]
+                ))
+                total_shops += len(prefecture_shops[pref])
+
+        return VisitedShopsResponse(
+            visited_shops=visited_shops_data,
+            total_shops=total_shops
+        )
+
+    except Exception as e:
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"訪問済み店舗の取得に失敗しました: {str(e)}"
         )

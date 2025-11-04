@@ -6,13 +6,15 @@ const StampRallyComponent = {
         checkins: [],
         visits: [],
         progress: [],
+        visitedShops: [], // 新規追加：訪問済み店舗データ
         isLoading: false,
         currentPage: 1,
         hasMoreShops: true,
         selectedBrand: 'all',
         selectedPrefecture: 'all',
-        currentView: 'list', // 'list' or 'progress'
-        progressMessage: ''
+        currentView: 'list', // 'list', 'progress', or 'visited'
+        progressMessage: '',
+        visitedMessage: '' // 新規追加：訪問済み店舗のエラーメッセージ
     },
 
     REGION_PREFECTURES: {
@@ -595,6 +597,87 @@ const StampRallyComponent = {
                     color: #aaa;
                 }
 
+                /* Visited Shops Styles */
+                .visited-accordion {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 12px;
+                }
+
+                .prefecture-visited-details {
+                    border: 1px solid #e0e0e0;
+                    border-radius: 8px;
+                    background: #fff;
+                    overflow: hidden;
+                }
+
+                .prefecture-visited-summary {
+                    display: flex;
+                    justify-content: space-between;
+                    align-items: center;
+                    font-weight: bold;
+                    padding: 12px 16px;
+                    cursor: pointer;
+                    background: #fafafa;
+                }
+
+                .prefecture-visited-summary span:last-child {
+                    font-size: 12px;
+                    color: #666;
+                }
+
+                .visited-shops-grid {
+                    display: grid;
+                    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+                    gap: 20px;
+                    padding: 16px;
+                }
+
+                .visited-shop-card {
+                    border: 1px solid #e0e0e0;
+                    border-radius: 8px;
+                    overflow: hidden;
+                    background: #fff;
+                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+                }
+
+                .shop-checkin-date {
+                    display: flex;
+                    align-items: center;
+                    gap: 8px;
+                    color: #666;
+                    font-size: 14px;
+                    margin-bottom: 10px;
+                }
+
+                .shop-checkin-date i {
+                    color: #d4a574;
+                }
+
+                /* Dark Mode for Visited Shops */
+                .dark-mode .prefecture-visited-details {
+                    background: #2a2a2a;
+                    border-color: #333;
+                }
+
+                .dark-mode .prefecture-visited-summary {
+                    background: #1f1f1f;
+                    color: #e0e0e0;
+                }
+
+                .dark-mode .prefecture-visited-summary span:last-child {
+                    color: #aaa;
+                }
+
+                .dark-mode .visited-shop-card {
+                    background: #2a2a2a;
+                    border-color: #333;
+                }
+
+                .dark-mode .shop-checkin-date {
+                    color: #aaa;
+                }
+
                 @media (max-width: 768px) {
                     .stamp-rally-container {
                         padding: 16px;
@@ -617,6 +700,11 @@ const StampRallyComponent = {
                         grid-template-columns: 1fr;
                         gap: 15px;
                     }
+                    
+                    .visited-shops-grid {
+                        grid-template-columns: 1fr;
+                        gap: 15px;
+                    }
                 }
             </style>
             
@@ -629,10 +717,13 @@ const StampRallyComponent = {
                 <div class="view-switcher">
                     <button class="view-switch-btn ${this.state.currentView === 'list' ? 'active' : ''}" data-view="list">店舗リスト</button>
                     <button class="view-switch-btn ${this.state.currentView === 'progress' ? 'active' : ''}" data-view="progress">進捗マップ</button>
+                    <button class="view-switch-btn ${this.state.currentView === 'visited' ? 'active' : ''}" data-view="visited">訪問済み</button>
                 </div>
                 
                 <div id="stampRallyContent">
-                    ${this.state.currentView === 'list' ? this.renderListView() : this.renderProgressView()}
+                    ${this.state.currentView === 'list' ? this.renderListView() :
+                      this.state.currentView === 'progress' ? this.renderProgressView() :
+                      this.renderVisitedView()}
                 </div>
             </div>
         `;
@@ -757,6 +848,89 @@ const StampRallyComponent = {
         progressHtml += '</div>';
 
         return progressHtml;
+    },
+
+    // 訪問済みビューをレンダリング
+    renderVisitedView() {
+        if (this.state.isLoading) {
+            return '<div class="loading">訪問済み店舗を読み込み中...</div>';
+        }
+
+        if (this.state.visitedMessage) {
+            return `
+                <div class="empty-state">
+                    <i class="fas fa-info-circle"></i>
+                    <h3>訪問済み店舗を表示できません</h3>
+                    <p>${this.escapeHtml(this.state.visitedMessage)}</p>
+                </div>
+            `;
+        }
+
+        if (this.state.visitedShops.length === 0) {
+            return `
+                <div class="empty-state">
+                    <i class="fas fa-map-marked-alt"></i>
+                    <h3>訪問済み店舗がありません</h3>
+                    <p>チェックインを行うと訪問済み店舗が表示されます</p>
+                </div>
+            `;
+        }
+
+        let visitedHtml = '<div class="visited-accordion">';
+        for (const prefectureData of this.state.visitedShops) {
+            visitedHtml += `
+                <details class="prefecture-visited-details" open>
+                    <summary class="prefecture-visited-summary">
+                        <span>${this.escapeHtml(prefectureData.prefecture)}</span>
+                        <span>${prefectureData.shops.length} 店舗</span>
+                    </summary>
+                    <div class="visited-shops-grid">
+                        ${prefectureData.shops.map(shop => this.renderVisitedShopCard(shop)).join('')}
+                    </div>
+                </details>
+            `;
+        }
+        visitedHtml += '</div>';
+
+        return visitedHtml;
+    },
+
+    // 訪問済み店舗カードをレンダリング
+    renderVisitedShopCard(shop) {
+        const brand = this.determineBrand(shop.name);
+        const brandConfig = this.BRAND_CONFIG[brand];
+        const checkinDate = new Date(shop.checkin_date);
+        const formattedDate = `${checkinDate.getFullYear()}年${checkinDate.getMonth() + 1}月${checkinDate.getDate()}日`;
+
+        return `
+            <div class="shop-card visited-shop-card">
+                <div class="shop-card-header">
+                    <div class="shop-brand-indicator" style="background: ${brandConfig.color};"></div>
+                    <div class="shop-name">${this.escapeHtml(shop.name)}</div>
+                </div>
+                <div class="shop-card-body">
+                    <div class="shop-address">${this.escapeHtml(shop.address)}</div>
+                    <div class="shop-checkin-date">
+                        <i class="fas fa-calendar-check"></i>
+                        訪問日: ${formattedDate}
+                    </div>
+                    ${shop.visit_images && shop.visit_images.length > 0 ? `
+                    <div class="shop-visit-images">
+                        ${shop.visit_images.map((imageUrl, index) => `
+                            <div class="shop-visit-image">
+                                <img src="${this.escapeHtml(imageUrl)}" alt="${this.escapeHtml(shop.name)}の訪問写真${shop.visit_images.length > 1 ? index + 1 : ''}">
+                            </div>
+                        `).join('')}
+                    </div>
+                    ` : ''}
+                    <div class="shop-actions">
+                        <button class="shop-action-btn detail-btn" onclick="router.navigate('shop', [${shop.id}])">
+                            詳細
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
     },
 
     // 統計情報をレンダリング
@@ -1014,6 +1188,7 @@ const StampRallyComponent = {
         try {
             if (this.state.currentView === 'list') {
                 this.state.progressMessage = '';
+                this.state.visitedMessage = '';
                 const perPage = 20;
                 const prefectureFilter = this.state.selectedBrand === 'all'
                     ? this.state.selectedPrefecture
@@ -1028,7 +1203,7 @@ const StampRallyComponent = {
                 this.state.visits = visitsResponse;
                 this.state.currentPage = 1;
                 this.state.hasMoreShops = shopsResponse.length === perPage;
-            } else {
+            } else if (this.state.currentView === 'progress') {
                 const token = API.getCookie('authToken');
                 if (!token) {
                     this.state.progress = [];
@@ -1039,8 +1214,11 @@ const StampRallyComponent = {
                 }
 
                 this.state.progressMessage = '';
+                this.state.visitedMessage = '';
                 const data = await API.request('/api/v1/stamps/progress');
                 this.state.progress = data.progress;
+            } else if (this.state.currentView === 'visited') {
+                await this.loadVisitedShops();
             }
             this.state.isLoading = false;
             this.updateUI();
@@ -1050,6 +1228,10 @@ const StampRallyComponent = {
             if (this.state.currentView === 'progress') {
                 this.state.progress = [];
                 this.state.progressMessage = error.message || '進捗の取得に失敗しました。';
+                this.updateUI();
+            } else if (this.state.currentView === 'visited') {
+                this.state.visitedShops = [];
+                this.state.visitedMessage = error.message || '訪問済み店舗の取得に失敗しました。';
                 this.updateUI();
             } else {
                 this.showError('データの読み込みに失敗しました');
@@ -1105,6 +1287,26 @@ const StampRallyComponent = {
         }
     },
 
+    // 訪問済み店舗データを読み込み
+    async loadVisitedShops() {
+        try {
+            const token = API.getCookie('authToken');
+            if (!token) {
+                this.state.visitedShops = [];
+                this.state.visitedMessage = '訪問済み店舗を表示するにはログインが必要です。';
+                return;
+            }
+
+            this.state.visitedMessage = '';
+            const data = await API.request('/api/v1/stamps/visited');
+            this.state.visitedShops = data.visited_shops;
+        } catch (error) {
+            console.error('訪問済み店舗データ読み込みエラー:', error);
+            this.state.visitedShops = [];
+            this.state.visitedMessage = error.message || '訪問済み店舗の取得に失敗しました。';
+        }
+    },
+
     // さらに店舗を読み込み
     async loadMoreShops() {
         if (!this.state.hasMoreShops || this.state.isLoading) return;
@@ -1151,8 +1353,10 @@ const StampRallyComponent = {
             if (shopsGridElement) {
                 shopsGridElement.innerHTML = this.renderShopsGrid();
             }
-        } else {
+        } else if (this.state.currentView === 'progress') {
             contentEl.innerHTML = this.renderProgressView();
+        } else {
+            contentEl.innerHTML = this.renderVisitedView();
         }
     },
 

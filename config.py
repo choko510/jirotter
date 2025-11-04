@@ -24,7 +24,7 @@ class Settings:
     ACCESS_TOKEN_EXPIRE_MINUTES: int = 60 * 24  # 24時間
     
     # AI設定
-    OPENAI_API_KEY: str = os.getenv("OPENAI_API_KEY", "")
+    GOOGLE_API_KEY: str = os.getenv("GOOGLE_API_KEY", "")
     
     # テスト設定
     TESTING: bool = os.getenv("TESTING", False)
