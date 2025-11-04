@@ -18,6 +18,7 @@ class User(Base):
     internal_score = Column(Integer, default=100, nullable=False)
     rank = Column(String(80), nullable=False, default='味覚ビギナー')
     account_status = Column(String(20), nullable=False, default='active')
+    is_admin = Column(Boolean, nullable=False, default=False)
 
     # Relationships
     posts = relationship('Post', backref='author', lazy=True, cascade='all, delete-orphan')
@@ -138,6 +139,27 @@ class RamenShop(Base):
     longitude = Column(Float, nullable=False, index=True)
     wait_time = Column(Integer, default=0)  # 待ち時間（分）
     last_update = Column(DateTime, default=datetime.utcnow)  # 最終更新時間
+
+
+class RamenShopSubmission(Base):
+    """店舗情報の提案・修正申請を管理するモデル"""
+    __tablename__ = 'ramen_shop_submissions'
+
+    id = Column(Integer, primary_key=True)
+    shop_id = Column(Integer, ForeignKey('ramen_shops.id'), nullable=True, index=True)
+    proposer_id = Column(String(80), ForeignKey('users.id'), nullable=False, index=True)
+    change_type = Column(String(20), nullable=False, default='update')  # 'update' or 'new'
+    proposed_changes = Column(JSON, nullable=False, default=dict)
+    note = Column(Text, nullable=True)
+    status = Column(String(20), nullable=False, default='pending')
+    created_at = Column(DateTime, default=datetime.utcnow)
+    reviewed_at = Column(DateTime, nullable=True)
+    reviewer_id = Column(String(80), ForeignKey('users.id'), nullable=True)
+    review_comment = Column(Text, nullable=True)
+
+    proposer = relationship('User', foreign_keys=[proposer_id], backref='shop_submissions')
+    reviewer = relationship('User', foreign_keys=[reviewer_id])
+    shop = relationship('RamenShop', backref='submissions')
 
 class Visit(Base):
     """訪問記録モデル"""

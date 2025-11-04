@@ -1,0 +1,146 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>店舗情報を提案する | Jirotter</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css">
+    <link rel="stylesheet" href="css/submission.css">
+    <link rel="stylesheet" href="https://fonts.googleapis.com/earlyaccess/notosansjapanese.css">
+    <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js" defer></script>
+    <script src="js/app.js" defer></script>
+    <script src="js/submission.js" defer></script>
+</head>
+<body class="submission-body">
+    <header class="page-header">
+        <div class="header-inner">
+            <a href="/" class="brand">Jirotter</a>
+            <nav class="header-nav">
+                <a href="/" class="nav-link">ホーム</a>
+                <a href="/explanation" class="nav-link">アプリについて</a>
+                <a href="/admin/review" class="nav-link admin-link">管理者審査</a>
+            </nav>
+        </div>
+    </header>
+
+    <main class="submission-layout">
+        <section class="map-panel">
+            <div class="panel-header">
+                <h1>店舗情報の提案</h1>
+                <p>地図上で位置を選択し、店舗の情報を追加または修正しましょう。Google マップの編集体験をイメージした簡単なワークフローです。</p>
+            </div>
+            <div class="map-wrapper">
+                <div id="submission-map" aria-label="店舗位置の地図"></div>
+                <div class="map-tools">
+                    <button type="button" id="locate-me" class="secondary-button">現在地を表示</button>
+                    <div class="coordinates" aria-live="polite">
+                        <span>緯度: <strong id="current-lat">--</strong></span>
+                        <span>経度: <strong id="current-lon">--</strong></span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="form-panel">
+            <div class="card" id="auth-warning" hidden>
+                <div class="card-title">ログインが必要です</div>
+                <p>店舗情報の提案にはログインが必要です。ページ上部のホームからログインしてください。</p>
+            </div>
+
+            <div class="card">
+                <form id="submission-form" autocomplete="off">
+                    <div id="form-feedback" class="form-feedback" role="alert" hidden></div>
+                    <fieldset class="radio-group">
+                        <legend>提案の種類</legend>
+                        <label>
+                            <input type="radio" name="change_type" value="update" checked>
+                            既存店舗の情報を更新
+                        </label>
+                        <label>
+                            <input type="radio" name="change_type" value="new">
+                            新しい店舗を追加
+                        </label>
+                    </fieldset>
+
+                    <div class="form-section" id="existing-shop-tools">
+                        <label class="form-label" for="shop-search">店舗を検索</label>
+                        <div class="search-row">
+                            <input type="text" id="shop-search" placeholder="店舗名や住所で検索" aria-label="店舗検索">
+                            <button type="button" id="shop-search-btn" class="secondary-button">検索</button>
+                        </div>
+                        <div id="search-results" class="search-results" role="listbox" aria-label="検索結果"></div>
+                    </div>
+
+                    <input type="hidden" id="shop-id" name="shop_id">
+
+                    <div class="form-section">
+                        <label class="form-label" for="shop-name">店舗名 <span class="required" aria-hidden="true">*</span></label>
+                        <input type="text" id="shop-name" name="name" placeholder="例）ラーメン二郎 新宿店" maxlength="255">
+                    </div>
+
+                    <div class="form-section">
+                        <label class="form-label" for="shop-address">住所 <span class="required" aria-hidden="true">*</span></label>
+                        <input type="text" id="shop-address" name="address" placeholder="例）東京都新宿区〇〇" maxlength="255">
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-section">
+                            <label class="form-label" for="shop-hours">営業時間</label>
+                            <input type="text" id="shop-hours" name="business_hours" placeholder="例）11:00〜21:00" maxlength="255">
+                        </div>
+                        <div class="form-section">
+                            <label class="form-label" for="shop-closed">定休日</label>
+                            <input type="text" id="shop-closed" name="closed_day" placeholder="例）火曜日" maxlength="255">
+                        </div>
+                    </div>
+
+                    <div class="form-grid">
+                        <div class="form-section">
+                            <label class="form-label" for="shop-seats">座席数</label>
+                            <input type="text" id="shop-seats" name="seats" placeholder="例）18席" maxlength="255">
+                        </div>
+                        <div class="form-section">
+                            <label class="form-label" for="shop-lat">緯度 <span class="required" aria-hidden="true">*</span></label>
+                            <input type="number" step="0.000001" id="shop-lat" name="latitude" placeholder="地図をクリックすると自動入力">
+                        </div>
+                        <div class="form-section">
+                            <label class="form-label" for="shop-lon">経度 <span class="required" aria-hidden="true">*</span></label>
+                            <input type="number" step="0.000001" id="shop-lon" name="longitude" placeholder="地図をクリックすると自動入力">
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <label class="form-label" for="shop-note">補足説明</label>
+                        <textarea id="shop-note" name="note" rows="4" maxlength="500" placeholder="変更理由や補足を記入すると審査がスムーズになります"></textarea>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="primary-button">審査に送信する</button>
+                        <p class="form-helper">送信後は管理者による審査が行われ、承認されると店舗データへ反映されます。</p>
+                    </div>
+                </form>
+            </div>
+
+            <div class="card">
+                <div class="card-title">申請履歴</div>
+                <div id="submission-history" class="history-list"></div>
+            </div>
+        </section>
+    </main>
+
+    <template id="history-item-template">
+        <article class="history-item">
+            <header>
+                <h3 class="history-title"></h3>
+                <span class="history-status"></span>
+            </header>
+            <p class="history-note"></p>
+            <dl class="history-meta">
+                <div><dt>送信日時</dt><dd class="history-created"></dd></div>
+                <div class="history-review" hidden><dt>審査日時</dt><dd class="history-reviewed"></dd></div>
+                <div class="history-review" hidden><dt>コメント</dt><dd class="history-comment"></dd></div>
+            </dl>
+        </article>
+    </template>
+</body>
+</html>

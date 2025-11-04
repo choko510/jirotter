@@ -37,6 +37,18 @@ const TimelineComponent = {
                 this.switchTab(e.target);
             }
         });
+
+        document.addEventListener('click', (e) => {
+            const externalLink = e.target.closest('.timeline-external-link');
+            if (externalLink) {
+                e.preventDefault();
+                e.stopPropagation();
+                const encodedUrl = externalLink.getAttribute('data-url');
+                if (encodedUrl) {
+                    router.navigate('external-link', [encodedUrl]);
+                }
+            }
+        });
         
         // ページの表示状態が変わったときに自動更新を再設定
         document.addEventListener('visibilitychange', () => {
@@ -769,8 +781,8 @@ const TimelineComponent = {
                     </div>
                 </div>
                 <div class="post-text" id="post-text-${post.id}">
-                    <div class="post-content collapsed" id="post-content-${post.id}">${API.escapeHtmlWithLineBreaks(post.text)}</div>
-                    ${this.isLongText(post.text) ? `<button class="show-more-btn" onclick="event.stopPropagation(); TimelineComponent.toggleText(${post.id})">続きを見る</button>` : ''}
+                    <div class="post-content collapsed" id="post-content-${post.id}">${this.formatPostText(post.text)}</div>
+                    ${this.isLongText(post.text) ? `<button class="show-more-btn" onclick="event.stopPropagation(); TimelineComponent.toggleText(${post.id})">もっと見る</button>` : ''}
                 </div>
                 ${post.shop_id ? `
                 <div class="shop-reference" onclick="event.stopPropagation(); router.navigate('shop', [${post.shop_id}])">
@@ -792,6 +804,28 @@ const TimelineComponent = {
                 </div>
             </div>
         `;
+    },
+
+    formatPostText(text) {
+        if (!text) {
+            return '';
+        }
+
+        const urlRegex = /(https?:\/\/[^\s]+)/g;
+        const normalizedText = text.replace(/\r\n/g, '\n');
+        const parts = normalizedText.split(urlRegex);
+
+        const formatted = parts.map((part, index) => {
+            // 奇数インデックスは正規表現にマッチしたURL
+            if (index % 2 === 1) {
+                const encodedUrl = encodeURIComponent(part);
+                const safeText = API.escapeHtml(part);
+                return `<a href="#" class="timeline-external-link" data-url="${encodedUrl}">${safeText}</a>`;
+            }
+            return API.escapeHtml(part);
+        }).join('');
+
+        return formatted.replace(/\n/g, '<br>');
     },
 
     showLoadingIndicator(show) {
@@ -1181,14 +1215,22 @@ const TimelineComponent = {
     // テキストの表示/非表示を切り替え
     toggleText(postId) {
         const content = document.getElementById(`post-content-${postId}`);
+        if (!content) {
+            return;
+        }
+
         const button = content.nextElementSibling;
         
+        if (!button) {
+            return;
+        }
+
         if (content.classList.contains('collapsed')) {
             content.classList.remove('collapsed');
-            button.textContent = '続きを見る';
+            button.textContent = '閉じる';
         } else {
             content.classList.add('collapsed');
-            button.textContent = '閉じる';
+            button.textContent = 'もっと見る';
         }
     },
     
