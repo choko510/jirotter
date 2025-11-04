@@ -228,6 +228,82 @@ const ProfileComponent = {
                     background: #f3f4f6;
                 }
 
+                @media (max-width: 640px) {
+                    .profile-page {
+                        padding: 20px 16px;
+                    }
+
+                    .profile-header {
+                        flex-direction: column;
+                        align-items: center;
+                        text-align: center;
+                        padding: 20px;
+                    }
+
+                    .profile-info {
+                        align-items: center;
+                        text-align: center;
+                    }
+
+                    .profile-name {
+                        font-size: 22px;
+                    }
+
+                    .profile-featured-title {
+                        flex-direction: column;
+                        align-items: stretch;
+                        text-align: left;
+                        gap: 12px;
+                        padding: 14px;
+                    }
+
+                    .profile-featured-title__icon {
+                        margin: 0 auto;
+                    }
+
+                    .profile-featured-title__link {
+                        width: 100%;
+                        text-align: center;
+                    }
+
+                    .profile-action-button {
+                        width: 100%;
+                        justify-content: center;
+                    }
+
+                    .profile-stats {
+                        width: 100%;
+                        justify-content: center;
+                    }
+
+                    .profile-stat {
+                        flex: 1 1 calc(50% - 12px);
+                        min-width: 140px;
+                    }
+
+                    .profile-tabs {
+                        overflow-x: auto;
+                        gap: 12px;
+                    }
+
+                    .profile-tab {
+                        flex: 0 0 auto;
+                        padding: 10px 0;
+                    }
+
+                    .profile-post-grid {
+                        grid-template-columns: 1fr;
+                    }
+
+                    .profile-title-gallery {
+                        grid-template-columns: 1fr;
+                    }
+
+                    .profile-edit-modal {
+                        padding: 20px 16px;
+                    }
+                }
+
                 .profile-title-gallery {
                     display: grid;
                     grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
