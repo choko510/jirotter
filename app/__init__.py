@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request
+from fastapi import FastAPI, Request, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse
 from fastapi.staticfiles import StaticFiles
@@ -25,6 +25,8 @@ from app.routes.checkin import router as checkin_router
 from app.routes.stamps import router as stamps_router
 from app.routes.visits import router as visits_router
 from app.routes.shop_submissions import router as shop_submissions_router
+from app.models import User
+from app.utils.auth import verify_token
 
 class CacheBustingMiddleware(BaseHTTPMiddleware):
     """Debugモード時に静的ファイルにランダムパラメーターを追加してキャッシュを防ぐミドルウェア"""
@@ -243,8 +245,24 @@ def create_app():
         return render_html("contribute.html")
 
     @app.get("/admin/review", response_class=HTMLResponse)
-    async def admin_review_page():
+    async def admin_review_page(request: Request):
         """管理者向け審査ページを返すエンドポイント"""
+        token = request.cookies.get("authToken")
+        if not token:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ページが見つかりません")
+
+        user_id = verify_token(token)
+        if user_id is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ページが見つかりません")
+
+        db = SessionLocal()
+        try:
+            user = db.query(User).filter(User.id == user_id).first()
+            if not user or not getattr(user, "is_admin", False):
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ページが見つかりません")
+        finally:
+            db.close()
+
         return render_html("admin-review.html")
 
     @app.get("/api")

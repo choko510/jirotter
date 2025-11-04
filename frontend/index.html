@@ -110,6 +110,22 @@
                 max-width: 100%;
                 border-right: none;
             }
+
+            .main-header-content {
+                padding: 12px 16px;
+            }
+
+            .header-left {
+                gap: 12px;
+            }
+
+            .propose-button {
+                display: none;
+            }
+
+            .floating-propose-button {
+                display: inline-flex;
+            }
         }
 
         /* 左サイドバー */
@@ -185,6 +201,26 @@
             z-index: 10;
         }
 
+        .main-header-content {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 16px;
+            padding: 12px 20px;
+        }
+
+        .header-left {
+            display: flex;
+            align-items: center;
+            gap: 16px;
+            flex: 1;
+            min-width: 0;
+        }
+
+        .header-left .tabs {
+            flex: 1;
+        }
+
         .tabs {
             display: flex;
         }
@@ -219,10 +255,57 @@
             border-radius: 2px;
         }
 
+        .propose-button,
+        .contribute-button {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            background: #d4a574;
+            color: #ffffff;
+            padding: 10px 18px;
+            border-radius: 999px;
+            font-weight: 600;
+            text-decoration: none;
+            transition: background 0.2s ease, transform 0.2s ease;
+            box-shadow: 0 8px 16px rgba(212, 165, 116, 0.2);
+            white-space: nowrap;
+        }
+
+        .propose-button:hover,
+        .contribute-button:hover {
+            background: #b7895b;
+            transform: translateY(-1px);
+        }
+
+        .propose-button i,
+        .contribute-button i {
+            font-size: 16px;
+        }
+
         /* 右サイドバー */
         .right-sidebar {
             padding: 20px;
             background: #ffffff;
+        }
+
+        .contribute-card {
+            border: 1px solid #e0e0e0;
+            border-radius: 16px;
+            padding: 20px;
+            margin-bottom: 20px;
+            background: linear-gradient(135deg, rgba(212, 165, 116, 0.08), rgba(212, 165, 116, 0.02));
+        }
+
+        .contribute-card h3 {
+            font-size: 18px;
+            margin-bottom: 8px;
+        }
+
+        .contribute-card p {
+            font-size: 14px;
+            color: #555;
+            margin-bottom: 16px;
+            line-height: 1.6;
         }
 
         .search-box {
@@ -277,6 +360,27 @@
             background: #d4a574;
             border-color: #d4a574;
             color: #ffffff;
+        }
+
+        .floating-propose-button {
+            position: fixed;
+            right: 20px;
+            bottom: 100px;
+            display: none;
+            align-items: center;
+            gap: 8px;
+            background: #d4a574;
+            color: #ffffff;
+            padding: 12px 18px;
+            border-radius: 999px;
+            font-weight: 600;
+            text-decoration: none;
+            box-shadow: 0 10px 25px rgba(0, 0, 0, 0.18);
+            z-index: 1100;
+        }
+
+        .floating-propose-button:hover {
+            background: #b7895b;
         }
 
         .search-results {
@@ -532,9 +636,7 @@
 
             .main-header {
                 position: sticky;
-                display: flex;
-                align-items: center;
-                padding: 0 16px;
+                padding: 0;
             }
 
             .mobile-menu-btn {
@@ -544,8 +646,11 @@
                 cursor: pointer;
                 color: #1a1a1a;
                 padding: 8px;
-                margin-right: 12px;
                 display: block;
+            }
+
+            .header-left {
+                flex: 1;
             }
 
             .tabs {
@@ -928,10 +1033,6 @@
                     <div class="nav-icon"><i class="fas fa-clock"></i></div>
                     <span>待ち時間リスト</span>
                 </div>
-                <div class="nav-item" onclick="window.location.href='/contribute'">
-                    <div class="nav-icon"><i class="fa-solid fa-pen-to-square"></i></div>
-                    <span>店舗を提案</span>
-                </div>
                 <div class="nav-item" data-route="stamp-rally">
                     <div class="nav-icon"><i class="fa-solid fa-stamp"></i></div>
                     <span>スタンプラリー</span>
@@ -958,10 +1059,18 @@
         <!-- メインコンテンツ -->
         <main class="main-content">
             <header class="main-header">
-                <button class="mobile-menu-btn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
-                <div class="tabs">
-                    <div class="tab active" data-tab="recommend">おすすめ</div>
-                    <div class="tab" data-tab="following">フォロー中</div>
+                <div class="main-header-content">
+                    <div class="header-left">
+                        <button class="mobile-menu-btn" onclick="toggleSidebar()"><i class="fas fa-bars"></i></button>
+                        <div class="tabs">
+                            <div class="tab active" data-tab="recommend">おすすめ</div>
+                            <div class="tab" data-tab="following">フォロー中</div>
+                        </div>
+                    </div>
+                    <a class="propose-button" href="/contribute">
+                        <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
+                        <span>店舗を提案</span>
+                    </a>
                 </div>
             </header>
 
@@ -974,6 +1083,14 @@
 
         <!-- 右サイドバー -->
         <aside class="right-sidebar">
+            <div class="contribute-card">
+                <h3>店舗を提案</h3>
+                <p>お気に入りのお店や最新情報をコミュニティに共有しましょう。あなたの投稿が地図をもっと豊かにします。</p>
+                <a class="contribute-button" href="/contribute">
+                    <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
+                    <span>投稿フォームへ</span>
+                </a>
+            </div>
             <div class="search-box">
                 <i class="fas fa-search"></i>
                 <input type="text" class="search-input" placeholder="店の名前を検索" id="searchInput">
@@ -1005,10 +1122,6 @@
                 <div class="bottom-nav-icon"><i class="fas fa-map-marked-alt"></i></div>
                 <span>マップ</span>
             </div>
-            <div class="bottom-nav-item" onclick="window.location.href='/contribute'">
-                <div class="bottom-nav-icon"><i class="fa-solid fa-pen-to-square"></i></div>
-                <span>提案</span>
-            </div>
             <div class="bottom-nav-checkin">
                 <button type="button" class="bottom-nav-checkin-button checkin-btn" data-checkin-type="gps" aria-label="チェックイン">
                     <i class="fas fa-map-marker-alt"></i>
@@ -1029,6 +1142,11 @@
             </div>
         </div>
     </nav>
+
+    <a class="floating-propose-button" href="/contribute">
+        <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
+        <span>店舗を提案</span>
+    </a>
 
     <!-- サイドバーオーバーレイ（モバイル） -->
     <div class="mobile-menu" id="sidebarOverlay" onclick="Utils.closeSidebarOnOverlay(event)"></div>
