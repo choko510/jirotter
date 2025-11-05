@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+from datetime import datetime
 from typing import Dict, Optional, Tuple
 
 from fastapi import HTTPException, status
@@ -120,6 +121,33 @@ def _calculate_progress(points: int, current_rank: Dict[str, object], next_rank:
     return round(min(100.0, max(0.0, earned / span * 100)), 2)
 
 
+def compute_effective_account_status(user: User, now: Optional[datetime] = None) -> str:
+    """手動設定や期限付きの制限を考慮してアカウント状態を算出する"""
+    now = now or datetime.utcnow()
+
+    if user.account_status_override:
+        return user.account_status_override
+
+    if user.ban_expires_at:
+        if user.ban_expires_at > now:
+            return "banned"
+        user.ban_expires_at = None
+
+    if user.posting_restriction_expires_at:
+        if user.posting_restriction_expires_at > now:
+            return "restricted"
+        user.posting_restriction_expires_at = None
+
+    return _determine_account_status(user.internal_score or 0)
+
+
+def update_user_account_status(user: User, now: Optional[datetime] = None) -> str:
+    """ユーザーのaccount_statusフィールドを最新化する"""
+    status = compute_effective_account_status(user, now=now)
+    user.account_status = status
+    return status
+
+
 def get_rank_snapshot(user: User) -> Dict[str, object]:
     current_rank, next_rank = _determine_rank(user.points or 0)
     progress = _calculate_progress(user.points or 0, current_rank, next_rank)
@@ -133,7 +161,8 @@ def get_rank_snapshot(user: User) -> Dict[str, object]:
         next_rank_name = str(next_rank["name"])
         points_to_next = max(0, next_rank_points - (user.points or 0))
 
-    status_message = STATUS_MESSAGES.get(user.account_status, STATUS_MESSAGES["active"])
+    effective_status = update_user_account_status(user)
+    status_message = STATUS_MESSAGES.get(effective_status, STATUS_MESSAGES["active"])
 
     return {
         "rank": current_rank["name"],
@@ -145,7 +174,7 @@ def get_rank_snapshot(user: User) -> Dict[str, object]:
         "next_rank_points": next_rank_points,
         "points_to_next_rank": points_to_next,
         "rank_progress_percentage": progress,
-        "account_status": user.account_status,
+        "account_status": effective_status,
         "internal_score": user.internal_score,
         "status_message": status_message,
     }
@@ -180,7 +209,7 @@ def _apply_point_delta(
 
     current_rank, _ = _determine_rank(user.points)
     user.rank = current_rank["name"]
-    user.account_status = _determine_account_status(user.internal_score)
+    update_user_account_status(user)
 
     log = _create_point_log(user, delta, event_type, reason, metadata)
     db.add(log)
@@ -252,16 +281,27 @@ def ensure_user_can_contribute(user: User) -> None:
             detail="認証が必要です",
         )
 
-    if user.account_status == "banned":
+    now = datetime.utcnow()
+    status_value = compute_effective_account_status(user, now=now)
+
+    if status_value == "banned":
+        message = "利用停止中のため操作できません"
+        if user.ban_expires_at and user.ban_expires_at > now:
+            message += f"（{user.ban_expires_at.isoformat()}まで）"
+        elif user.account_status_override == "banned":
+            message += "（管理者による停止）"
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="利用停止中のため操作できません",
+            detail=message,
         )
 
-    if user.account_status == "restricted":
+    if status_value == "restricted":
+        message = "投稿・チェックインが制限されています"
+        if user.posting_restriction_expires_at and user.posting_restriction_expires_at > now:
+            message += f"（{user.posting_restriction_expires_at.isoformat()}まで）"
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
-            detail="コミュニティスコア低下により投稿が制限されています",
+            detail=message,
         )
 
 
@@ -269,12 +309,18 @@ def get_status_message(user: User) -> str:
     snapshot = get_rank_snapshot(user)
     status = snapshot["account_status"]
     message = STATUS_MESSAGES.get(status, STATUS_MESSAGES["active"])
+    now = datetime.utcnow()
 
     if status == "warning":
         diff = user.internal_score - STATUS_THRESHOLDS["restricted"]
         message += f"（あと{max(0, diff)}ポイントで制限が解除されます）"
     elif status == "restricted":
-        diff = STATUS_THRESHOLDS["restricted"] - user.internal_score
-        message += f"（コミュニティスコアを{diff + 1}ポイント以上回復させましょう）"
+        if user.posting_restriction_expires_at and user.posting_restriction_expires_at > now:
+            message += f"（{user.posting_restriction_expires_at.isoformat()}まで）"
+        else:
+            diff = STATUS_THRESHOLDS["restricted"] - user.internal_score
+            message += f"（コミュニティスコアを{diff + 1}ポイント以上回復させましょう）"
+    elif status == "banned" and user.ban_expires_at and user.ban_expires_at > now:
+        message += f"（{user.ban_expires_at.isoformat()}まで）"
 
     return message

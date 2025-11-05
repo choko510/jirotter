@@ -8,6 +8,7 @@ from sqlalchemy.orm import Session
 from config import settings
 from database import get_db
 from app.models import User
+from app.utils.scoring import compute_effective_account_status
 
 # HTTPBearerスキームのインスタンス
 security = HTTPBearer(auto_error=False)
@@ -102,7 +103,8 @@ async def get_current_active_user(
     current_user: User = Depends(get_current_user)
 ) -> User:
     """現在のアクティブユーザーを取得する依存関係"""
-    if getattr(current_user, "account_status", "active") == "banned":
+    status_value = compute_effective_account_status(current_user)
+    if status_value == "banned":
         raise HTTPException(
             status_code=status.HTTP_403_FORBIDDEN,
             detail="アカウントが停止されています",

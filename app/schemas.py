@@ -133,6 +133,63 @@ class Token(BaseModel):
     user: UserResponse
 
 
+class AdminUserSummary(BaseModel):
+    id: str
+    username: str
+    email: EmailStr
+    created_at: datetime
+    points: int
+    internal_score: int
+    rank: str
+    account_status: str
+    effective_account_status: str
+    account_status_override: Optional[str] = None
+    posting_restriction_expires_at: Optional[datetime] = None
+    ban_expires_at: Optional[datetime] = None
+    moderation_note: Optional[str] = None
+    moderation_updated_at: Optional[datetime] = None
+    moderated_by_id: Optional[str] = None
+    is_admin: bool
+    posts_count: int
+    reports_submitted: int
+    reports_received: int
+
+
+class AdminUserDetail(AdminUserSummary):
+    bio: Optional[str] = None
+    profile_image_url: Optional[str] = None
+    followers_count: int
+    following_count: int
+    shop_submissions_count: int
+
+
+class AdminUserListResponse(BaseModel):
+    users: List[AdminUserSummary]
+    total: int
+
+
+class AdminUserModerationUpdate(BaseModel):
+    account_status_override: Optional[Literal["active", "warning", "restricted", "banned"]] = None
+    revert_account_status_override: bool = False
+    posting_restriction_expires_at: Optional[datetime] = None
+    clear_posting_restriction: bool = False
+    ban_expires_at: Optional[datetime] = None
+    clear_ban_schedule: bool = False
+    moderation_note: Optional[str] = Field(None, max_length=500)
+    is_admin: Optional[bool] = None
+
+
+class AdminOverviewResponse(BaseModel):
+    total_users: int
+    active_users: int
+    restricted_users: int
+    banned_users: int
+    new_users_last_week: int
+    total_shops: int
+    pending_shop_submissions: int
+    reports_last_week: int
+
+
 class UserRankingEntry(BaseModel):
     id: str
     username: str
@@ -289,7 +346,7 @@ class RamenShopBase(BaseModel):
 
 class RamenShopResponse(RamenShopBase):
     model_config = ConfigDict(from_attributes=True)
-    
+
     id: int
     distance: Optional[float] = None
     wait_time: Optional[int] = None
@@ -298,6 +355,48 @@ class RamenShopResponse(RamenShopBase):
 class RamenShopsResponse(BaseModel):
     shops: List[RamenShopResponse]
     total: int
+
+
+class AdminShopSummary(BaseModel):
+    id: int
+    name: str
+    address: str
+    business_hours: Optional[str] = None
+    closed_day: Optional[str] = None
+    seats: Optional[str] = None
+    latitude: float
+    longitude: float
+    wait_time: Optional[int] = None
+    last_update: Optional[datetime] = None
+    posts_count: int
+    pending_submissions: int
+
+
+class AdminShopDetail(AdminShopSummary):
+    submissions_total: int
+
+
+class AdminShopListResponse(BaseModel):
+    shops: List[AdminShopSummary]
+    total: int
+
+
+class AdminShopUpdate(BaseModel):
+    name: Optional[str] = Field(None, max_length=255)
+    address: Optional[str] = Field(None, max_length=255)
+    business_hours: Optional[str] = Field(None, max_length=255)
+    closed_day: Optional[str] = Field(None, max_length=255)
+    seats: Optional[str] = Field(None, max_length=255)
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    wait_time: Optional[int] = Field(None, ge=0)
+
+
+class AdminShopCreate(AdminShopUpdate):
+    name: str = Field(..., max_length=255)
+    address: str = Field(..., max_length=255)
+    latitude: float
+    longitude: float
 
 
 class SubmissionUserInfo(BaseModel):
