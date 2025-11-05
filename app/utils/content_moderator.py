@@ -54,14 +54,14 @@ class ContentModerator:
         
         try:
             print("コンテンツ分析を開始します...")
-            response = self.client.models.generate_content(
-                model="gemini-2.5-flash",
+            response = await self.client.aio.models.generate_content(
+                model="gemini-flash-latest",
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     system_instruction="あなたはコンテンツモデレーターとして、投稿内容の適切性を客観的に評価します。",
                     response_mime_type="application/json",
                     response_schema=ContentAnalysisResult,
-                    temperature=0.3,
+                    temperature=0.4,
                 )
             )
             
@@ -97,7 +97,7 @@ class ContentModerator:
                     contents.append(image)
                 elif media_type.startswith("video/"):
                     # 動画の場合 - ファイルをアップロード
-                    video_file = self.client.files.upload(file=media_path)
+                    video_file = await self.client.aio.files.upload(file=media_path)
                     contents.append(video_file)
             except Exception as e:
                 return {"is_violation": False, "confidence": 0.0, "reason": f"メディアファイルの読み込みに失敗しました: {str(e)}"}
@@ -127,14 +127,14 @@ class ContentModerator:
         
         try:
             print(f"マルチモーダルコンテンツ分析を開始します... (メディアタイプ: {media_type})")
-            response = self.client.models.generate_content(
-                model="gemini-2.5-flash",
+            response = await self.client.aio.models.generate_content(
+                model="gemini-flash-latest",
                 contents=contents,
                 config=types.GenerateContentConfig(
                     system_instruction="あなたはコンテンツモデレーターとして、投稿内容の適切性を客観的に評価します。",
                     response_mime_type="application/json",
                     response_schema=ContentAnalysisResult,
-                    temperature=0.3,
+                    temperature=0.4,
                 )
             )
             
@@ -179,14 +179,14 @@ class ContentModerator:
         
         try:
             print("思考機能を使用したコンテンツ分析を開始します...")
-            response = self.client.models.generate_content(
-                model="gemini-2.5-flash",
+            response = await self.client.aio.models.generate_content(
+                model="gemini-flash-latest",
                 contents=prompt,
                 config=types.GenerateContentConfig(
                     system_instruction="あなたは経験豊富なコンテンツモデレーターとして、投稿内容の適切性を注意深く評価します。",
                     response_mime_type="application/json",
                     response_schema=ContentAnalysisResult,
-                    temperature=0.2,  # より一貫性のため温度を低く設定
+                    temperature=0.3,  # より一貫性のため温度を低く設定
                     thinking_config=types.ThinkingConfig(
                         thinking_budget=1024  # 思考バジェットを設定
                     )

@@ -66,7 +66,7 @@ class TestContentModerator:
         analysis_result = ContentAnalysisResult(is_violation=False, confidence=0.1, reason="問題なし", severity="low")
         mock_response = Mock()
         mock_response.text = analysis_result.model_dump_json()
-        mock_client.return_value.models.generate_content.return_value = mock_response
+        mock_client.return_value.aio.models.generate_content.return_value = mock_response
         
         # テスト実行
         result = await mock_moderator.analyze_content("テストコンテンツ", "テスト理由", "テスト履歴")
@@ -91,7 +91,7 @@ class TestContentModerator:
     @patch('app.utils.content_moderator.genai.Client')
     async def test_analyze_content_with_exception(self, mock_client, mock_moderator):
         """API呼び出しで例外が発生した場合のテスト"""
-        mock_client.return_value.models.generate_content.side_effect = Exception("テスト例外")
+        mock_client.return_value.aio.models.generate_content.side_effect = Exception("テスト例外")
         
         result = await mock_moderator.analyze_content("テストコンテンツ")
         
@@ -106,7 +106,7 @@ class TestContentModerator:
         analysis_result = ContentAnalysisResult(is_violation=False, confidence=0.1, reason="問題なし", severity="low")
         mock_response = Mock()
         mock_response.text = analysis_result.model_dump_json()
-        mock_client.return_value.models.generate_content.return_value = mock_response
+        mock_client.return_value.aio.models.generate_content.return_value = mock_response
         
         # モック画像
         with patch('PIL.Image.open') as mock_image:
@@ -134,7 +134,7 @@ class TestContentModerator:
         analysis_result = ContentAnalysisResult(is_violation=False, confidence=0.1, reason="問題なし", severity="low")
         mock_response = Mock()
         mock_response.text = analysis_result.model_dump_json()
-        mock_client.return_value.models.generate_content.return_value = mock_response
+        mock_client.return_value.aio.models.generate_content.return_value = mock_response
         
         # テスト実行
         result = await mock_moderator.analyze_content_with_thinking(
@@ -150,7 +150,7 @@ class TestContentModerator:
         assert result["severity"] == "low"
         
         # 思考設定が正しく渡されていることを確認
-        args, kwargs = mock_client.return_value.models.generate_content.call_args
+        args, kwargs = mock_client.return_value.aio.models.generate_content.call_args
         config = kwargs.get('config')
         assert config is not None
         assert hasattr(config, 'thinking_config')
@@ -176,7 +176,7 @@ class TestContentModerator:
         analysis_result = ContentAnalysisResult(is_violation=True, confidence=0.9, reason="違反コンテンツ", severity="high")
         mock_response = Mock()
         mock_response.text = analysis_result.model_dump_json()
-        mock_client.return_value.models.generate_content.return_value = mock_response
+        mock_client.return_value.aio.models.generate_content.return_value = mock_response
         
         # モッククエリの設定
         mock_db.query.return_value.filter.return_value.first.side_effect = [sample_post, sample_user]
@@ -202,7 +202,7 @@ class TestContentModerator:
         analysis_result = ContentAnalysisResult(is_violation=False, confidence=0.1, reason="問題なし", severity="low")
         mock_response = Mock()
         mock_response.text = analysis_result.model_dump_json()
-        mock_client.return_value.models.generate_content.return_value = mock_response
+        mock_client.return_value.aio.models.generate_content.return_value = mock_response
         
         # モッククエリの設定
         mock_db.query.return_value.filter.return_value.first.return_value = sample_post
@@ -237,7 +237,7 @@ class TestContentModerator:
         analysis_result = ContentAnalysisResult(is_violation=True, confidence=0.9, reason="違反コンテンツ", severity="high")
         mock_response = Mock()
         mock_response.text = analysis_result.model_dump_json()
-        mock_client.return_value.models.generate_content.return_value = mock_response
+        mock_client.return_value.aio.models.generate_content.return_value = mock_response
         
         # サンプル投稿にメディア属性を追加
         sample_post = Mock(spec=Post)
