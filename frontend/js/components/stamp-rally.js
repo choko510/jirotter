@@ -36,7 +36,7 @@ const StampRallyComponent = {
         ahare: { name: '麺屋あっ晴れ', color: '#e74c3c', keywords: ['あっ晴れ'] },
         tachikawa: { name: '立川マシマシ', color: '#9b59b6', keywords: ['立川マシマシ'] },
         tsukemensha: { name: 'つけめん舎', color: '#1abc9c', keywords: ['つけめん舎'] },
-        jiro: { name: '直系二郎', color: '#d4a574', keywords: ['ラーメン二郎'] },
+        jiro: { name: '直系二郎', color: 'var(--color-primary)', keywords: ['ラーメン二郎'] },
         other: { name: 'その他', color: '#95a5a6', keywords: [] }
     },
 
@@ -103,7 +103,7 @@ const StampRallyComponent = {
                     font-size: 28px;
                     font-weight: bold;
                     margin-bottom: 10px;
-                    color: #d4a574;
+                    color: var(--color-primary);
                 }
                 
                 .stamp-rally-subtitle {
@@ -131,7 +131,7 @@ const StampRallyComponent = {
                 .stat-number {
                     font-size: 32px;
                     font-weight: bold;
-                    color: #d4a574;
+                    color: var(--color-primary);
                     margin-bottom: 5px;
                 }
                 
@@ -151,7 +151,7 @@ const StampRallyComponent = {
                 .filter-header h3 {
                     margin: 0;
                     font-size: 18px;
-                    color: #d4a574;
+                    color: var(--color-primary);
                 }
                 
                 .brand-filters {
@@ -237,8 +237,8 @@ const StampRallyComponent = {
                 
                 .brand-filter-btn.active,
                 .prefecture-filter-btn.active {
-                    background: #d4a574;
-                    border-color: #d4a574;
+                    background: var(--color-primary);
+                    border-color: var(--color-primary);
                     color: white;
                 }
                 
@@ -370,7 +370,7 @@ const StampRallyComponent = {
                 }
                 
                 .checkin-btn {
-                    background: #d4a574;
+                    background: var(--color-primary);
                     color: white;
                     border: none;
                 }
@@ -386,8 +386,8 @@ const StampRallyComponent = {
                 
                 .detail-btn {
                     background: transparent;
-                    color: #d4a574;
-                    border: 1px solid #d4a574;
+                    color: var(--color-primary);
+                    border: 1px solid var(--color-primary);
                 }
                 
                 .detail-btn:hover {
@@ -406,7 +406,7 @@ const StampRallyComponent = {
                 }
                 
                 .load-more-shops {
-                    background: #d4a574;
+                    background: var(--color-primary);
                     color: white;
                     border: none;
                     padding: 10px 20px;
@@ -441,7 +441,7 @@ const StampRallyComponent = {
                     display: flex;
                     justify-content: center;
                     margin-bottom: 20px;
-                    border: 1px solid #d4a574;
+                    border: 1px solid var(--color-primary);
                     border-radius: 20px;
                     overflow: hidden;
                 }
@@ -451,13 +451,13 @@ const StampRallyComponent = {
                     cursor: pointer;
                     border: none;
                     background-color: transparent;
-                    color: #d4a574;
+                    color: var(--color-primary);
                     font-weight: bold;
                     transition: all 0.2s;
                 }
 
                 .view-switch-btn.active {
-                    background-color: #d4a574;
+                    background-color: var(--color-primary);
                     color: white;
                 }
 
@@ -489,7 +489,7 @@ const StampRallyComponent = {
                 }
 
                 .progress-bar {
-                    background: #d4a574;
+                    background: var(--color-primary);
                     height: 100%;
                     border-radius: 5px;
                     transition: width 0.5s ease-in-out;
@@ -541,8 +541,8 @@ const StampRallyComponent = {
                 }
                 
                 .dark-mode .detail-btn {
-                    color: #d4a574;
-                    border-color: #d4a574;
+                    color: var(--color-primary);
+                    border-color: var(--color-primary);
                 }
                 
                 .dark-mode .empty-state {
@@ -554,15 +554,15 @@ const StampRallyComponent = {
                 }
 
                 .dark-mode .view-switcher {
-                    border-color: #d4a574;
+                    border-color: var(--color-primary);
                 }
 
                 .dark-mode .view-switch-btn {
-                    color: #d4a574;
+                    color: var(--color-primary);
                 }
 
                 .dark-mode .view-switch-btn.active {
-                    background-color: #d4a574;
+                    background-color: var(--color-primary);
                     color: #1a1a1a;
                 }
 
@@ -651,7 +651,7 @@ const StampRallyComponent = {
                 }
 
                 .shop-checkin-date i {
-                    color: #d4a574;
+                    color: var(--color-primary);
                 }
 
                 /* Dark Mode for Visited Shops */
@@ -1367,7 +1367,7 @@ const StampRallyComponent = {
             shopsGrid.innerHTML = `
                 <div class="error">
                     <p>${message}</p>
-                    <button onclick="StampRallyComponent.loadData()" style="margin-top: 16px; padding: 8px 16px; background: #d4a574; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                    <button onclick="StampRallyComponent.loadData()" style="margin-top: 16px; padding: 8px 16px; background: var(--color-primary); color: white; border: none; border-radius: 4px; cursor: pointer;">
                         再読み込み
                     </button>
                 </div>

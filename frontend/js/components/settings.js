@@ -142,7 +142,7 @@ const SettingsComponent = {
                 }
                 
                 .toggle-switch.active {
-                    background: #d4a574;
+                    background: var(--color-primary);
                 }
                 
                 .toggle-switch::after {
@@ -182,7 +182,7 @@ const SettingsComponent = {
                     width: 64px;
                     height: 64px;
                     border-radius: 50%;
-                    background: #d4a574;
+                    background: var(--color-primary);
                     display: flex;
                     align-items: center;
                     justify-content: center;
@@ -207,8 +207,8 @@ const SettingsComponent = {
                 
                 .profile-edit {
                     background: transparent;
-                    border: 1px solid #d4a574;
-                    color: #d4a574;
+                    border: 1px solid var(--color-primary);
+                    color: var(--color-primary);
                     padding: 8px 16px;
                     border-radius: 20px;
                     cursor: pointer;
@@ -268,7 +268,7 @@ const SettingsComponent = {
                 }
                 
                 .login-button {
-                    background: #d4a574;
+                    background: var(--color-primary);
                     color: white;
                     border: none;
                     padding: 10px 20px;

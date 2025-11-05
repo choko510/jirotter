@@ -999,7 +999,7 @@ const ProfileComponent = {
             <div class="error">
                 <h2>ユーザーが見つかりません</h2>
                 <p>ユーザーID "${userId}" のユーザーは存在しません。</p>
-                <button onclick="router.navigate('timeline')" style="margin-top: 16px; padding: 8px 16px; background: #d4a574; color: white; border: none; border-radius: 4px; cursor: pointer;">ホームに戻る</button>
+                <button onclick="router.navigate('timeline')" style="margin-top: 16px; padding: 8px 16px; background: var(--color-primary); color: white; border: none; border-radius: 4px; cursor: pointer;">ホームに戻る</button>
             </div>
         `;
     },

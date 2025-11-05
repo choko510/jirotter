@@ -12,6 +12,7 @@
     <script src="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.js" defer></script>
     <link href="https://cdn.jsdelivr.net/npm/leaflet@1.9.4/dist/leaflet.min.css" rel="stylesheet">
 
+    <!-- 共通CSS -->
     <link rel="stylesheet" href="css/base.css">
     <link rel="stylesheet" href="css/home.css">
 
@@ -58,10 +59,6 @@
                     <div class="nav-icon"><i class="fa-solid fa-stamp"></i></div>
                     <span>スタンプラリー</span>
                 </div>
-                <div class="nav-item" data-route="rankings">
-                    <div class="nav-icon"><i class="fas fa-trophy"></i></div>
-                    <span>ランキング</span>
-                </div>
                 <div class="nav-item" data-route="guide">
                     <div class="nav-icon"><i class="fas fa-question-circle"></i></div>
                     <span>ご利用ガイド</span>
@@ -88,10 +85,6 @@
                             <div class="tab" data-tab="following">フォロー中</div>
                         </div>
                     </div>
-                    <a class="propose-button" href="/contribute">
-                        <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
-                        <span>店舗を提案</span>
-                    </a>
                 </div>
             </header>
 
@@ -163,11 +156,6 @@
             </div>
         </div>
     </nav>
-
-    <a class="floating-propose-button" href="/contribute">
-        <i class="fa-solid fa-pen-to-square" aria-hidden="true"></i>
-        <span>店舗を提案</span>
-    </a>
 
     <!-- サイドバーオーバーレイ（モバイル） -->
     <div class="mobile-menu" id="sidebarOverlay" onclick="Utils.closeSidebarOnOverlay(event)"></div>

@@ -44,7 +44,7 @@ const ShopDetailComponent = {
                 .post-card { padding: 16px; border-bottom: 1px solid #e0e0e0; transition: background 0.2s; }
                 .post-card:hover { background: #f9f9f9; }
                 .post-header { display: flex; gap: 12px; margin-bottom: 12px; cursor: pointer; }
-                .post-avatar { width: 48px; height: 48px; border-radius: 50%; background: #d4a574; flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; }
+                .post-avatar { width: 48px; height: 48px; border-radius: 50%; background: var(--color-primary); flex-shrink: 0; display: flex; align-items: center; justify-content: center; color: white; font-size: 24px; }
                 .post-user-info { flex: 1; }
                 .post-username { font-weight: bold; }
                 .post-meta { color: #666; font-size: 14px; }
@@ -53,7 +53,7 @@ const ShopDetailComponent = {
                 .engagement-btn .liked { color: #e0245e; }
                 .post-content { line-height: 1.4; }
                 .post-content.collapsed { max-height: 4.2em; overflow: hidden; }
-                .show-more-btn { background: none; border: none; color: #d4a574; cursor: pointer; font-size: 14px; padding: 4px 0; }
+                .show-more-btn { background: none; border: none; color: var(--color-primary); cursor: pointer; font-size: 14px; padding: 4px 0; }
                 .show-more-btn:hover { text-decoration: underline; }
                 .post-image img { width: 100%; border-radius: 16px; margin-top: 12px; }
 
@@ -228,7 +228,7 @@ const ShopDetailComponent = {
             ahare: { name: '麺屋あっ晴れ', color: '#e74c3c', textColor: 'white', keywords: ['あっ晴れ'] },
             tachikawa: { name: '立川マシマシ', color: '#9b59b6', textColor: 'white', keywords: ['立川マシマシ'] },
             tsukemensha: { name: 'つけめん舎', color: '#1abc9c', textColor: 'white', keywords: ['つけめん舎'] },
-            jiro: { name: '直系二郎', color: '#d4a574', textColor: 'white', markerText: '直', keywords: ['ラーメン二郎'] },
+            jiro: { name: '直系二郎', color: 'var(--color-primary)', textColor: 'white', markerText: '直', keywords: ['ラーメン二郎'] },
             other: { name: 'その他', color: '#95a5a6', textColor: 'white', keywords: [] }
         };
         
@@ -253,7 +253,7 @@ const ShopDetailComponent = {
             ahare: { name: '麺屋あっ晴れ', color: '#e74c3c', textColor: 'white', keywords: ['あっ晴れ'] },
             tachikawa: { name: '立川マシマシ', color: '#9b59b6', textColor: 'white', keywords: ['立川マシマシ'] },
             tsukemensha: { name: 'つけめん舎', color: '#1abc9c', textColor: 'white', keywords: ['つけめん舎'] },
-            jiro: { name: '直系二郎', color: '#d4a574', textColor: 'white', markerText: '直', keywords: ['ラーメン二郎'] },
+            jiro: { name: '直系二郎', color: 'var(--color-primary)', textColor: 'white', markerText: '直', keywords: ['ラーメン二郎'] },
             other: { name: 'その他', color: '#95a5a6', textColor: 'white', keywords: [] }
         };
         
@@ -365,7 +365,7 @@ const ShopDetailComponent = {
                 <div>
                     <h2>エラー</h2>
                     <p>${message}</p>
-                    <button onclick="router.goBack()" style="margin-top: 16px; padding: 8px 16px; background: #d4a574; color: white; border: none; border-radius: 4px; cursor: pointer;">戻る</button>
+                    <button onclick="router.goBack()" style="margin-top: 16px; padding: 8px 16px; background: var(--color-primary); color: white; border: none; border-radius: 4px; cursor: pointer;">戻る</button>
                 </div>
             </div>
         `;
@@ -384,7 +384,7 @@ const ShopDetailComponent = {
 const shopDetailStyles = document.createElement('style');
 shopDetailStyles.textContent = `
     .checkin-btn {
-        background: #d4a574;
+        background: var(--color-primary);
         color: white;
         border: none;
         transition: all 0.2s;
@@ -395,7 +395,7 @@ shopDetailStyles.textContent = `
     }
     
     .dark-mode .checkin-btn {
-        background: #d4a574;
+        background: var(--color-primary);
         color: white;
     }
     

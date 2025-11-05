@@ -61,7 +61,7 @@ const MapComponent = {
         ahare: { name: '麺屋あっ晴れ', color: '#e74c3c', textColor: 'white', keywords: ['あっ晴れ'] },
         tachikawa: { name: '立川マシマシ', color: '#9b59b6', textColor: 'white', keywords: ['立川マシマシ'] },
         tsukemensha: { name: 'つけめん舎', color: '#1abc9c', textColor: 'white', keywords: ['つけめん舎'] },
-        jiro: { name: '直系二郎', color: '#d4a574', textColor: 'white', markerText: '直', keywords: ['ラーメン二郎'] },
+        jiro: { name: '直系二郎', color: 'var(--color-primary)', textColor: 'white', markerText: '直', keywords: ['ラーメン二郎'] },
         butakin: { name: 'BUTAKIN', color: '#fcd700ff', textColor: 'black', markerText: 'B', keywords: ['BUTAKIN'] },
         other: { name: 'その他', color: '#95a5a6', textColor: 'white', keywords: [] }
     },
@@ -479,7 +479,7 @@ const MapComponent = {
             }
             
             .map-search-input:focus {
-                border-color: #d4a574;
+                border-color: var(--color-primary);
                 background: white;
             }
             
@@ -564,14 +564,14 @@ const MapComponent = {
             }
             
             .map-filter-btn:hover {
-                background: #d4a574;
-                border-color: #d4a574;
+                background: var(--color-primary);
+                border-color: var(--color-primary);
                 color: white;
             }
             
             .map-filter-btn.active {
-                background: #d4a574;
-                border-color: #d4a574;
+                background: var(--color-primary);
+                border-color: var(--color-primary);
                 color: white;
             }
             
@@ -643,7 +643,7 @@ const MapComponent = {
                 width: 32px;
                 height: 32px;
                 border: 3px solid #f3f3f3;
-                border-top: 3px solid #d4a574;
+                border-top: 3px solid var(--color-primary);
                 border-radius: 50%;
                 animation: spin 1s linear infinite;
                 margin: 0 auto 12px;
@@ -676,7 +676,7 @@ const MapComponent = {
             .map-error button {
                 margin-top: 12px;
                 padding: 8px 16px;
-                background: #d4a574;
+                background: var(--color-primary);
                 color: white;
                 border: none;
                 border-radius: 4px;
@@ -810,13 +810,13 @@ const MapComponent = {
                 color: #e0e0e0;
             }
             .dark-mode .map-filter-btn:hover {
-                background: #d4a574;
-                border-color: #d4a574;
+                background: var(--color-primary);
+                border-color: var(--color-primary);
                 color: #1a1a1a;
             }
             .dark-mode .map-filter-btn.active {
-                background: #d4a574;
-                border-color: #d4a574;
+                background: var(--color-primary);
+                border-color: var(--color-primary);
                 color: #1a1a1a;
             }
 
@@ -948,8 +948,8 @@ const MapComponent = {
 
             .shop-action-btn:hover {
                 background: #f5f5f5;
-                border-color: #d4a574;
-                color: #d4a574;
+                border-color: var(--color-primary);
+                color: var(--color-primary);
             }
 
             .dark-mode .shop-info-card {
@@ -982,8 +982,8 @@ const MapComponent = {
 
             .dark-mode .shop-action-btn:hover {
                 background: rgba(212, 165, 116, 0.2);
-                border-color: #d4a574;
-                color: #d4a574;
+                border-color: var(--color-primary);
+                color: var(--color-primary);
             }
 
             @media (max-width: 768px) {
@@ -1118,10 +1118,10 @@ const MapComponent = {
             }
             .marker-cluster-jiro {
                 background-color: rgba(212, 165, 116, 0.3) !important;
-                border: 2px solid rgba(212, 165, 116, 0.8) !important;
+                border: 2px solid var(--color-primary) !important;
             }
             .marker-cluster-jiro div {
-                background-color: rgba(212, 165, 116, 0.8) !important;
+                background-color: var(--color-primary) !important;
                 color: white !important;
             }
             .marker-cluster-other {
