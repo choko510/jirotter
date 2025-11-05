@@ -18,6 +18,12 @@ class User(Base):
     internal_score = Column(Integer, default=100, nullable=False)
     rank = Column(String(80), nullable=False, default='味覚ビギナー')
     account_status = Column(String(20), nullable=False, default='active')
+    account_status_override = Column(String(20), nullable=True)
+    posting_restriction_expires_at = Column(DateTime, nullable=True)
+    ban_expires_at = Column(DateTime, nullable=True)
+    moderation_note = Column(Text, nullable=True)
+    moderation_updated_at = Column(DateTime, nullable=True)
+    moderated_by_id = Column(String(80), nullable=True)
     is_admin = Column(Boolean, nullable=False, default=False)
 
     # Relationships
