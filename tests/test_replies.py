@@ -78,3 +78,38 @@ def test_create_empty_reply(test_client, test_db):
 
     assert response.status_code == 400
     assert "返信内容は必須です" in response.json()["detail"]
+
+
+def test_reply_rate_limit(test_client, test_db):
+    """短時間での返信回数制限のテスト"""
+    token = create_user_and_get_token(test_client, "ruser5", "ruser5@example.com")
+    post = create_post(test_client, token)
+    post_id = post["id"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    for i in range(20):
+        reply_data = {"content": f"定型返信 {i}"}
+        response = test_client.post(f"/api/v1/posts/{post_id}/replies", json=reply_data, headers=headers)
+        assert response.status_code == 201
+
+    overflow_reply = {"content": "21件目の返信"}
+    response = test_client.post(f"/api/v1/posts/{post_id}/replies", json=overflow_reply, headers=headers)
+
+    assert response.status_code == 429
+    assert "短時間に過剰なリクエスト" in response.json()["detail"]
+
+
+def test_reply_spam_detection_blocks(test_client, test_db):
+    """スパム返信が拒否されることを確認"""
+    token = create_user_and_get_token(test_client, "ruser6", "ruser6@example.com")
+    post = create_post(test_client, token)
+    post_id = post["id"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    spam_reply = {
+        "content": "無料で稼げる！無料で稼げる！ http://example.com http://example.com http://example.com"
+    }
+    response = test_client.post(f"/api/v1/posts/{post_id}/replies", json=spam_reply, headers=headers)
+
+    assert response.status_code == 400
+    assert "スパムの可能性" in response.json()["detail"]

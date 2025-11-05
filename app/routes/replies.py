@@ -8,6 +8,8 @@ from app.schemas import ReplyCreate, ReplyResponse
 from app.utils.auth import get_current_active_user
 from app.utils.security import validate_reply_content, escape_html
 from app.utils.scoring import ensure_user_can_contribute
+from app.utils.rate_limiter import rate_limiter
+from app.utils.spam_detector import spam_detector
 
 router = APIRouter(tags=["replies"])
 
@@ -20,6 +22,7 @@ async def create_reply_for_post(
 ):
     """返信作成エンドポイント"""
     ensure_user_can_contribute(current_user)
+    await rate_limiter.hit(f"reply:{current_user.id}", limit=20, window_seconds=60)
     post = db.query(Post).filter(Post.id == post_id).first()
     if not post:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
@@ -33,6 +36,13 @@ async def create_reply_for_post(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=error_messages[0] if error_messages else "返信内容に誤りがあります"
+        )
+
+    spam_result = spam_detector.evaluate_reply(db, current_user.id, sanitized_content, post_id)
+    if spam_result.is_spam:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="スパムの可能性があるため返信できません: " + " / ".join(spam_result.reasons)
         )
 
     reply = Reply(

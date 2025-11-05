@@ -15,6 +15,9 @@ from app.utils.image_processor import process_image
 from app.utils.image_validation import validate_image_file
 from app.utils.video_validation import validate_video_file
 from app.utils.scoring import award_points, ensure_user_can_contribute
+from app.utils.rate_limiter import rate_limiter
+from app.utils.spam_detector import spam_detector
+from app.utils.moderation_tasks import schedule_post_moderation
 
 router = APIRouter(tags=["posts"])
 
@@ -37,6 +40,9 @@ async def create_post(
 ):
     """投稿作成エンドポイント"""
     ensure_user_can_contribute(current_user)
+    # 投稿頻度の制限
+    await rate_limiter.hit(f"post:{current_user.id}", limit=5, window_seconds=60)
+
     # 投稿内容のバリデーションとサニタイズ
     errors, sanitized_content = validate_post_content(content)
     if errors:
@@ -46,6 +52,13 @@ async def create_post(
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=error_messages[0] if error_messages else "投稿内容に誤りがあります"
+        )
+
+    spam_result = spam_detector.evaluate_post(db, current_user.id, sanitized_content)
+    if spam_result.is_spam:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="スパムの可能性があるため投稿できません: " + " / ".join(spam_result.reasons)
         )
     
     # 店舗IDのバリデーション
@@ -185,6 +198,8 @@ async def create_post(
 
         db.commit()
         db.refresh(post)
+
+        await schedule_post_moderation(post.id, db)
 
         return post
         

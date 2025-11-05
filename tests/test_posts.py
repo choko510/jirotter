@@ -299,3 +299,52 @@ def test_delete_post_owner(test_client, test_db):
     # 削除されたか確認
     response = test_client.get(f"/api/v1/posts/{created_post['id']}")
     assert response.status_code == 404
+
+
+def test_post_rate_limit(test_client, test_db):
+    """短時間での投稿回数制限のテスト"""
+    user_data = {
+        "id": "ratelimituser",
+        "email": "ratelimit@example.com",
+        "password": "password123!"
+    }
+    response = test_client.post("/api/v1/auth/register", json=user_data)
+    token = response.json()["access_token"]
+
+    headers = {
+        "Authorization": f"Bearer {token}"
+    }
+
+    for i in range(5):
+        post_data = {"content": f"連続投稿テスト {i}"}
+        result = test_client.post("/api/v1/posts", data=post_data, headers=headers)
+        assert result.status_code == 201, result.text
+
+    overflow_post = {"content": "6件目の投稿"}
+    response = test_client.post("/api/v1/posts", data=overflow_post, headers=headers)
+
+    assert response.status_code == 429
+    assert "短時間に過剰なリクエスト" in response.json()["detail"]
+
+
+def test_post_spam_detection_blocks(test_client, test_db):
+    """スパム検出により投稿が拒否されることを確認"""
+    user_data = {
+        "id": "spamuser",
+        "email": "spam@example.com",
+        "password": "password123!"
+    }
+    response = test_client.post("/api/v1/auth/register", json=user_data)
+    token = response.json()["access_token"]
+
+    headers = {
+        "Authorization": f"Bearer {token}"
+    }
+
+    spam_content = "完全無料で稼げる！ 完全無料で稼げる！ http://example.com http://example.com http://example.com"
+    post_data = {"content": spam_content}
+
+    response = test_client.post("/api/v1/posts", data=post_data, headers=headers)
+
+    assert response.status_code == 400
+    assert "スパムの可能性" in response.json()["detail"]
