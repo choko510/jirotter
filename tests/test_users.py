@@ -1,5 +1,5 @@
 import pytest
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.models import Checkin, RamenShop, User, UserTitle
 from app.utils.scoring import award_points
@@ -154,7 +154,7 @@ def test_title_awarded_on_checkin(test_client, test_db):
     checkin = Checkin(
         user_id=user.id,
         shop_id=shop.id,
-        checkin_date=datetime.utcnow(),
+        checkin_date=datetime.now(timezone.utc),
     )
     test_db.add(checkin)
     test_db.commit()

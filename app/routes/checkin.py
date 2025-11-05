@@ -6,7 +6,7 @@ import ipaddress
 import math
 import re
 import user_agents
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from database import get_db
 from app.models import User, RamenShop, Checkin, CheckinVerification
@@ -366,7 +366,7 @@ async def create_checkin(
     checkin = Checkin(
         user_id=current_user.id,
         shop_id=checkin_data.shop_id,
-        checkin_date=checkin_data.checkin_date or datetime.utcnow(),
+        checkin_date=checkin_data.checkin_date or datetime.now(timezone.utc),
         latitude=checkin_data.latitude,
         longitude=checkin_data.longitude,
         location_source=checkin_data.location_source,
@@ -412,7 +412,7 @@ async def create_checkin(
     # 待ち時間が報告されている場合、店舗の待ち時間を更新
     if checkin_data.wait_time_reported is not None:
         shop.wait_time = checkin_data.wait_time_reported
-        shop.last_update = datetime.utcnow()
+        shop.last_update = datetime.now(timezone.utc)
 
     award_points(
         db,
@@ -543,7 +543,7 @@ async def report_wait_time(
     
     # 店舗の待ち時間を更新
     shop.wait_time = report_data.wait_time
-    shop.last_update = datetime.utcnow()
+    shop.last_update = datetime.now(timezone.utc)
     
     # チェックインIDが指定されている場合、チェックイン記録も更新
     if report_data.checkin_id:
