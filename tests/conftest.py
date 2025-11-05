@@ -7,6 +7,7 @@ import subprocess
 import time
 import os
 import signal
+import sys
 
 from app import create_app
 from database import Base, get_db
@@ -27,17 +28,31 @@ def live_server():
     This allows Playwright tests to access the application.
     The server is started before the test session and terminated afterwards.
     """
-    proc = subprocess.Popen(
-        ["uvicorn", "app:create_app", "--host", "0.0.0.0", "--port", "8000", "--factory"],
-        stdout=subprocess.PIPE,
-        stderr=subprocess.PIPE,
-        preexec_fn=os.setsid
-    )
+    # WindowsとUnixでプロセス作成方法を分岐
+    if os.name == 'nt':  # Windows
+        proc = subprocess.Popen(
+            ["uvicorn", "app:create_app", "--host", "0.0.0.0", "--port", "8000", "--factory"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
+        )
+    else:  # Unix/Linux/macOS
+        proc = subprocess.Popen(
+            ["uvicorn", "app:create_app", "--host", "0.0.0.0", "--port", "8000", "--factory"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            preexec_fn=os.setsid
+        )
+    
     # Wait for the server to be ready
     time.sleep(5)
     yield
-    # Terminate the server process
-    os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+    
+    # Terminate server process
+    if os.name == 'nt':  # Windows
+        proc.terminate()
+    else:  # Unix/Linux/macOS
+        os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
     proc.wait()
 
 

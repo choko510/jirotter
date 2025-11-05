@@ -73,6 +73,7 @@ class Post(Base):
     created_at = Column(DateTime, default=datetime.utcnow)
     is_shadow_banned = Column(Boolean, nullable=False, default=False, index=True)
     shadow_ban_reason = Column(Text, nullable=True)
+    spam_score = Column(Float, nullable=True, default=0.0)  # スパム検出スコア
 
     # Relationships
     likes = relationship('Like', backref='post', lazy=True, cascade='all, delete-orphan')

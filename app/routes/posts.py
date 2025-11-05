@@ -57,6 +57,7 @@ async def create_post(
     spam_result = spam_detector.evaluate_post(db, current_user.id, sanitized_content)
     is_shadow_banned = spam_result.is_spam
     shadow_ban_reason = " / ".join(spam_result.reasons) if spam_result.reasons else None
+    spam_score = spam_result.score  # スパムスコアを保存
     
     # 店舗IDのバリデーション
     if shop_id is not None:
@@ -167,7 +168,8 @@ async def create_post(
             video_duration=processed_video_duration,
             shop_id=shop_id,
             is_shadow_banned=is_shadow_banned,
-            shadow_ban_reason=shadow_ban_reason
+            shadow_ban_reason=shadow_ban_reason,
+            spam_score=spam_score  # スパムスコアを保存
         )
 
         db.add(post)
@@ -198,7 +200,32 @@ async def create_post(
         db.commit()
         db.refresh(post)
 
-        await schedule_post_moderation(post.id, db)
+        # スパム判定、低スコアユーザー、またはスパムスコアに基づく投稿のみモデレーションをスケジュール
+        should_moderate = False
+        moderation_reason = ""
+        
+        if post.is_shadow_banned:
+            should_moderate = True
+            moderation_reason = "スパム判定"
+            print(f"投稿ID {post.id} はスパム判定されているためモデレーションをスケジュールします")
+        elif (current_user.internal_score or 100) <= 70:
+            should_moderate = True
+            moderation_reason = "低スコアユーザー"
+            print(f"ユーザーID {current_user.id} は低スコア(internal_score: {current_user.internal_score})のためモデレーションをスケジュールします")
+        elif spam_score >= 1.5:  # 閾値を1.5に引き下げて低リスクも含める
+            should_moderate = True
+            moderation_reason = f"スパムスコア({spam_score})"
+            if spam_score >= 3.5:
+                print(f"投稿ID {post.id} は高スパムスコア({spam_score})のためモデレーションをスケジュールします")
+            elif spam_score >= 2.5:
+                print(f"投稿ID {post.id} は中スパムスコア({spam_score})のためモデレーションをスケジュールします")
+            else:
+                print(f"投稿ID {post.id} は低スパムスコア({spam_score})のためモデレーションをスケジュールします")
+        
+        if should_moderate:
+            await schedule_post_moderation(post.id, db)
+        else:
+            print(f"投稿ID {post.id} はモデレーション対象外です")
 
         return post
         
