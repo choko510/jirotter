@@ -6,6 +6,7 @@ from sqlalchemy.orm import Session, joinedload, sessionmaker
 
 from app.models import Post, Report, User
 from app.utils.content_moderator import content_moderator
+from app.utils.scoring import apply_penalty
 
 
 async def _moderate_post(post_id: int, session_factory: sessionmaker) -> None:
@@ -78,22 +79,39 @@ async def _moderate_post(post_id: int, session_factory: sessionmaker) -> None:
         )
 
         if analysis.get("is_violation") and analysis.get("confidence", 0) >= confidence_threshold:
-            reporter_id = post.author.id if post.author else "system"
-            report = Report(
-                post_id=post.id,
-                reporter_id=reporter_id,
-                reason=f"自動検出: AIによるガイドライン違反の可能性 ({moderation_level})",
-                description=analysis.get("reason", "AIがコンテンツを不適切と判断しました"),
-            )
-            db.add(report)
+            print(f"投稿ID {post_id} を違反と判断し、投稿を削除します...")
+            try:
+                # ペナルティを適用
+                offender: User | None = post.author
+                if offender:
+                    print(f"ユーザー {offender.id} にペナルティを適用します")
+                    apply_penalty(
+                        db,
+                        offender,
+                        "content_violation",
+                        analysis.get("severity", "medium") or "medium",
+                        metadata={
+                            "post_id": post_id,
+                            "moderation_level": moderation_level,
+                        },
+                        override_reason=analysis.get("reason"),
+                    )
 
-            offender: User | None = post.author
-            if offender:
-                offender.moderation_note = analysis.get("reason")
-                offender.moderation_updated_at = datetime.utcnow()
+                # 関連する通報レコードを先に削除
+                reports = db.query(Report).filter(Report.post_id == post_id).all()
+                for report in reports:
+                    db.delete(report)
+                print(f"{len(reports)}件の関連通報レコードを削除しました")
 
-            db.commit()
-            print(f"投稿ID {post_id} を違反と判断し、通報レコードを作成しました (レベル: {moderation_level})")
+                # 投稿を削除
+                db.delete(post)
+                print(f"投稿ID {post_id} を削除しました")
+                
+                db.commit()
+                print(f"投稿ID {post_id} の削除が完了しました (レベル: {moderation_level})")
+            except Exception as e:
+                db.rollback()
+                print(f"投稿ID {post_id} の削除に失敗しました: {str(e)}")
         else:
             db.commit()  # 適切と判断された場合もcommitを呼ぶ
             print(f"投稿ID {post_id} は適切と判断されました (レベル: {moderation_level})")

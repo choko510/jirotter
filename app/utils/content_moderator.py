@@ -66,9 +66,13 @@ class ContentModerator:
             )
             
             # レスポンスを解析
-            analysis = json.loads(response.text)
-            print(f"分析結果: {analysis}")
-            return analysis
+            if response and response.text:
+                analysis = json.loads(response.text)
+                print(f"分析結果: {analysis}")
+                return analysis
+            else:
+                print("APIからの応答が空です")
+                return {"is_violation": False, "confidence": 0.0, "reason": "APIからの応答が空です"}
             
         except Exception as e:
             # 例外発生時は安全と判定
@@ -139,9 +143,13 @@ class ContentModerator:
             )
             
             # レスポンスを解析
-            analysis = json.loads(response.text)
-            print(f"マルチモーダル分析結果: {analysis}")
-            return analysis
+            if response and response.text:
+                analysis = json.loads(response.text)
+                print(f"マルチモーダル分析結果: {analysis}")
+                return analysis
+            else:
+                print("APIからの応答が空です")
+                return {"is_violation": False, "confidence": 0.0, "reason": "APIからの応答が空です"}
             
         except Exception as e:
             # 例外発生時は安全と判定
@@ -194,9 +202,13 @@ class ContentModerator:
             )
             
             # レスポンスを解析
-            analysis = json.loads(response.text)
-            print(f"思考機能を使用した分析結果: {analysis}")
-            return analysis
+            if response and response.text:
+                analysis = json.loads(response.text)
+                print(f"思考機能を使用した分析結果: {analysis}")
+                return analysis
+            else:
+                print("APIからの応答が空です")
+                return {"is_violation": False, "confidence": 0.0, "reason": "APIからの応答が空です"}
             
         except Exception as e:
             # 例外発生時は安全と判定

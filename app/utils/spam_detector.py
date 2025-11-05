@@ -1,10 +1,11 @@
 import re
 import math
 import unicodedata
+import os
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from difflib import SequenceMatcher
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Set
 
 from sqlalchemy.orm import Session
 
@@ -55,6 +56,7 @@ class SpamDetectorConfig:
         "suspicious_tld": 2.0,
         "url_shortener": 1.5,
         "keyword": 2.5,
+        "badwords": 3.0,  # 不適切な単語の重みを追加
         "repeated_chars": 2.0,
         "repetition": 1.5,
         "meaningless_reply": 1.0,
@@ -111,6 +113,97 @@ class SpamDetector:
 
     def __init__(self, config: Optional[SpamDetectorConfig] = None):
         self.cfg = config or SpamDetectorConfig()
+        # badwords.txtから不適切な単語リストを読み込む
+        self.badwords = self._load_badwords()
+        # badwordsの正規表現パターンをコンパイル
+        self.badwords_pattern = self._compile_badwords_pattern()
+
+    def _load_badwords(self) -> Set[str]:
+        """badwords.txtから不適切な単語リストを読み込む"""
+        badwords = set()
+        try:
+            # 現在のファイルのディレクトリを基準にbadwords.txtのパスを取得
+            current_dir = os.path.dirname(os.path.abspath(__file__))
+            badwords_path = os.path.join(current_dir, 'badwords.txt')
+            
+            with open(badwords_path, 'r', encoding='utf-8') as f:
+                for line in f:
+                    word = line.strip()
+                    if word and not word.startswith('#'):  # 空行とコメント行を無視
+                        badwords.add(word)
+                        # カタカナとひらがなの相互変換を追加
+                        converted = self._convert_kana(word)
+                        if converted != word:
+                            badwords.add(converted)
+            print(f"{len(badwords)}件の不適切な単語を読み込みました")
+        except FileNotFoundError:
+            print("警告: badwords.txtが見つかりませんでした")
+        except Exception as e:
+            print(f"badwords.txtの読み込み中にエラーが発生しました: {e}")
+        
+        return badwords
+
+    def _convert_kana(self, text: str) -> str:
+        """カタカナとひらがなの相互変換を行う"""
+        import jaconv
+        # カタカナをひらがなに変換
+        hiragana = jaconv.kata2hira(text)
+        # ひらがなをカタカナに変換
+        katakana = jaconv.hira2kata(text)
+        
+        # 元のテキストと異なる場合は両方を返す
+        if hiragana != text:
+            return hiragana
+        elif katakana != text:
+            return katakana
+        return text
+
+    def _compile_badwords_pattern(self) -> re.Pattern:
+        """badwordsから正規表現パターンをコンパイルする"""
+        if not self.badwords:
+            return re.compile(r"(?!a)a")  # 空のパターン（マッチしない）
+        
+        # 特殊文字をエスケープして正規表現パターンを作成
+        escaped_words = [re.escape(word) for word in self.badwords]
+        pattern = r'\b(?:' + '|'.join(escaped_words) + r')\b'
+        
+        try:
+            return re.compile(pattern, re.IGNORECASE)
+        except re.error:
+            # パターンが大きすぎる場合は分割して処理
+            return self._compile_chunked_patterns(escaped_words)
+
+    def _compile_chunked_patterns(self, escaped_words: List[str]) -> re.Pattern:
+        """大きなパターンを分割してコンパイルする"""
+        chunk_size = 100  # チャンクサイズを調整
+        patterns = []
+        
+        for i in range(0, len(escaped_words), chunk_size):
+            chunk = escaped_words[i:i + chunk_size]
+            chunk_pattern = r'\b(?:' + '|'.join(chunk) + r')\b'
+            try:
+                patterns.append(re.compile(chunk_pattern, re.IGNORECASE))
+            except re.error:
+                # さらに分割
+                if len(chunk) > 1:
+                    sub_patterns = self._compile_chunked_patterns(chunk[:len(chunk)//2])
+                    patterns.extend([sub_patterns] if isinstance(sub_patterns, re.Pattern) else sub_patterns)
+                    sub_patterns = self._compile_chunked_patterns(chunk[len(chunk)//2:])
+                    patterns.extend([sub_patterns] if isinstance(sub_patterns, re.Pattern) else sub_patterns)
+        
+        # 分割されたパターンをまとめるためのラッパー
+        class ChunkedPattern:
+            def __init__(self, patterns):
+                self.patterns = patterns
+            
+            def search(self, text):
+                for pattern in self.patterns:
+                    match = pattern.search(text)
+                    if match:
+                        return match
+                return None
+        
+        return ChunkedPattern(patterns)
 
     # -----------------------------
     # Public API (互換)
@@ -124,6 +217,7 @@ class SpamDetector:
         score = 0.0
         score += self._check_links(normalized, reasons)
         score += self._check_patterns(normalized, reasons)
+        score += self._check_badwords(normalized, reasons)
         score += self._check_repetition(normalized, reasons)
         score += self._check_contacts(normalized, reasons)
         score += self._check_noise(normalized, reasons)
@@ -151,6 +245,7 @@ class SpamDetector:
 
         score += self._check_links(normalized, reasons)
         score += self._check_patterns(normalized, reasons)
+        score += self._check_badwords(normalized, reasons)
         score += self._check_repetition(normalized, reasons)
         score += self._check_contacts(normalized, reasons)
         score += self._check_noise(normalized, reasons)
@@ -221,6 +316,30 @@ class SpamDetector:
             reasons.append("ゼロ幅/不可視文字による難読化が検出されました")
             score += self.cfg.weights["zero_width"]
         return score
+
+    def _check_badwords(self, text: str, reasons: List[str]) -> float:
+        """badwordsリストに含まれる不適切な単語をチェックする"""
+        if not self.badwords_pattern:
+            return 0.0
+        
+        # テキストを正規化（カタカナとひらがなの変換も考慮）
+        normalized_text = self._normalize(text)
+        
+        # カタカナをひらがなに変換したテキストでもチェック
+        import jaconv
+        hiragana_text = jaconv.kata2hira(normalized_text)
+        
+        # 元のテキストとひらがな変換テキストの両方でチェック
+        texts_to_check = [normalized_text]
+        if hiragana_text != normalized_text:
+            texts_to_check.append(hiragana_text)
+        
+        for check_text in texts_to_check:
+            if self.badwords_pattern.search(check_text):
+                reasons.append("不適切な単語が含まれています")
+                return self.cfg.weights.get("badwords", 2.5)  # 重み設定
+        
+        return 0.0
 
     def _check_contacts(self, text: str, reasons: List[str]) -> float:
         if self.CONTACT_PATTERN.search(text):
