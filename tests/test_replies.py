@@ -99,8 +99,8 @@ def test_reply_rate_limit(test_client, test_db):
     assert "短時間に過剰なリクエスト" in response.json()["detail"]
 
 
-def test_reply_spam_detection_blocks(test_client, test_db):
-    """スパム返信が拒否されることを確認"""
+def test_reply_spam_detection_shadow_bans(test_client, test_db):
+    """スパム返信がシャドウバンされることを確認"""
     token = create_user_and_get_token(test_client, "ruser6", "ruser6@example.com")
     post = create_post(test_client, token)
     post_id = post["id"]
@@ -110,6 +110,23 @@ def test_reply_spam_detection_blocks(test_client, test_db):
         "content": "無料で稼げる！無料で稼げる！ http://example.com http://example.com http://example.com"
     }
     response = test_client.post(f"/api/v1/posts/{post_id}/replies", json=spam_reply, headers=headers)
+    created = response.json()
 
-    assert response.status_code == 400
-    assert "スパムの可能性" in response.json()["detail"]
+    assert response.status_code == 201
+    assert created["is_shadow_banned"] is True
+    assert "スパム" in created["shadow_ban_reason"]
+
+    # 公開の返信一覧には表示されない
+    public_replies = test_client.get(f"/api/v1/posts/{post_id}/replies").json()
+    assert len(public_replies) == 0
+
+    # 作成者は返信を確認できる
+    author_replies = test_client.get(f"/api/v1/posts/{post_id}/replies", headers=headers).json()
+    assert len(author_replies) == 1
+    assert author_replies[0]["is_shadow_banned"] is True
+
+    # 別ユーザーを作成しても表示されない
+    other_token = create_user_and_get_token(test_client, "ruser7", "ruser7@example.com")
+    other_headers = {"Authorization": f"Bearer {other_token}"}
+    other_replies = test_client.get(f"/api/v1/posts/{post_id}/replies", headers=other_headers).json()
+    assert len(other_replies) == 0
