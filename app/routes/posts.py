@@ -590,3 +590,49 @@ async def get_user_posts(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"ユーザー投稿の取得に失敗しました: {e}"
         )
+
+@router.delete("/posts/user/{user_id}", response_model=Dict[str, str])
+async def delete_all_user_posts(
+    user_id: str,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db)
+):
+    """特定のユーザーの全投稿を削除するエンドポイント（管理者用または自己ban用）"""
+    # 管理者または本人のみが実行可能
+    is_admin = getattr(current_user, "is_admin", False)
+    if not is_admin and current_user.id != user_id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="この操作を実行する権限がありません"
+        )
+    
+    target_user = db.query(User).filter(User.id == user_id).first()
+    if not target_user:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="ユーザーが見つかりません"
+        )
+    
+    try:
+        # ユーザーの全投稿を削除
+        deleted_count = db.query(Post).filter(Post.user_id == user_id).count()
+        db.query(Post).filter(Post.user_id == user_id).delete()
+        
+        # 関連するいいねも削除（cascade設定で自動削除されるが明示的に実行）
+        db.query(Like).filter(Like.post_id.in_(
+            db.query(Post.id).filter(Post.user_id == user_id)
+        )).delete(synchronize_session=False)
+        
+        db.commit()
+        
+        return {
+            "message": f"ユーザー {user_id} の全投稿を削除しました",
+            "deleted_count": deleted_count
+        }
+        
+    except Exception as e:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail=f"投稿の削除に失敗しました: {e}"
+        )

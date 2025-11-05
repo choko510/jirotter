@@ -627,6 +627,17 @@ const API = {
             console.error('アカウントの削除に失敗しました:', error);
             return { success: false, error: error.message };
         }
+    },
+
+    // 認証状態とアカウント状態を取得
+    async getAuthStatus() {
+        try {
+            const data = await this.request('/api/v1/auth/status');
+            return { success: true, status: data };
+        } catch (error) {
+            console.error('認証状態の取得に失敗しました:', error);
+            return { success: false, error: error.message };
+        }
     }
 };
 
@@ -756,12 +767,75 @@ const Utils = {
             // ユーザーがログインしていない場合はログインページに遷移
             router.navigate('auth', ['login']);
         }
+    },
+
+    // Ban状態をチェックして通知を表示
+    async checkAndShowBanNotification() {
+        const authToken = API.getCookie('authToken');
+        if (!authToken) return; // 未ログインの場合はチェックしない
+
+        try {
+            const result = await API.getAuthStatus();
+            if (result.success && result.status.is_banned) {
+                this.showBanNotification(result.status);
+            }
+        } catch (error) {
+            // 401エラー（認証失敗）の場合はトークンをクリアして再ログインを促す
+            if (error.message.includes('401') || error.message.includes('認証情報が不足しています') || error.message.includes('無効な認証情報です')) {
+                console.log('認証トークンが無効です。トークンをクリアします。');
+                API.deleteCookie('authToken');
+                API.deleteCookie('user');
+                this.updateUserProfileUI();
+                this.showNotification('認証が切れました。再度ログインしてください。', 'warning', 5000);
+            } else {
+                console.error('Ban状態のチェックに失敗しました:', error);
+            }
+        }
+    },
+
+    // Ban通知を表示
+    showBanNotification(authStatus) {
+        // 既に通知が表示されている場合は何もしない
+        if (document.getElementById('banNotification')) return;
+
+        const notification = document.createElement('div');
+        notification.id = 'banNotification';
+        notification.className = 'ban-notification';
+        
+        let message = authStatus.status_message || 'アカウントが停止されています';
+        if (authStatus.ban_expires_at) {
+            const expiryDate = new Date(authStatus.ban_expires_at);
+            message += `（${expiryDate.toLocaleDateString('ja-JP')} ${expiryDate.toLocaleTimeString('ja-JP')}まで）`;
+        }
+
+        notification.innerHTML = `
+            <div class="ban-notification-content">
+                <i class="fas fa-exclamation-triangle ban-notification-icon"></i>
+                <span>${message}</span>
+            </div>
+            <button class="ban-notification-close" onclick="Utils.closeBanNotification()">
+                <i class="fas fa-times"></i>
+            </button>
+        `;
+
+        document.body.insertBefore(notification, document.body.firstChild);
+        document.body.classList.add('has-ban-notification');
+    },
+
+    // Ban通知を閉じる
+    closeBanNotification() {
+        const notification = document.getElementById('banNotification');
+        if (notification) {
+            notification.remove();
+            document.body.classList.remove('has-ban-notification');
+        }
     }
 };
 
 // グローバル関数（HTMLからの呼び出し用）
 window.toggleSidebar = Utils.toggleSidebar;
 window.closeSidebarOnOverlay = Utils.closeSidebarOnOverlay;
+window.closeBanNotification = Utils.closeBanNotification;
 
 // --- ダークモード対応 ---
 const Theme = {
@@ -803,6 +877,9 @@ window.Theme = Theme; // グローバルに公開
 document.addEventListener('DOMContentLoaded', function() {
     Theme.init(); // テーマの初期化
     Utils.updateUserProfileUI();
+    
+    // Ban状態をチェックして通知を表示
+    Utils.checkAndShowBanNotification();
     
     // ロゴにクリックイベントを追加してホームに遷移
     const appIcon = document.getElementById('appIcon');

@@ -439,5 +439,56 @@ class ContentModerator:
         else:
             print("削除すべき違反投稿はありませんでした")
 
+    async def delete_all_user_posts_on_ban(self, db: Session, user_id: str) -> Dict:
+        """ユーザーがbanされた場合に全投稿を削除する"""
+        print(f"ユーザーID {user_id} の全投稿を削除します...")
+        
+        try:
+            # ユーザーの全投稿を取得
+            posts = db.query(Post).filter(Post.user_id == user_id).all()
+            
+            if not posts:
+                print("削除する投稿がありません")
+                return {"deleted_count": 0, "message": "削除する投稿がありませんでした"}
+            
+            deleted_count = len(posts)
+            
+            # 関連する通報レコードを削除
+            from app.models import Report
+            post_ids = [post.id for post in posts]
+            reports = db.query(Report).filter(Report.post_id.in_(post_ids)).all()
+            for report in reports:
+                db.delete(report)
+            
+            # 関連するいいねレコードを削除
+            from app.models import Like
+            likes = db.query(Like).filter(Like.post_id.in_(post_ids)).all()
+            for like in likes:
+                db.delete(like)
+            
+            # 関連する返信レコードを削除
+            from app.models import Reply
+            replies = db.query(Reply).filter(Reply.post_id.in_(post_ids)).all()
+            for reply in replies:
+                db.delete(reply)
+            
+            # 投稿を削除
+            for post in posts:
+                db.delete(post)
+            
+            db.commit()
+            
+            print(f"ユーザーID {user_id} の全投稿 {deleted_count} 件を削除しました")
+            return {
+                "deleted_count": deleted_count,
+                "message": f"全投稿 {deleted_count} 件を削除しました"
+            }
+            
+        except Exception as e:
+            db.rollback()
+            error_msg = f"投稿の削除に失敗しました: {str(e)}"
+            print(error_msg)
+            return {"error": error_msg, "deleted_count": 0}
+
 # グローバルインスタンス
 content_moderator = ContentModerator()

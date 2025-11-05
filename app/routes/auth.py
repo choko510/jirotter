@@ -1,13 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Request
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import IntegrityError
-from typing import Dict, Any
+from typing import Dict, Any, Optional
 from functools import wraps
 
 from database import get_db
 from app.models import User
 from app.schemas import UserCreate, UserLogin, UserResponse, Token
-from app.utils.auth import create_access_token, get_current_user, get_current_active_user
+from app.utils.auth import create_access_token, get_current_user, get_current_active_user, get_current_user_optional
 from app.utils.security import validate_registration_data, validate_login_data
 
 router = APIRouter(tags=["auth"])
@@ -132,3 +132,33 @@ async def get_csrf_token():
 async def logout(current_user: User = Depends(get_current_active_user)):
     """ログアウトエンドポイント（クライアント側でトークンを削除する必要があります）"""
     return {"message": "ログアウトしました"}
+
+@router.get("/auth/status")
+async def get_auth_status(current_user: Optional[User] = Depends(get_current_user_optional)):
+    """認証状態とアカウント状態を取得するエンドポイント"""
+    from app.utils.scoring import compute_effective_account_status, get_status_message
+    
+    if not current_user:
+        return {
+            "authenticated": False,
+            "user_id": None,
+            "username": None,
+            "account_status": None,
+            "status_message": None,
+            "is_banned": False,
+            "ban_expires_at": None
+        }
+    
+    # アカウント状態を計算
+    account_status = compute_effective_account_status(current_user)
+    status_message = get_status_message(current_user)
+    
+    return {
+        "authenticated": True,
+        "user_id": current_user.id,
+        "username": current_user.username,
+        "account_status": account_status,
+        "status_message": status_message,
+        "is_banned": account_status == "banned",
+        "ban_expires_at": current_user.ban_expires_at.isoformat() if current_user.ban_expires_at else None
+    }

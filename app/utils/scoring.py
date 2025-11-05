@@ -124,21 +124,52 @@ def _calculate_progress(points: int, current_rank: Dict[str, object], next_rank:
 def compute_effective_account_status(user: User, now: Optional[datetime] = None) -> str:
     """手動設定や期限付きの制限を考慮してアカウント状態を算出する"""
     now = now or datetime.utcnow()
+    
+    # 前回の状態を保存
+    previous_status = getattr(user, '_previous_account_status', None)
+    current_status = None
 
     if user.account_status_override:
-        return user.account_status_override
-
-    if user.ban_expires_at:
+        current_status = user.account_status_override
+    elif user.ban_expires_at:
         if user.ban_expires_at > now:
-            return "banned"
-        user.ban_expires_at = None
-
-    if user.posting_restriction_expires_at:
+            current_status = "banned"
+        else:
+            user.ban_expires_at = None
+            current_status = _determine_account_status(user.internal_score or 0)
+    elif user.posting_restriction_expires_at:
         if user.posting_restriction_expires_at > now:
-            return "restricted"
-        user.posting_restriction_expires_at = None
-
-    return _determine_account_status(user.internal_score or 0)
+            current_status = "restricted"
+        else:
+            user.posting_restriction_expires_at = None
+            current_status = _determine_account_status(user.internal_score or 0)
+    else:
+        current_status = _determine_account_status(user.internal_score or 0)
+    
+    # 状態がbanに変更された場合、全投稿を削除
+    if previous_status != "banned" and current_status == "banned":
+        from app.utils.content_moderator import content_moderator
+        from database import get_db
+        
+        # 非同期で投稿削除を実行（現在のDBセッションを使用）
+        try:
+            db = get_db()
+            import asyncio
+            loop = asyncio.get_event_loop()
+            if loop.is_running():
+                # イベントループが既に実行中の場合はタスクとしてスケジュール
+                asyncio.create_task(content_moderator.delete_all_user_posts_on_ban(db, user.id))
+            else:
+                # イベントループが実行中でない場合は直接実行
+                loop.run_until_complete(content_moderator.delete_all_user_posts_on_ban(db, user.id))
+            print(f"ユーザー {user.id} がbanされたため、全投稿の削除をスケジュールしました")
+        except Exception as e:
+            print(f"ban時の投稿削除に失敗しました: {str(e)}")
+    
+    # 現在の状態を保存
+    user._previous_account_status = current_status
+    
+    return current_status
 
 
 def update_user_account_status(user: User, now: Optional[datetime] = None) -> str:
