@@ -75,30 +75,37 @@ const MapComponent = {
         lastCenter: null,
         debounceTimer: null,
         moveThreshold: 0.02, // 緯度経度の変化閾値（約2km）
-        
+
         // マーカー管理関連
         markers: new Map(), // <shopId, markerObject>
         markerLayerGroup: null,
         visibleMarkers: new Set(),
         markerVisibilityRadius: 50,
-        
+
         // クラスタリング関連
         brandClusters: {}, // ブランドごとのクラスターグループ
         clusterEnabled: true,
-        
+
         // フィルター関連
         activeFilters: new Set(),
         brandShopCounts: {},
+        filterButtons: new Map(),
+        lastLegendHtml: '',
         searchQuery: '',
         searchResults: [],
-        
+
         // キャッシュ関連
         cache: {
             shopCache: new Map(),
             cacheRadius: 30,
             maxCacheSize: 1000,
             pendingRequests: new Map()
-        }
+        },
+
+        // レイアウト監視関連
+        resizeObserver: null,
+        resizeListener: null,
+        pendingResizeFrame: null
     },
 
     // フィルターエリアの開閉
@@ -110,6 +117,102 @@ const MapComponent = {
 
         // CSSのtransform: rotateでアイコンの向きを制御するため、
         // JavaScriptでのクラス切り替えは不要。
+
+        // 折り畳み操作後にマップのレイアウトを更新
+        this.scheduleMapResize();
+    },
+
+    cleanupResizeHandling() {
+        if (this.state.resizeObserver) {
+            this.state.resizeObserver.disconnect();
+            this.state.resizeObserver = null;
+        }
+
+        if (this.state.resizeListener) {
+            window.removeEventListener('resize', this.state.resizeListener);
+            this.state.resizeListener = null;
+        }
+
+        if (this.state.pendingResizeFrame) {
+            cancelAnimationFrame(this.state.pendingResizeFrame);
+            this.state.pendingResizeFrame = null;
+        }
+    },
+
+    initializeResizeObserver() {
+        const mapElement = document.getElementById('map');
+        if (!mapElement) return;
+
+        // 既存の監視をリセット
+        if (this.state.resizeObserver) {
+            this.state.resizeObserver.disconnect();
+            this.state.resizeObserver = null;
+        }
+
+        if (this.state.resizeListener) {
+            window.removeEventListener('resize', this.state.resizeListener);
+            this.state.resizeListener = null;
+        }
+
+        const scheduleResize = () => {
+            if (this.state.pendingResizeFrame) {
+                cancelAnimationFrame(this.state.pendingResizeFrame);
+            }
+
+            this.state.pendingResizeFrame = requestAnimationFrame(() => {
+                this.state.pendingResizeFrame = null;
+                this.invalidateMapSize();
+            });
+        };
+
+        if (typeof ResizeObserver === 'undefined') {
+            this.state.resizeListener = () => {
+                this.scheduleMapResize();
+            };
+            window.addEventListener('resize', this.state.resizeListener);
+            return;
+        }
+
+        const observer = new ResizeObserver(entries => {
+            for (const entry of entries) {
+                if (entry.target === mapElement) {
+                    const { width, height } = entry.contentRect;
+                    if (width > 0 && height > 0) {
+                        scheduleResize();
+                    }
+                }
+            }
+        });
+
+        observer.observe(mapElement);
+        this.state.resizeObserver = observer;
+    },
+
+    invalidateMapSize() {
+        if (this.state.map) {
+            this.state.map.invalidateSize();
+        }
+    },
+
+    scheduleMapResize() {
+        if (!this.state.map) {
+            // マップ未初期化時でも監視を設定
+            this.initializeResizeObserver();
+            return;
+        }
+
+        this.invalidateMapSize();
+
+        if (this.state.pendingResizeFrame) {
+            cancelAnimationFrame(this.state.pendingResizeFrame);
+        }
+
+        this.state.pendingResizeFrame = requestAnimationFrame(() => {
+            this.state.pendingResizeFrame = null;
+            this.invalidateMapSize();
+        });
+
+        setTimeout(() => this.invalidateMapSize(), 350);
     },
 
     // 初期化
@@ -251,6 +354,9 @@ const MapComponent = {
     async render(params = []) {
         const contentArea = document.getElementById('contentArea');
 
+        // 既存の監視やアニメーションフレームをクリア
+        this.cleanupResizeHandling();
+
         const mainHeader = document.querySelector('.main-header');
         const isHeaderVisible = mainHeader && mainHeader.style.display !== 'none';
         const mapHeight = isHeaderVisible ? 'calc(100vh - 60px)' : '100vh';
@@ -271,6 +377,10 @@ const MapComponent = {
         contentArea.innerHTML = '';
         contentArea.appendChild(fragment);
 
+        // DOM再生成時はキャッシュしている参照をリセット
+        this.state.filterButtons.clear();
+        this.state.lastLegendHtml = '';
+
         // マップを初期化
         setTimeout(async () => {
             await this.initializeMap();
@@ -279,6 +389,9 @@ const MapComponent = {
             // 検索入力フィールドを追加
             this.addSearchInput();
         }, 100);
+
+        // サイズ変化を監視してマップを適宜リサイズ
+        this.initializeResizeObserver();
     },
 
     // マップのスタイルを取得
@@ -1219,9 +1332,11 @@ const MapComponent = {
             
             // 近くのラーメン店データを取得して追加
             await this.addNearbyShops(location, null);
-            
+
             this.showLoading(false);
-            
+
+            this.scheduleMapResize();
+
         } catch (error) {
             console.error('マップの初期化に失敗しました:', error);
             this.showError('マップの初期化に失敗しました: ' + error.message);
@@ -1680,23 +1795,36 @@ const MapComponent = {
         for (const [brandKey, brandConfig] of Object.entries(this.BRAND_CONFIG)) {
             if (brandKey === 'other') continue;
 
-            let button = filterButtonsContainer.querySelector(`[data-brand="${brandKey}"]`);
+            let button = this.state.filterButtons.get(brandKey);
             if (!button) {
                 button = document.createElement('button');
                 button.className = 'map-filter-btn';
                 button.dataset.brand = brandKey;
                 button.onclick = () => MapComponent.toggleFilter(brandKey);
                 filterButtonsContainer.appendChild(button);
+                this.state.filterButtons.set(brandKey, button);
+            } else if (!filterButtonsContainer.contains(button)) {
+                filterButtonsContainer.appendChild(button);
             }
 
             const count = this.state.brandShopCounts[brandKey] || 0;
-            button.textContent = `${brandConfig.name} (${count})`;
-            button.title = `${brandConfig.name}: ${count}件`;
+            const label = `${brandConfig.name} (${count})`;
+            const title = `${brandConfig.name}: ${count}件`;
+
+            if (button.textContent !== label) {
+                button.textContent = label;
+            }
+
+            if (button.title !== title) {
+                button.title = title;
+            }
 
             // ブランドで絞り込みをしていないかつ、マップ内に対象がなかったらボタンを非表示にする
             if (!hasActiveFilters && count === 0) {
-                button.style.display = 'none';
-            } else {
+                if (button.style.display !== 'none') {
+                    button.style.display = 'none';
+                }
+            } else if (button.style.display !== '') {
                 button.style.display = '';
             }
 
@@ -1714,35 +1842,11 @@ const MapComponent = {
         const legendContainer = document.getElementById('mapLegend');
         if (!legendContainer) return;
 
-        // 既存の凡例をクリア
-        while (legendContainer.firstChild) {
-            legendContainer.removeChild(legendContainer.firstChild);
-        }
+        const legendHtml = this.generateLegend();
 
-        // タイトルを追加
-        const titleElement = document.createElement('div');
-        titleElement.className = 'legend-title';
-        titleElement.textContent = 'ブランド';
-        legendContainer.appendChild(titleElement);
-
-        // ブランドごとの凡例項目を追加
-        for (const [brandKey, brandConfig] of Object.entries(this.BRAND_CONFIG)) {
-            const count = this.state.brandShopCounts[brandKey] || 0;
-            if (count > 0 || brandKey === 'other') {
-                const itemElement = document.createElement('div');
-                itemElement.className = 'legend-item';
-
-                const markerIcon = document.createElement('div');
-                markerIcon.className = 'marker-icon';
-                markerIcon.style.background = brandConfig.color;
-
-                const textSpan = document.createElement('span');
-                textSpan.textContent = `${brandConfig.name} (${count})`;
-
-                itemElement.appendChild(markerIcon);
-                itemElement.appendChild(textSpan);
-                legendContainer.appendChild(itemElement);
-            }
+        if (this.state.lastLegendHtml !== legendHtml) {
+            legendContainer.innerHTML = legendHtml;
+            this.state.lastLegendHtml = legendHtml;
         }
     },
 
