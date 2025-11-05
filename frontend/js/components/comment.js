@@ -35,19 +35,23 @@ const CommentComponent = {
                 .comment-container {
                     max-width: 600px;
                     margin: 0 auto;
-                    background: #ffffff;
+                    background: var(--color-surface);
                     min-height: 100vh;
+                    border: 1px solid rgba(231, 220, 205, 0.7);
+                    border-radius: var(--radius-lg);
+                    box-shadow: var(--shadow-sm);
+                    overflow: hidden;
                 }
 
                 .comment-header {
                     display: flex;
                     align-items: center;
                     padding: 16px;
-                    border-bottom: 1px solid #e0e0e0;
+                    border-bottom: 1px solid var(--color-border);
                     position: sticky;
                     top: 0;
-                    background: rgba(255, 255, 255, 0.85);
-                    backdrop-filter: blur(12px);
+                    background: rgba(255, 255, 255, 0.9);
+                    backdrop-filter: blur(14px);
                     z-index: 10;
                 }
 
@@ -56,7 +60,7 @@ const CommentComponent = {
                     border: none;
                     font-size: 20px;
                     cursor: pointer;
-                    color: #1a1a1a;
+                    color: var(--color-text);
                     padding: 8px;
                     margin-right: 12px;
                     border-radius: 50%;
@@ -64,7 +68,7 @@ const CommentComponent = {
                 }
 
                 .comment-back:hover {
-                    background: #f5f5f5;
+                    background: var(--color-surface-muted);
                 }
 
                 .comment-title {
@@ -75,7 +79,7 @@ const CommentComponent = {
                 /* 元の投稿表示 */
                 .original-post {
                     padding: 16px;
-                    border-bottom: 1px solid #e0e0e0;
+                    border-bottom: 1px solid var(--color-border);
                 }
 
                 .post-header {
@@ -101,7 +105,7 @@ const CommentComponent = {
                 }
 
                 .post-meta {
-                    color: #666;
+                    color: var(--color-muted);
                     font-size: 14px;
                 }
 
@@ -122,7 +126,7 @@ const CommentComponent = {
                 .show-more-btn {
                     background: none;
                     border: none;
-                    color: #d4a574;
+                    color: var(--color-primary);
                     cursor: pointer;
                     font-size: 14px;
                     padding: 4px 0;
@@ -148,7 +152,7 @@ const CommentComponent = {
                     justify-content: space-around;
                     margin-top: 12px;
                     padding-top: 12px;
-                    border-top: 1px solid #e0e0e0;
+                    border-top: 1px solid var(--color-border);
                 }
 
                 .engagement-btn {
@@ -157,7 +161,7 @@ const CommentComponent = {
                     gap: 8px;
                     background: transparent;
                     border: none;
-                    color: #666;
+                    color: var(--color-muted);
                     cursor: pointer;
                     padding: 4px 8px;
                     border-radius: 4px;
@@ -165,8 +169,8 @@ const CommentComponent = {
                 }
 
                 .engagement-btn:hover {
-                    background: #f5f5f5;
-                    color: #d4a574;
+                    background: var(--color-surface-muted);
+                    color: var(--color-primary);
                 }
 
                 .engagement-btn .liked {
@@ -176,7 +180,7 @@ const CommentComponent = {
                 /* コメント入力 */
                 .comment-input-section {
                     padding: 16px;
-                    border-bottom: 1px solid #e0e0e0;
+                    border-bottom: 1px solid var(--color-border);
                 }
 
                 .comment-input-wrapper {
@@ -188,12 +192,12 @@ const CommentComponent = {
                     width: 48px;
                     height: 48px;
                     border-radius: 50%;
-                    background: #d4a574;
+                    background: var(--color-primary);
                     flex-shrink: 0;
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    color: white;
+                    color: #fff;
                 }
 
                 .comment-textarea {
@@ -209,7 +213,7 @@ const CommentComponent = {
                 }
 
                 .comment-textarea::placeholder {
-                    color: #999;
+                    color: rgba(47, 37, 25, 0.45);
                 }
 
                 .comment-actions {
@@ -220,7 +224,7 @@ const CommentComponent = {
                 }
 
                 .char-counter {
-                    color: #666;
+                    color: var(--color-muted);
                     font-size: 14px;
                 }
 
@@ -233,23 +237,28 @@ const CommentComponent = {
                 }
 
                 .comment-submit-btn {
-                    background: #d4a574;
-                    color: white;
+                    background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+                    color: #fff;
                     border: none;
-                    padding: 8px 20px;
-                    border-radius: 20px;
-                    font-weight: bold;
+                    padding: 10px 24px;
+                    border-radius: 999px;
+                    font-weight: 600;
                     cursor: pointer;
-                    transition: background 0.2s;
+                    transition: transform 0.2s ease, box-shadow 0.2s ease;
+                    box-shadow: var(--shadow-xs);
                 }
 
                 .comment-submit-btn:hover:not(:disabled) {
-                    background: #c19660;
+                    transform: translateY(-2px);
+                    box-shadow: var(--shadow-sm);
                 }
 
                 .comment-submit-btn:disabled {
-                    background: #ccc;
+                    background: rgba(120, 108, 95, 0.25);
+                    color: rgba(120, 108, 95, 0.7);
                     cursor: not-allowed;
+                    box-shadow: none;
+                    transform: none;
                 }
 
                 /* コメントリスト */
@@ -258,16 +267,13 @@ const CommentComponent = {
                 }
 
                 .comment-item {
-                    padding: 16px 0;
-                    border-bottom: 1px solid #e0e0e0;
-                    transition: background 0.2s;
+                    padding: 20px 0;
+                    border-bottom: 1px solid var(--color-border);
+                    transition: background 0.2s ease;
                 }
 
                 .comment-item:hover {
-                    background: #f9f9f9;
-                    margin: 0 -16px;
-                    padding-left: 16px;
-                    padding-right: 16px;
+                    background: var(--color-surface-muted);
                 }
 
                 .comment-header {
@@ -293,7 +299,7 @@ const CommentComponent = {
                 }
 
                 .comment-time {
-                    color: #666;
+                    color: var(--color-muted);
                     font-size: 14px;
                 }
 
@@ -322,7 +328,7 @@ const CommentComponent = {
                     gap: 4px;
                     background: transparent;
                     border: none;
-                    color: #666;
+                    color: var(--color-muted);
                     cursor: pointer;
                     padding: 4px 8px;
                     border-radius: 4px;
@@ -330,8 +336,8 @@ const CommentComponent = {
                 }
 
                 .comment-action-btn:hover {
-                    background: #f5f5f5;
-                    color: #d4a574;
+                    background: var(--color-surface-muted);
+                    color: var(--color-primary);
                 }
 
                 /* レスポンシブ対応 */
@@ -356,53 +362,52 @@ const CommentComponent = {
 
                 /* ダークモード対応 */
                 .dark-mode .comment-container {
-                    background: #1a1a1a;
-                    color: #e0e0e0;
+                    background: #1f1a14;
+                    color: #f5f0e9;
+                    border-color: #3a3126;
+                    box-shadow: none;
                 }
 
                 .dark-mode .comment-header {
-                    background: rgba(26, 26, 26, 0.85);
-                    border-bottom-color: #333;
+                    background: rgba(31, 26, 20, 0.92);
+                    border-bottom-color: #3a3126;
                 }
 
                 .dark-mode .comment-back {
-                    color: #e0e0e0;
+                    color: #f5f0e9;
                 }
 
                 .dark-mode .comment-back:hover {
-                    background: #2a2a2a;
+                    background: #342b1f;
                 }
 
                 .dark-mode .original-post,
                 .dark-mode .comment-input-section,
                 .dark-mode .comment-item {
-                    border-bottom-color: #333;
+                    border-bottom-color: #3a3126;
                 }
 
                 .dark-mode .post-meta,
-                .dark-mode .comment-time {
-                    color: #999;
+                .dark-mode .comment-time,
+                .dark-mode .comment-action-btn {
+                    color: rgba(255, 255, 255, 0.65);
                 }
 
                 .dark-mode .comment-textarea {
-                    color: #e0e0e0;
+                    color: #f5f0e9;
                 }
 
                 .dark-mode .comment-textarea::placeholder {
-                    color: #888;
+                    color: rgba(255, 255, 255, 0.4);
                 }
 
                 .dark-mode .comment-item:hover {
-                    background: #2a2a2a;
-                }
-
-                .dark-mode .comment-action-btn {
-                    color: #999;
+                    background: #2a231a;
                 }
 
                 .dark-mode .comment-action-btn:hover {
                     background: #333;
-                    color: #d4a574;
+                    color: var(--color-primary);
                 }
 
                 .dark-mode .post-engagement {
@@ -410,12 +415,12 @@ const CommentComponent = {
                 }
 
                 .dark-mode .engagement-btn {
-                    color: #aaa;
+                    color: rgba(255, 255, 255, 0.65);
                 }
 
                 .dark-mode .engagement-btn:hover {
                     background: #333;
-                    color: #d4a574;
+                    color: var(--color-primary);
                 }
 
                 /* 画像モーダルスタイル */
@@ -455,13 +460,13 @@ const CommentComponent = {
                     justify-content: space-between;
                     align-items: center;
                     padding: 16px;
-                    color: white;
+                    color: #fff;
                 }
 
                 .image-modal-close {
                     background: none;
                     border: none;
-                    color: white;
+                    color: #fff;
                     font-size: 24px;
                     cursor: pointer;
                     width: 40px;
@@ -515,7 +520,7 @@ const CommentComponent = {
                     top: 50%;
                     transform: translateY(-50%);
                     background: rgba(0, 0, 0, 0.5);
-                    color: white;
+                    color: #fff;
                     border: none;
                     width: 50px;
                     height: 50px;
@@ -556,13 +561,13 @@ const CommentComponent = {
                     background: rgba(0, 0, 0, 0.5);
                     padding: 12px 20px;
                     border-radius: 30px;
-                    color: white;
+                    color: #fff;
                 }
 
                 .image-modal-control-btn {
                     background: none;
                     border: none;
-                    color: white;
+                    color: #fff;
                     cursor: pointer;
                     font-size: 18px;
                     width: 36px;
@@ -591,7 +596,7 @@ const CommentComponent = {
                     top: 50%;
                     left: 50%;
                     transform: translate(-50%, -50%);
-                    color: white;
+                    color: #fff;
                     font-size: 18px;
                 }
 
@@ -801,7 +806,7 @@ const CommentComponent = {
         const commentsList = document.getElementById('commentsList');
         
         if (this.state.comments.length === 0) {
-            commentsList.innerHTML = `<div style="text-align: center; padding: 20px; color: #666;"><p>コメントがありません</p></div>`;
+            commentsList.innerHTML = `<div style="text-align: center; padding: 20px; color: var(--color-muted);"><p>コメントがありません</p></div>`;
             return;
         }
 

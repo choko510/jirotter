@@ -326,8 +326,8 @@ const TimelineComponent = {
             top: 20px;
             left: 50%;
             transform: translateX(-50%);
-            background: #d4a574;
-            color: white;
+            background: var(--color-primary);
+            color: #fff;
             padding: 10px 20px;
             border-radius: 20px;
             font-weight: bold;
@@ -363,17 +363,26 @@ const TimelineComponent = {
         contentArea.innerHTML = `
             <style>
                 /* ... styles ... */
-                .post-input-area { padding: 16px; border-bottom: 1px solid #e0e0e0; }
+                .post-input-area {
+                    padding: 20px;
+                    margin: 0 16px 20px;
+                    border: 1px solid var(--color-border);
+                    border-radius: var(--radius-lg);
+                    background: var(--color-surface);
+                    box-shadow: var(--shadow-xs);
+                }
                 .post-input-wrapper { display: flex; gap: 12px; }
-                .post-avatar { width: 48px; height: 48px; border-radius: 50%; background: #d4a574; flex-shrink: 0; }
+                .post-avatar { width: 48px; height: 48px; border-radius: 50%; background: var(--color-primary); flex-shrink: 0; }
                 .post-input-content { flex: 1; }
                 .post-textarea { width: 100%; background: transparent; border: none; font-size: 20px; resize: none; outline: none; min-height: 60px; color: inherit; }
                 .post-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 12px; }
                 .post-icons { display: flex; gap: 4px; }
-                .post-icon-btn { width: 36px; height: 36px; border-radius: 50%; border: none; background: transparent; color: #d4a574; cursor: pointer; display: flex; align-items: center; justify-content: center; }
-                .tweet-btn { background: #dbaf3adb; color: #1a1a1a; border: none; padding: 8px 20px; border-radius: 20px; font-weight: bold; cursor: pointer; }
-                .tweet-btn:disabled { background: #ccc; cursor: not-allowed; }
-                .char-counter { color: #666; font-size: 14px; margin-right: 12px; }
+                .post-icon-btn { width: 36px; height: 36px; border-radius: 50%; border: none; background: transparent; color: var(--color-primary); cursor: pointer; display: flex; align-items: center; justify-content: center; transition: transform 0.2s ease, background-color 0.2s ease; }
+                .post-icon-btn:hover { background: var(--color-primary-soft); transform: translateY(-1px); }
+                .tweet-btn { background: linear-gradient(135deg, var(--color-primary), var(--color-accent)); color: #fff; border: none; padding: 10px 24px; border-radius: 999px; font-weight: bold; cursor: pointer; box-shadow: var(--shadow-xs); transition: transform 0.2s ease, box-shadow 0.2s ease; }
+                .tweet-btn:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); }
+                .tweet-btn:disabled { background: rgba(120, 108, 95, 0.25); cursor: not-allowed; box-shadow: none; transform: none; }
+                .char-counter { color: var(--color-muted); font-size: 14px; margin-right: 12px; }
                 .char-counter.warning { color: #ff9800; }
                 .char-counter.error { color: #f44336; }
                 .timeline-container { position: relative; overflow-y: auto; height: calc(100vh - 180px); overscroll-behavior: contain; }
@@ -381,7 +390,7 @@ const TimelineComponent = {
                     display: flex;
                     align-items: center;
                     justify-content: center;
-                    color: #666;
+                    color: var(--color-muted);
                     font-size: 14px;
                     height: 0;
                     transition: height 0.2s ease, opacity 0.2s ease;
@@ -396,16 +405,25 @@ const TimelineComponent = {
                     font-weight: 600;
                 }
                 .dark-mode .pull-to-refresh-indicator {
-                    color: #aaa;
+                    color: rgba(47, 37, 25, 0.45);
                 }
-                .post-card { padding: 16px; border-bottom: 1px solid #e0e0e0; transition: background 0.2s; }
-                .post-card:hover { background: #f9f9f9; }
+                .post-card {
+                    background: var(--color-surface);
+                    border: 1px solid rgba(231, 220, 205, 0.7);
+                    border-radius: var(--radius-lg);
+                    padding: 20px;
+                    margin: 0 16px 20px;
+                    box-shadow: var(--shadow-xs);
+                    transition: transform 0.2s ease, box-shadow 0.2s ease;
+                }
+                .post-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); }
                 .post-header { display: flex; gap: 12px; margin-bottom: 12px; cursor: pointer; }
                 .post-user-info { flex: 1; }
                 .post-username { font-weight: bold; }
-                .post-meta { color: #666; font-size: 14px; }
+                .post-meta { color: var(--color-muted); font-size: 14px; }
                 .post-engagement { display: flex; justify-content: space-around; margin-top: 12px; padding-top: 12px; }
-                .engagement-btn { display: flex; align-items: center; gap: 8px; background: transparent; border: none; color: #666; cursor: pointer; }
+                .engagement-btn { display: flex; align-items: center; gap: 8px; background: transparent; border: none; color: var(--color-muted); cursor: pointer; padding: 6px 10px; border-radius: 999px; transition: background-color 0.2s ease, color 0.2s ease; }
+                .engagement-btn:hover { background: var(--color-primary-soft); color: var(--color-primary); }
                 .engagement-btn .liked { color: #e0245e; }
                 .image-preview { max-width: 100px; max-height: 100px; border-radius: 10px; margin-top: 10px; }
                 #timelineLoadingIndicator { text-align: center; padding: 20px; }
@@ -424,28 +442,28 @@ const TimelineComponent = {
                     white-space: pre-wrap;
                     max-width: 100%;
                 }
-                .show-more-btn { background: none; border: none; color: #d4a574; cursor: pointer; font-size: 14px; padding: 4px 0; }
+                .show-more-btn { background: none; border: none; color: var(--color-primary); cursor: pointer; font-size: 14px; padding: 4px 0; }
                 .show-more-btn:hover { text-decoration: underline; }
-                .shop-reference { margin-top: 12px; padding: 12px; background: #f5f5f5; border-radius: 8px; cursor: pointer; transition: background 0.2s; }
-                .shop-reference:hover { background: #e8e8e8; }
-                .shop-reference-content { display: flex; align-items: center; color: #d4a574; }
+                .shop-reference { margin-top: 12px; padding: 14px; background: var(--color-surface-muted); border-radius: var(--radius-md); cursor: pointer; transition: background 0.2s ease, transform 0.2s ease; border: 1px solid rgba(231, 220, 205, 0.5); }
+                .shop-reference:hover { background: rgba(212, 165, 116, 0.12); transform: translateY(-1px); }
+                .shop-reference-content { display: flex; align-items: center; color: var(--color-primary); }
                 .shop-reference-content i { margin-right: 8px; }
                 
                 /* ログイン促しエリアのスタイル */
                 .login-prompt-area {
                     padding: 20px;
-                    border-bottom: 1px solid #e0e0e0;
+                    border-bottom: 1px solid var(--color-border);
                     text-align: center;
-                    background: #f9f9f9;
+                    background: var(--color-surface-muted);
                 }
                 .login-prompt-text {
                     margin-bottom: 16px;
-                    color: #666;
+                    color: var(--color-muted);
                     font-size: 16px;
                 }
                 .login-btn {
-                    background: #d4a574;
-                    color: white;
+                    background: var(--color-primary);
+                    color: #fff;
                     border: none;
                     padding: 10px 24px;
                     border-radius: 20px;
@@ -454,31 +472,33 @@ const TimelineComponent = {
                     font-size: 16px;
                 }
                 .login-btn:hover {
-                    background: #c19660;
+                    background: var(--color-primary-hover);
                 }
 
                 /* Dark Mode Overrides */
                 .dark-mode .post-input-area,
                 .dark-mode .post-card {
-                    border-bottom-color: #333;
+                    background: #2a2a2a;
+                    border-color: #3a3126;
+                    box-shadow: none;
                 }
                 .dark-mode .post-card:hover {
-                    background: #2a2a2a;
+                    background: #342b1f;
                 }
                 .dark-mode .post-meta,
                 .dark-mode .char-counter,
                 .dark-mode .engagement-btn {
-                    color: #aaa;
+                    color: rgba(255, 255, 255, 0.65);
                 }
                 .dark-mode .tweet-btn:disabled {
-                    background: #555;
-                    color: #aaa;
+                    background: rgba(255, 255, 255, 0.12);
+                    color: rgba(255, 255, 255, 0.5);
                 }
-                .dark-mode .shop-reference { background: #333; }
-                .dark-mode .shop-reference:hover { background: #444; }
-                .dark-mode .shop-reference-content { color: #d4a574; }
+                .dark-mode .shop-reference { background: #3a3126; border-color: #4a3f32; }
+                .dark-mode .shop-reference:hover { background: #44392d; }
+                .dark-mode .shop-reference-content { color: var(--color-primary); }
                 .dark-mode .login-prompt-area { background: #2a2a2a; }
-                .dark-mode .login-prompt-text { color: #aaa; }
+                .dark-mode .login-prompt-text { color: rgba(255, 255, 255, 0.65); }
                 
                 /* 通報モーダルスタイル */
                 .report-modal-overlay {
@@ -494,21 +514,23 @@ const TimelineComponent = {
                     z-index: 1000;
                 }
                 .report-modal {
-                    background: white;
-                    border-radius: 12px;
+                    background: var(--color-surface);
+                    border-radius: var(--radius-lg);
                     width: 90%;
                     max-width: 500px;
                     max-height: 80vh;
                     overflow: hidden;
                     display: flex;
                     flex-direction: column;
+                    box-shadow: var(--shadow-md);
+                    border: 1px solid rgba(231, 220, 205, 0.7);
                 }
                 .report-modal-header {
                     display: flex;
                     justify-content: space-between;
                     align-items: center;
                     padding: 16px;
-                    border-bottom: 1px solid #e0e0e0;
+                    border-bottom: 1px solid var(--color-border);
                 }
                 .report-modal-header h3 {
                     margin: 0;
@@ -518,8 +540,10 @@ const TimelineComponent = {
                     border: none;
                     font-size: 24px;
                     cursor: pointer;
-                    color: #666;
+                    color: var(--color-muted);
+                    transition: color 0.2s ease;
                 }
+                .close-modal:hover { color: var(--color-primary); }
                 .report-modal-content {
                     padding: 16px;
                     flex: 1;
@@ -536,7 +560,7 @@ const TimelineComponent = {
                 .report-reason select {
                     width: 100%;
                     padding: 8px 12px;
-                    border: 1px solid #e0e0e0;
+                    border: 1px solid var(--color-border);
                     border-radius: 8px;
                     outline: none;
                 }
@@ -551,7 +575,7 @@ const TimelineComponent = {
                 .report-description textarea {
                     width: 100%;
                     padding: 8px 12px;
-                    border: 1px solid #e0e0e0;
+                    border: 1px solid var(--color-border);
                     border-radius: 8px;
                     outline: none;
                     resize: vertical;
@@ -562,24 +586,30 @@ const TimelineComponent = {
                     justify-content: flex-end;
                     gap: 12px;
                     padding: 16px;
-                    border-top: 1px solid #e0e0e0;
+                    border-top: 1px solid var(--color-border);
                 }
                 .report-btn {
-                    background: #d4a574;
-                    color: white;
+                    background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+                    color: #fff;
                     border: none;
-                    padding: 8px 16px;
-                    border-radius: 20px;
+                    padding: 10px 20px;
+                    border-radius: 999px;
                     cursor: pointer;
+                    font-weight: 600;
+                    box-shadow: var(--shadow-xs);
+                    transition: transform 0.2s ease, box-shadow 0.2s ease;
                 }
+                .report-btn:hover { transform: translateY(-1px); box-shadow: var(--shadow-sm); }
                 .cancel-btn {
                     background: transparent;
-                    color: #666;
-                    border: 1px solid #e0e0e0;
-                    padding: 8px 16px;
-                    border-radius: 20px;
+                    color: var(--color-muted);
+                    border: 1px solid var(--color-border);
+                    padding: 10px 20px;
+                    border-radius: 999px;
                     cursor: pointer;
+                    transition: background-color 0.2s ease, color 0.2s ease;
                 }
+                .cancel-btn:hover { background: var(--color-surface-muted); color: var(--color-primary); }
                 .dark-mode .report-modal {
                     background: #2a2a2a;
                     color: #e0e0e0;
@@ -597,7 +627,7 @@ const TimelineComponent = {
                 }
                 .dark-mode .cancel-btn {
                     border-color: #444;
-                    color: #aaa;
+                    color: rgba(47, 37, 25, 0.45);
                 }
             </style>
             
@@ -743,7 +773,7 @@ const TimelineComponent = {
             this.state.hasMorePosts = result.hasMore;
 
             if (this.state.posts.length === 0 && !this.state.hasMorePosts) {
-                document.getElementById('timeline').innerHTML = `<div style="text-align: center; padding: 40px; color: #666;"><p>投稿がありません</p></div>`;
+                document.getElementById('timeline').innerHTML = `<div style="text-align: center; padding: 40px; color: var(--color-muted);"><p>投稿がありません</p></div>`;
             }
 
         } catch (error) {
@@ -859,7 +889,7 @@ const TimelineComponent = {
                 const timeline = document.getElementById('timeline');
                 if (timeline) {
                     timeline.innerHTML = `
-                        <div style="text-align: center; padding: 40px; color: #666;">
+                        <div style="text-align: center; padding: 40px; color: var(--color-muted);">
                             <p style="margin-bottom: 16px;">フォロー中のユーザーの投稿を見るにはログインが必要です。</p>
                         </div>
                     `;
@@ -1177,15 +1207,15 @@ const TimelineComponent = {
         
         const previewContainer = document.getElementById('shopPreviewContainer');
         previewContainer.innerHTML = `
-            <div class="shop-preview" style="margin-top: 10px; padding: 10px; background: #f5f5f5; border-radius: 8px; display: flex; align-items: center; justify-content: space-between;">
+            <div class="shop-preview" style="margin-top: 10px; padding: 10px; background: var(--color-surface-muted); border-radius: 8px; display: flex; align-items: center; justify-content: space-between;">
                 <div style="display: flex; align-items: center;">
-                    <i class="fas fa-store" style="margin-right: 8px; color: #d4a574;"></i>
+                    <i class="fas fa-store" style="margin-right: 8px; color: var(--color-primary);"></i>
                     <div>
                         <div style="font-weight: bold;">${this.state.selectedShop.name}</div>
-                        <div style="font-size: 12px; color: #666;">${this.state.selectedShop.address}</div>
+                        <div style="font-size: 12px; color: var(--color-muted);">${this.state.selectedShop.address}</div>
                     </div>
                 </div>
-                <button onclick="TimelineComponent.removeShop()" style="background: none; border: none; color: #666; cursor: pointer;">
+                <button onclick="TimelineComponent.removeShop()" style="background: none; border: none; color: var(--color-muted); cursor: pointer;">
                     <i class="fas fa-times"></i>
                 </button>
             </div>
