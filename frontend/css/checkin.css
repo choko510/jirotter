@@ -7,7 +7,7 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.5);
+    background: rgba(0, 0, 0, 0.45);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -15,29 +15,30 @@
 }
 
 .checkin-modal {
-    background: white;
-    border-radius: 12px;
+    background: var(--color-surface);
+    border-radius: var(--radius-lg);
     width: 90%;
-    max-width: 500px;
+    max-width: 520px;
     max-height: 80vh;
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    box-shadow: var(--shadow-md);
 }
 
 .checkin-modal-header {
     display: flex;
     justify-content: space-between;
     align-items: center;
-    padding: 16px;
-    border-bottom: 1px solid #e0e0e0;
+    padding: 18px;
+    border-bottom: 1px solid rgba(231, 220, 205, 0.8);
 }
 
 .checkin-modal-header h3 {
     margin: 0;
     font-size: 18px;
     font-weight: bold;
+    color: var(--color-text);
 }
 
 .checkin-modal-close {
@@ -45,7 +46,7 @@
     border: none;
     font-size: 24px;
     cursor: pointer;
-    color: #666;
+    color: var(--color-muted);
     padding: 0;
     width: 32px;
     height: 32px;
@@ -53,17 +54,19 @@
     align-items: center;
     justify-content: center;
     border-radius: 50%;
-    transition: background-color 0.2s;
+    transition: background-color 0.2s ease, color 0.2s ease;
 }
 
 .checkin-modal-close:hover {
-    background-color: #f0f0f0;
+    background-color: rgba(212, 165, 116, 0.15);
+    color: var(--color-primary);
 }
 
 .checkin-modal-content {
-    padding: 16px;
+    padding: 18px;
     flex: 1;
     overflow-y: auto;
+    background: var(--color-surface-muted);
 }
 
 /* チェックイン店舗情報 */
@@ -74,21 +77,22 @@
 .checkin-shop-info h4 {
     margin: 0 0 8px 0;
     font-size: 16px;
-    color: #d4a574;
+    color: var(--color-primary);
 }
 
 .checkin-shop-info p {
     margin: 0;
     font-size: 14px;
-    color: #666;
+    color: var(--color-muted);
 }
 
 /* チェックイン位置情報 */
 .checkin-location-info {
     margin-bottom: 16px;
     padding: 12px;
-    background-color: #f9f9f9;
-    border-radius: 8px;
+    background-color: var(--color-surface);
+    border-radius: var(--radius-md);
+    border: 1px solid rgba(231, 220, 205, 0.8);
 }
 
 .checkin-location-info p {
@@ -97,7 +101,7 @@
 }
 
 .checkin-location-info strong {
-    color: #333;
+    color: var(--color-text);
 }
 
 /* チェックイン方法情報 */
@@ -108,48 +112,52 @@
 .checkin-method-info p {
     margin: 0;
     font-size: 14px;
+    color: var(--color-text);
 }
 
 .checkin-method-info strong {
-    color: #333;
+    color: var(--color-primary);
 }
 
 /* チェックインアクション */
 .checkin-actions {
     display: flex;
     gap: 12px;
-    margin-top: 16px;
+    margin-top: 18px;
 }
 
 .checkin-confirm-btn {
     flex: 1;
-    background: #d4a574;
+    background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
     color: white;
     border: none;
     padding: 12px 16px;
-    border-radius: 8px;
+    border-radius: 999px;
     font-weight: bold;
     cursor: pointer;
-    transition: background-color 0.2s;
+    transition: transform 0.2s ease, box-shadow 0.2s ease;
+    box-shadow: var(--shadow-xs);
 }
 
 .checkin-confirm-btn:hover {
-    background: #c19663;
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-md);
 }
 
 .checkin-cancel-btn {
     flex: 1;
     background: transparent;
-    color: #666;
-    border: 1px solid #e0e0e0;
+    color: var(--color-muted);
+    border: 1px solid rgba(231, 220, 205, 0.8);
     padding: 12px 16px;
-    border-radius: 8px;
+    border-radius: 999px;
     cursor: pointer;
-    transition: all 0.2s;
+    transition: all 0.2s ease;
 }
 
 .checkin-cancel-btn:hover {
-    background: #f5f5f5;
+    background: var(--color-surface-muted);
+    color: var(--color-primary);
 }
 
 /* チェックインローディング */
@@ -158,335 +166,21 @@
     flex-direction: column;
     align-items: center;
     justify-content: center;
-    padding: 40px 20px;
-    text-align: center;
-}
-
-.checkin-spinner {
-    width: 40px;
-    height: 40px;
-    border: 4px solid #f3f3f3;
-    border-top: 4px solid #d4a574;
-    border-radius: 50%;
-    animation: spin 1s linear infinite;
-    margin-bottom: 16px;
-}
-
-@keyframes spin {
-    0% { transform: rotate(0deg); }
-    100% { transform: rotate(360deg); }
-}
-
-.checkin-loading p {
-    margin: 0;
-    color: #666;
-    font-size: 16px;
-}
-
-/* 待ち時間アンケート */
-.waittime-survey {
-    display: flex;
-    flex-direction: column;
-    gap: 16px;
-}
-
-.waittime-question label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: bold;
-    font-size: 14px;
-}
-
-.waittime-input-group {
-    display: flex;
-    align-items: center;
     gap: 8px;
+    padding: 32px 0;
+    color: var(--color-muted);
 }
 
-.waittime-input-group input {
-    flex: 1;
-    padding: 8px 12px;
-    border: 1px solid #e0e0e0;
-    border-radius: 4px;
-    font-size: 16px;
-}
-
-.waittime-input-group span {
-    font-size: 14px;
-    color: #666;
-}
-
-.waittime-confidence {
-    margin-bottom: 16px;
-}
-
-.waittime-confidence label {
-    display: block;
-    margin-bottom: 8px;
-    font-weight: bold;
+.checkin-loading span {
     font-size: 14px;
 }
 
-.confidence-options {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 12px;
-}
-
-.confidence-options label {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-    font-weight: normal;
-    font-size: 14px;
-    cursor: pointer;
-}
-
-.waittime-actions {
-    display: flex;
-    gap: 12px;
+/* チェックインエラー */
+.checkin-error {
+    color: var(--color-danger);
+    background: rgba(209, 106, 95, 0.12);
+    border: 1px solid rgba(209, 106, 95, 0.2);
+    border-radius: var(--radius-md);
+    padding: 12px 16px;
     margin-top: 16px;
-}
-
-.waittime-survey-submit {
-    flex: 2;
-    background: #d4a574;
-    color: white;
-    border: none;
-    padding: 12px 16px;
-    border-radius: 8px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: background-color 0.2s;
-}
-
-.waittime-survey-submit:hover {
-    background: #c19663;
-}
-
-.waittime-survey-skip {
-    flex: 1;
-    background: transparent;
-    color: #666;
-    border: 1px solid #e0e0e0;
-    padding: 12px 16px;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.waittime-survey-skip:hover {
-    background: #f5f5f5;
-}
-
-/* チェックイン通知 */
-.checkin-notification {
-    position: fixed;
-    bottom: 20px;
-    left: 50%;
-    transform: translateX(-50%);
-    background: white;
-    border-radius: 12px;
-    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
-    padding: 16px;
-    z-index: 1000;
-    max-width: 90%;
-    width: 400px;
-    animation: slideUp 0.3s ease-out;
-}
-
-@keyframes slideUp {
-    from {
-        transform: translate(-50%, 100%);
-        opacity: 0;
-    }
-    to {
-        transform: translate(-50%, 0);
-        opacity: 1;
-    }
-}
-
-.checkin-notification-content {
-    display: flex;
-    align-items: flex-start;
-    gap: 12px;
-}
-
-.checkin-notification-icon {
-    flex-shrink: 0;
-    width: 40px;
-    height: 40px;
-    background: #d4a574;
-    color: white;
-    border-radius: 50%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-
-.checkin-notification-text {
-    flex: 1;
-}
-
-.checkin-notification-text p {
-    margin: 0 0 4px 0;
-    font-size: 14px;
-}
-
-.checkin-notification-text p:first-child {
-    font-weight: bold;
-}
-
-.checkin-notification-actions {
-    display: flex;
-    gap: 8px;
-    margin-top: 12px;
-}
-
-.checkin-notification-yes,
-.checkin-notification-no {
-    flex: 1;
-    padding: 8px 12px;
-    border-radius: 6px;
-    font-size: 14px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.2s;
-}
-
-.checkin-notification-yes {
-    background: #d4a574;
-    color: white;
-    border: none;
-}
-
-.checkin-notification-yes:hover {
-    background: #c19663;
-}
-
-.checkin-notification-no {
-    background: transparent;
-    color: #666;
-    border: 1px solid #e0e0e0;
-}
-
-.checkin-notification-no:hover {
-    background: #f5f5f5;
-}
-
-/* チェックインボタン */
-.checkin-btn {
-    background: #d4a574;
-    color: white;
-    border: none;
-    padding: 8px 16px;
-    border-radius: 20px;
-    font-size: 14px;
-    font-weight: bold;
-    cursor: pointer;
-    transition: all 0.2s;
-    display: flex;
-    align-items: center;
-    gap: 6px;
-}
-
-.checkin-btn:hover {
-    background: #c19663;
-    transform: translateY(-1px);
-}
-
-.checkin-btn:active {
-    transform: translateY(0);
-}
-
-.checkin-btn i {
-    font-size: 24px;
-}
-
-/* ダークモード対応 */
-.dark-mode .checkin-modal {
-    background: #2a2a2a;
-    color: #e0e0e0;
-}
-
-.dark-mode .checkin-modal-header {
-    border-bottom-color: #333;
-}
-
-.dark-mode .checkin-modal-close {
-    color: #aaa;
-}
-
-.dark-mode .checkin-modal-close:hover {
-    background-color: #333;
-}
-
-.dark-mode .checkin-location-info {
-    background-color: #333;
-}
-
-.dark-mode .checkin-cancel-btn {
-    color: #aaa;
-    border-color: #444;
-}
-
-.dark-mode .checkin-cancel-btn:hover {
-    background: #333;
-}
-
-.dark-mode .checkin-loading p {
-    color: #aaa;
-}
-
-.dark-mode .confidence-options label {
-    color: #e0e0e0;
-}
-
-.dark-mode .waittime-survey-skip {
-    color: #aaa;
-    border-color: #444;
-}
-
-.dark-mode .waittime-survey-skip:hover {
-    background: #333;
-}
-
-.dark-mode .checkin-notification {
-    background: #2a2a2a;
-    color: #e0e0e0;
-}
-
-.dark-mode .checkin-notification-no {
-    color: #aaa;
-    border-color: #444;
-}
-
-.dark-mode .checkin-notification-no:hover {
-    background: #333;
-}
-
-/* レスポンシブ対応 */
-@media (max-width: 768px) {
-    .checkin-modal {
-        width: 95%;
-        max-height: 90vh;
-    }
-    
-    .checkin-notification {
-        width: 90%;
-        bottom: 10px;
-    }
-    
-    .checkin-actions {
-        flex-direction: column;
-    }
-    
-    .waittime-actions {
-        flex-direction: column;
-    }
-    
-    .confidence-options {
-        flex-direction: column;
-        gap: 8px;
-    }
 }

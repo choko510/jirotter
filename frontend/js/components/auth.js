@@ -19,10 +19,11 @@ const AuthComponent = {
                 .auth-container {
                     max-width: 400px;
                     margin: 40px auto;
-                    padding: 20px;
-                    background: #ffffff;
-                    border-radius: 16px;
-                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.1);
+                    padding: 24px;
+                    background: var(--color-surface);
+                    border-radius: var(--radius-lg);
+                    box-shadow: var(--shadow-sm);
+                    border: 1px solid rgba(231, 220, 205, 0.7);
                 }
 
                 .auth-header {
@@ -33,12 +34,12 @@ const AuthComponent = {
                 .auth-title {
                     font-size: 24px;
                     font-weight: bold;
-                    color: #1a1a1a;
+                    color: var(--color-text);
                     margin-bottom: 8px;
                 }
 
                 .auth-subtitle {
-                    color: #666;
+                    color: var(--color-muted);
                     font-size: 14px;
                 }
 
@@ -56,12 +57,12 @@ const AuthComponent = {
 
                 .form-label {
                     font-weight: 500;
-                    color: #1a1a1a;
+                    color: var(--color-text);
                 }
 
                 .form-input {
                     padding: 12px 16px;
-                    border: 1px solid #e0e0e0;
+                    border: 1px solid var(--color-border);
                     border-radius: 8px;
                     font-size: 16px;
                     outline: none;
@@ -69,54 +70,60 @@ const AuthComponent = {
                 }
 
                 .form-input:focus {
-                    border-color: #d4a574;
+                    border-color: var(--color-primary);
                 }
 
                 .form-input::placeholder {
-                    color: #999;
+                    color: rgba(47, 37, 25, 0.45);
                 }
 
                 .auth-btn {
-                    background: #d4a574;
-                    color: #ffffff;
+                    background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+                    color: #fff;
                     border: none;
-                    padding: 12px 20px;
-                    border-radius: 8px;
+                    padding: 12px 24px;
+                    border-radius: 999px;
                     font-size: 16px;
                     font-weight: bold;
                     cursor: pointer;
-                    transition: background 0.2s;
+                    transition: transform 0.2s ease, box-shadow 0.2s ease;
+                    box-shadow: var(--shadow-xs);
                 }
 
                 .auth-btn:hover {
-                    background: #c49564;
+                    transform: translateY(-2px);
+                    box-shadow: var(--shadow-sm);
                 }
 
                 .auth-btn:disabled {
-                    background: #ccc;
+                    background: rgba(120, 108, 95, 0.25);
+                    color: rgba(120, 108, 95, 0.7);
                     cursor: not-allowed;
+                    box-shadow: none;
+                    transform: none;
                 }
 
                 .auth-switch {
                     text-align: center;
                     margin-top: 20px;
-                    color: #666;
+                    color: var(--color-muted);
                 }
 
                 .auth-link {
-                    color: #d4a574;
+                    color: var(--color-primary);
                     text-decoration: none;
                     font-weight: 500;
                     cursor: pointer;
+                    transition: color 0.2s ease;
                 }
 
                 .auth-link:hover {
-                    text-decoration: underline;
+                    color: var(--color-primary-hover);
                 }
 
                 .auth-error {
-                    background: #ffebee;
-                    color: #d32f2f;
+                    background: rgba(209, 106, 95, 0.12);
+                    color: var(--color-danger);
                     padding: 12px 16px;
                     border-radius: 8px;
                     margin-bottom: 16px;
@@ -124,7 +131,7 @@ const AuthComponent = {
                 }
 
                 .auth-success {
-                    background: #e8f5e8;
+                    background: rgba(111, 193, 118, 0.14);
                     color: #2e7d32;
                     padding: 12px 16px;
                     border-radius: 8px;
@@ -135,22 +142,23 @@ const AuthComponent = {
                 @media (max-width: 768px) {
                     .auth-container {
                         margin: 20px;
-                        padding: 16px;
+                        padding: 20px;
                     }
                 }
 
                 /* Dark Mode Overrides */
                 .dark-mode .auth-container {
                     background: #2a2a2a;
-                    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.4);
+                    box-shadow: none;
+                    border-color: #3a3126;
                 }
                 .dark-mode .auth-title,
                 .dark-mode .form-label {
-                    color: #e0e0e0;
+                    color: #f5f0e9;
                 }
                 .dark-mode .auth-subtitle,
                 .dark-mode .auth-switch {
-                    color: #aaa;
+                    color: rgba(255, 255, 255, 0.65);
                 }
                 .dark-mode .form-input {
                     background: #1a1a1a;
@@ -158,10 +166,10 @@ const AuthComponent = {
                     color: #e0e0e0;
                 }
                 .dark-mode .form-input:focus {
-                    border-color: #d4a574;
+                    border-color: var(--color-primary);
                 }
                 .dark-mode .form-input::placeholder {
-                    color: #888;
+                    color: rgba(255, 255, 255, 0.4);
                 }
             </style>
             

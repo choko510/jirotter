@@ -18,9 +18,13 @@ const WaittimeComponent = {
         contentArea.innerHTML = `
             <style>
                 .waittime-container {
-                    padding: 20px;
-                    max-width: 600px;
+                    padding: 24px;
+                    max-width: 720px;
                     margin: 0 auto;
+                    background: var(--color-surface);
+                    border: 1px solid rgba(231, 220, 205, 0.7);
+                    border-radius: var(--radius-lg);
+                    box-shadow: var(--shadow-sm);
                 }
                 
                 .waittime-header {
@@ -34,7 +38,7 @@ const WaittimeComponent = {
                 }
                 
                 .waittime-subtitle {
-                    color: #666;
+                    color: var(--color-muted);
                     font-size: 14px;
                 }
                 
@@ -46,9 +50,9 @@ const WaittimeComponent = {
                 }
                 
                 .sort-btn {
-                    background: #ffffff;
-                    border: 1px solid #e0e0e0;
-                    color: #1a1a1a;
+                    background: var(--color-surface);
+                    border: 1px solid var(--color-border);
+                    color: var(--color-text);
                     padding: 8px 16px;
                     border-radius: 20px;
                     cursor: pointer;
@@ -57,12 +61,12 @@ const WaittimeComponent = {
                 }
                 
                 .sort-btn:hover {
-                    background: #f5f5f5;
+                    background: var(--color-surface-muted);
                 }
                 
                 .sort-btn.active {
-                    background: #d4a574;
-                    border-color: #d4a574;
+                    background: var(--color-primary);
+                    border-color: var(--color-primary);
                     color: #ffffff;
                 }
                 
@@ -73,16 +77,18 @@ const WaittimeComponent = {
                 }
                 
                 .waittime-card {
-                    background: #ffffff;
-                    border: 1px solid #e0e0e0;
-                    border-radius: 12px;
-                    padding: 16px;
-                    transition: all 0.2s;
+                    background: var(--color-surface);
+                    border: 1px solid rgba(231, 220, 205, 0.7);
+                    border-radius: var(--radius-md);
+                    padding: 18px;
+                    transition: transform 0.2s ease, box-shadow 0.2s ease;
                     cursor: pointer;
+                    box-shadow: var(--shadow-xs);
                 }
-                
+
                 .waittime-card:hover {
-                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+                    transform: translateY(-3px);
+                    box-shadow: var(--shadow-sm);
                 }
                 
                 .waittime-shop-header {
@@ -99,24 +105,26 @@ const WaittimeComponent = {
                 }
                 
                 .waittime-badge {
-                    background: #ff5252;
-                    color: white;
-                    padding: 4px 8px;
-                    border-radius: 12px;
+                    background: var(--color-danger);
+                    color: #fff;
+                    padding: 4px 10px;
+                    border-radius: 999px;
                     font-size: 12px;
-                    font-weight: bold;
+                    font-weight: 600;
+                    letter-spacing: 0.02em;
                 }
-                
+
                 .waittime-badge.short {
                     background: #4caf50;
                 }
-                
+
                 .waittime-badge.medium {
-                    background: #ff9800;
+                    background: var(--color-warning);
                 }
-                
+
                 .waittime-badge.unknown {
-                    background: #9e9e9e;
+                    background: rgba(120, 108, 95, 0.35);
+                    color: var(--color-text);
                 }
                 
                 .waittime-info {
@@ -128,7 +136,7 @@ const WaittimeComponent = {
                 .waittime-details {
                     display: flex;
                     gap: 16px;
-                    color: #666;
+                    color: var(--color-muted);
                     font-size: 14px;
                 }
                 
@@ -140,28 +148,30 @@ const WaittimeComponent = {
                 
                 .waittime-action {
                     background: transparent;
-                    border: 1px solid #d4a574;
-                    color: #d4a574;
-                    padding: 6px 12px;
-                    border-radius: 16px;
+                    border: 1px solid var(--color-primary);
+                    color: var(--color-primary);
+                    padding: 6px 14px;
+                    border-radius: 999px;
                     cursor: pointer;
                     font-size: 12px;
-                    transition: all 0.2s;
+                    transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
                 }
-                
+
                 .waittime-action:hover {
-                    background: rgba(212, 165, 116, 0.1);
+                    background: var(--color-primary-soft);
+                    color: var(--color-primary);
+                    box-shadow: var(--shadow-xs);
                 }
                 
                 .loading {
                     text-align: center;
                     padding: 40px;
-                    color: #666;
+                    color: var(--color-muted);
                 }
                 
                 @media (max-width: 768px) {
                     .waittime-container {
-                        padding: 16px;
+                        padding: 18px;
                     }
                     
                     .waittime-details {
@@ -174,7 +184,7 @@ const WaittimeComponent = {
                 /* Dark Mode Overrides */
                 .dark-mode .waittime-subtitle,
                 .dark-mode .waittime-details {
-                    color: #aaa;
+                    color: rgba(255, 255, 255, 0.65);
                 }
                 .dark-mode .sort-btn {
                     background: #2a2a2a;
@@ -185,16 +195,17 @@ const WaittimeComponent = {
                     background: #333;
                 }
                 .dark-mode .sort-btn.active {
-                    background: #d4a574;
-                    border-color: #d4a574;
-                    color: #1a1a1a;
+                    background: var(--color-primary);
+                    border-color: var(--color-primary);
+                    color: #1f1208;
                 }
                 .dark-mode .waittime-card {
                     background: #2a2a2a;
-                    border-color: #333;
+                    border-color: #3a3126;
+                    box-shadow: none;
                 }
                 .dark-mode .waittime-card:hover {
-                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4);
+                    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
                 }
                 
                 /* 都道府県フィルター用スタイル */
@@ -209,7 +220,7 @@ const WaittimeComponent = {
                 .filter-header h3 {
                     margin: 0;
                     font-size: 16px;
-                    color: #d4a574;
+                    color: var(--color-primary);
                 }
                 
                 .prefecture-filters {
@@ -218,51 +229,57 @@ const WaittimeComponent = {
                     gap: 8px;
                     max-height: 200px;
                     overflow-y: auto;
-                    padding: 10px;
-                    background: #f9f9f9;
-                    border-radius: 8px;
+                    padding: 12px;
+                    background: var(--color-surface);
+                    border-radius: var(--radius-md);
+                    border: 1px solid rgba(231, 220, 205, 0.7);
+                    box-shadow: var(--shadow-xs);
                 }
                 
                 .prefecture-filter-btn {
-                    background: #ffffff;
-                    border: 1px solid #e0e0e0;
-                    color: #666;
-                    padding: 6px 12px;
-                    border-radius: 16px;
+                    background: var(--color-surface);
+                    border: 1px solid var(--color-border);
+                    color: var(--color-muted);
+                    padding: 6px 14px;
+                    border-radius: 999px;
                     cursor: pointer;
-                    transition: all 0.2s;
+                    transition: background-color 0.2s ease, color 0.2s ease, box-shadow 0.2s ease;
                     font-size: 12px;
                     text-align: center;
                 }
                 
                 .prefecture-filter-btn:hover {
-                    background: #f5f5f5;
+                    background: var(--color-surface-muted);
+                    box-shadow: var(--shadow-xs);
                 }
                 
                 .prefecture-filter-btn.active {
-                    background: #d4a574;
-                    border-color: #d4a574;
-                    color: white;
+                    background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+                    border-color: transparent;
+                    color: #fff;
+                    box-shadow: var(--shadow-xs);
                 }
                 
                 .dark-mode .prefecture-filters {
                     background: #2a2a2a;
+                    border-color: #3a3126;
+                    box-shadow: none;
                 }
-                
+
                 .dark-mode .prefecture-filter-btn {
                     background: #2a2a2a;
-                    border-color: #333;
-                    color: #e0e0e0;
+                    border-color: #3a3126;
+                    color: rgba(255, 255, 255, 0.65);
                 }
-                
+
                 .dark-mode .prefecture-filter-btn:hover {
-                    background: #333;
+                    background: #342b1f;
                 }
-                
+
                 .dark-mode .prefecture-filter-btn.active {
-                    background: #d4a574;
-                    border-color: #d4a574;
-                    color: #1a1a1a;
+                    background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+                    border-color: transparent;
+                    color: #1f1208;
                 }
                 
                 /* もっと見るボタン用スタイル */
@@ -273,45 +290,51 @@ const WaittimeComponent = {
                 }
                 
                 .load-more-btn {
-                    background: #ffffff;
-                    border: 1px solid #d4a574;
-                    color: #d4a574;
-                    padding: 12px 24px;
-                    border-radius: 24px;
+                    background: var(--color-surface);
+                    border: 1px solid var(--color-border);
+                    color: var(--color-primary);
+                    padding: 12px 28px;
+                    border-radius: 999px;
                     cursor: pointer;
-                    transition: all 0.2s;
+                    transition: transform 0.2s ease, box-shadow 0.2s ease, background-color 0.2s ease, color 0.2s ease;
                     font-size: 14px;
-                    font-weight: 500;
+                    font-weight: 600;
                     min-width: 160px;
+                    box-shadow: var(--shadow-xs);
                 }
-                
+
                 .load-more-btn:hover {
-                    background: #d4a574;
-                    color: #ffffff;
+                    background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+                    color: #fff;
+                    box-shadow: var(--shadow-sm);
+                    transform: translateY(-2px);
                 }
-                
+
                 .load-more-btn:disabled {
-                    background: #f5f5f5;
-                    border-color: #e0e0e0;
-                    color: #999;
+                    background: var(--color-surface-muted);
+                    border-color: var(--color-border);
+                    color: rgba(120, 108, 95, 0.6);
                     cursor: not-allowed;
+                    box-shadow: none;
+                    transform: none;
                 }
-                
+
                 .dark-mode .load-more-btn {
                     background: #2a2a2a;
-                    border-color: #d4a574;
-                    color: #d4a574;
+                    border-color: #3a3126;
+                    color: var(--color-primary);
+                    box-shadow: none;
                 }
-                
+
                 .dark-mode .load-more-btn:hover {
-                    background: #d4a574;
-                    color: #1a1a1a;
+                    background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+                    color: #1f1208;
                 }
-                
+
                 .dark-mode .load-more-btn:disabled {
                     background: #333;
-                    border-color: #444;
-                    color: #666;
+                    border-color: #3a3126;
+                    color: rgba(255, 255, 255, 0.4);
                 }
             </style>
             
@@ -510,7 +533,7 @@ const WaittimeComponent = {
                 listElement.innerHTML = `
                     <div class="error">
                         <p>データの読み込みに失敗しました</p>
-                        <button onclick="WaittimeComponent.loadWaittimeData()" style="margin-top: 16px; padding: 8px 16px; background: #d4a574; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        <button onclick="WaittimeComponent.loadWaittimeData()" style="margin-top: 16px; padding: 8px 16px; background: var(--color-primary); color: #fff; border: none; border-radius: 4px; cursor: pointer;">
                             再読み込み
                         </button>
                     </div>
@@ -582,7 +605,7 @@ const WaittimeComponent = {
                 listElement.innerHTML = `
                     <div class="error">
                         <p>データの読み込みに失敗しました</p>
-                        <button onclick="WaittimeComponent.loadWaittimeData()" style="margin-top: 16px; padding: 8px 16px; background: #d4a574; color: white; border: none; border-radius: 4px; cursor: pointer;">
+                        <button onclick="WaittimeComponent.loadWaittimeData()" style="margin-top: 16px; padding: 8px 16px; background: var(--color-primary); color: #fff; border: none; border-radius: 4px; cursor: pointer;">
                             再読み込み
                         </button>
                     </div>
