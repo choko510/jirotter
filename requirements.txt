@@ -16,3 +16,4 @@ user-agents
 httpx
 starlette-csrf
 itsdangerous
+pytest-asyncio

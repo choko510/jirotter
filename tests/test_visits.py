@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 
 from app.models import RamenShop
 
@@ -24,7 +24,7 @@ def test_create_visit_and_list(test_client, test_db, auth_headers):
 
     visit_payload = {
         "shop_id": shop.id,
-        "visit_date": datetime.utcnow().isoformat(),
+        "visit_date": datetime.now(timezone.utc).isoformat(),
         "rating": 5,
         "comment": "最高でした",
         "wait_time_minutes": 15,
@@ -60,7 +60,7 @@ def test_create_visit_and_list(test_client, test_db, auth_headers):
 def test_create_visit_invalid_shop(test_client, test_db, auth_headers):
     visit_payload = {
         "shop_id": 99999,
-        "visit_date": datetime.utcnow().isoformat(),
+        "visit_date": datetime.now(timezone.utc).isoformat(),
     }
 
     response = test_client.post(

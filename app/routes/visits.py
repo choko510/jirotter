@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
@@ -44,7 +44,7 @@ def create_visit(
 
         if visit.wait_time_minutes is not None:
             shop.wait_time = visit.wait_time_minutes
-            shop.last_update = datetime.utcnow()
+            shop.last_update = datetime.now(timezone.utc)
 
         db.commit()
     except Exception:

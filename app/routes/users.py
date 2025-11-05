@@ -1,5 +1,5 @@
 import os
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List, Optional
 
 from fastapi import APIRouter, Depends, File, HTTPException, Query, UploadFile, status
@@ -115,7 +115,7 @@ async def get_user_rankings(
         top_users=top_entries,
         you=you_entry,
         total_users=int(total_users),
-        last_updated=datetime.utcnow(),
+        last_updated=datetime.now(timezone.utc),
         title_catalog=title_catalog,
     )
 

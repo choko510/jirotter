@@ -5,7 +5,7 @@ from typing import Optional, Tuple
 import math
 import csv
 import os
-from datetime import datetime, timedelta
+from datetime import datetime, timedelta, timezone
 
 from database import get_db
 from app.models import RamenShop, Checkin
@@ -113,7 +113,7 @@ async def get_ramen_ranking(db: Session = Depends(get_db)):
     過去1週間のチェックイン数に基づいたラーメン店のトップ10ランキングを取得する。
     """
     try:
-        one_week_ago = datetime.utcnow() - timedelta(days=7)
+        one_week_ago = datetime.now(timezone.utc) - timedelta(days=7)
 
         ranking_subquery = (
             db.query(
@@ -301,7 +301,7 @@ async def update_waittime(
             )
         
         shop.wait_time = wait_time
-        shop.last_update = datetime.utcnow()
+        shop.last_update = datetime.now(timezone.utc)
         db.commit()
         
         return {"message": "待ち時間を更新しました", "wait_time": wait_time}

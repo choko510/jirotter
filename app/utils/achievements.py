@@ -1,6 +1,6 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, List, Optional
 
 from sqlalchemy import func
@@ -242,7 +242,7 @@ def evaluate_new_titles(db: Session, user: User) -> List[UserTitle]:
                 icon=definition.get("icon"),
                 theme_color=str(definition.get("theme_color", "#f97316")),
                 prestige=int(definition.get("prestige", 0)),
-                earned_at=datetime.utcnow(),
+                earned_at=datetime.now(timezone.utc),
             )
             user.titles.append(title)
             db.add(title)

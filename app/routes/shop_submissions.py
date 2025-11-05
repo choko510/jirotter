@@ -1,4 +1,4 @@
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import List
 
 from fastapi import APIRouter, Depends, HTTPException, status
@@ -152,7 +152,7 @@ async def approve_submission(
         for key, value in proposed_changes.items():
             if hasattr(shop, key):
                 setattr(shop, key, value)
-        shop.last_update = datetime.utcnow()
+        shop.last_update = datetime.now(timezone.utc)
     else:
         required_fields = ["name", "address", "latitude", "longitude"]
         missing_fields = [field for field in required_fields if field not in proposed_changes]
@@ -171,14 +171,14 @@ async def approve_submission(
             closed_day=proposed_changes.get("closed_day"),
             seats=proposed_changes.get("seats"),
             wait_time=0,
-            last_update=datetime.utcnow(),
+            last_update=datetime.now(timezone.utc),
         )
         db.add(new_shop)
         db.flush()
         submission.shop_id = new_shop.id
 
     submission.status = "approved"
-    submission.reviewed_at = datetime.utcnow()
+    submission.reviewed_at = datetime.now(timezone.utc)
     submission.reviewer_id = current_admin.id
     submission.review_comment = review.comment if review else None
 
@@ -213,7 +213,7 @@ async def reject_submission(
         raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="この申請は審査済みです")
 
     submission.status = "rejected"
-    submission.reviewed_at = datetime.utcnow()
+    submission.reviewed_at = datetime.now(timezone.utc)
     submission.reviewer_id = current_admin.id
     submission.review_comment = review.comment if review else None
 
