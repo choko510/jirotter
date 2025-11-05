@@ -71,6 +71,8 @@ class Post(Base):
     video_duration = Column(Float, nullable=True)  # 動画再生時間（秒）
     shop_id = Column(Integer, ForeignKey('ramen_shops.id'), nullable=True)
     created_at = Column(DateTime, default=datetime.utcnow)
+    is_shadow_banned = Column(Boolean, nullable=False, default=False, index=True)
+    shadow_ban_reason = Column(Text, nullable=True)
 
     # Relationships
     likes = relationship('Like', backref='post', lazy=True, cascade='all, delete-orphan')
@@ -119,6 +121,8 @@ class Reply(Base):
     user_id = Column(String(80), ForeignKey('users.id'), nullable=False)
     post_id = Column(Integer, ForeignKey('posts.id'), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
+    is_shadow_banned = Column(Boolean, nullable=False, default=False, index=True)
+    shadow_ban_reason = Column(Text, nullable=True)
 
     @property
     def author_username(self):

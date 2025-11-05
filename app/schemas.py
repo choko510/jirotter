@@ -236,6 +236,8 @@ class ReplyResponse(ReplyBase):
     author_username: str
     author_profile_image_url: Optional[str] = None
     created_at: datetime
+    is_shadow_banned: bool = False
+    shadow_ban_reason: Optional[str] = None
 
     @field_serializer('content')
     def serialize_content(self, value):
@@ -247,6 +249,10 @@ class ReplyResponse(ReplyBase):
 
     @field_serializer('author_profile_image_url')
     def serialize_author_profile_image_url(self, value):
+        return escape_html(value) if value else value
+
+    @field_serializer('shadow_ban_reason')
+    def serialize_shadow_ban_reason(self, value):
         return escape_html(value) if value else value
 
 # Like Schemas
@@ -291,7 +297,9 @@ class PostResponse(PostBase):
     replies_count: int
     replies: List[ReplyResponse] = []
     is_liked_by_current_user: bool = False
-    
+    is_shadow_banned: bool = False
+    shadow_ban_reason: Optional[str] = None
+
     @field_serializer('content')
     def serialize_content(self, value):
         return escape_html(value)
@@ -318,6 +326,10 @@ class PostResponse(PostBase):
 
     @field_serializer('shop_name')
     def serialize_shop_name(self, value):
+        return escape_html(value) if value else value
+
+    @field_serializer('shadow_ban_reason')
+    def serialize_shadow_ban_reason(self, value):
         return escape_html(value) if value else value
 
     @field_serializer('shop_address')

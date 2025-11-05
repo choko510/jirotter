@@ -15,6 +15,9 @@ from app.utils.image_processor import process_image
 from app.utils.image_validation import validate_image_file
 from app.utils.video_validation import validate_video_file
 from app.utils.scoring import award_points, ensure_user_can_contribute
+from app.utils.rate_limiter import rate_limiter
+from app.utils.spam_detector import spam_detector
+from app.utils.moderation_tasks import schedule_post_moderation
 
 router = APIRouter(tags=["posts"])
 
@@ -37,6 +40,9 @@ async def create_post(
 ):
     """投稿作成エンドポイント"""
     ensure_user_can_contribute(current_user)
+    # 投稿頻度の制限
+    await rate_limiter.hit(f"post:{current_user.id}", limit=5, window_seconds=60)
+
     # 投稿内容のバリデーションとサニタイズ
     errors, sanitized_content = validate_post_content(content)
     if errors:
@@ -47,6 +53,10 @@ async def create_post(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=error_messages[0] if error_messages else "投稿内容に誤りがあります"
         )
+
+    spam_result = spam_detector.evaluate_post(db, current_user.id, sanitized_content)
+    is_shadow_banned = spam_result.is_spam
+    shadow_ban_reason = " / ".join(spam_result.reasons) if spam_result.reasons else None
     
     # 店舗IDのバリデーション
     if shop_id is not None:
@@ -155,13 +165,15 @@ async def create_post(
             original_image_url=original_image_url,
             video_url=video_url,
             video_duration=processed_video_duration,
-            shop_id=shop_id
+            shop_id=shop_id,
+            is_shadow_banned=is_shadow_banned,
+            shadow_ban_reason=shadow_ban_reason
         )
 
         db.add(post)
         db.flush()
 
-        if video_url:
+        if not post.is_shadow_banned and video_url:
             award_points(
                 db,
                 current_user,
@@ -172,7 +184,7 @@ async def create_post(
                     "video_duration": processed_video_duration,
                 },
             )
-        elif original_image_url or thumbnail_url:
+        elif not post.is_shadow_banned and (original_image_url or thumbnail_url):
             award_points(
                 db,
                 current_user,
@@ -185,6 +197,8 @@ async def create_post(
 
         db.commit()
         db.refresh(post)
+
+        await schedule_post_moderation(post.id, db)
 
         return post
         
@@ -215,6 +229,13 @@ async def get_posts(
         )
 
         filter_conditions = []
+
+        if current_user:
+            filter_conditions.append(
+                or_(Post.is_shadow_banned.is_(False), Post.user_id == current_user.id)
+            )
+        else:
+            filter_conditions.append(Post.is_shadow_banned.is_(False))
 
         # フォロー中のタイムラインを取得する場合
         if timeline_type == "following":
@@ -304,6 +325,12 @@ async def get_posts(
         # Pydanticモデルに直接マッピング
         post_responses = []
         for post in posts:
+            visible_replies = [
+                reply
+                for reply in post.replies
+                if not reply.is_shadow_banned
+                or (current_user and reply.user_id == current_user.id)
+            ]
             response_data = {
                 "id": post.id,
                 "content": post.content,
@@ -320,9 +347,11 @@ async def get_posts(
                 "shop_address": post.shop.address if post.shop else None,
                 "created_at": post.created_at,
                 "likes_count": likes_map.get(post.id, 0),
-                "replies_count": len(post.replies),
-                "replies": post.replies,
+                "replies_count": len(visible_replies),
+                "replies": visible_replies,
                 "is_liked_by_current_user": post.id in liked_post_ids,
+                "is_shadow_banned": post.is_shadow_banned,
+                "shadow_ban_reason": post.shadow_ban_reason,
             }
             post_responses.append(PostResponse.model_validate(response_data))
         
@@ -351,13 +380,19 @@ async def get_post(
         joinedload(Post.replies).joinedload(Reply.author),
         joinedload(Post.shop)
     ).filter(Post.id == post_id).first()
-    
+
     if not post:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="投稿が見つかりません"
         )
-    
+
+    if post.is_shadow_banned and (not current_user or current_user.id != post.user_id):
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="投稿が見つかりません"
+        )
+
     # いいね数を取得
     likes_count = db.query(Like).filter(Like.post_id == post_id).count()
 
@@ -368,6 +403,13 @@ async def get_post(
             Like.user_id == current_user.id,
             Like.post_id == post_id
         ).first() is not None
+
+    visible_replies = [
+        reply
+        for reply in post.replies
+        if not reply.is_shadow_banned
+        or (current_user and reply.user_id == current_user.id)
+    ]
 
     response_data = {
         "id": post.id,
@@ -385,9 +427,11 @@ async def get_post(
         "shop_address": post.shop.address if post.shop else None,
         "created_at": post.created_at,
         "likes_count": likes_count,
-        "replies_count": len(post.replies),
-        "replies": post.replies,
+        "replies_count": len(visible_replies),
+        "replies": visible_replies,
         "is_liked_by_current_user": is_liked,
+        "is_shadow_banned": post.is_shadow_banned,
+        "shadow_ban_reason": post.shadow_ban_reason,
     }
     
     return PostResponse.model_validate(response_data)
@@ -443,10 +487,14 @@ async def get_user_posts(
         )
     
     try:
-        total = db.query(Post).filter(Post.user_id == user_id).count()
+        base_query = db.query(Post).filter(Post.user_id == user_id)
+        if not current_user or current_user.id != user_id:
+            base_query = base_query.filter(Post.is_shadow_banned.is_(False))
+
+        total = base_query.count()
         pages = (total + per_page - 1) // per_page
-        
-        posts_query = db.query(Post).filter(Post.user_id == user_id).options(
+
+        posts_query = base_query.options(
             joinedload(Post.author),
             joinedload(Post.replies).joinedload(Reply.author),
             joinedload(Post.shop)
@@ -473,6 +521,12 @@ async def get_user_posts(
 
         post_responses = []
         for post in posts:
+            visible_replies = [
+                reply
+                for reply in post.replies
+                if not reply.is_shadow_banned
+                or (current_user and reply.user_id == current_user.id)
+            ]
             response_data = {
                 "id": post.id,
                 "content": post.content,
@@ -489,9 +543,11 @@ async def get_user_posts(
                 "shop_address": post.shop.address if post.shop else None,
                 "created_at": post.created_at,
                 "likes_count": likes_map.get(post.id, 0),
-                "replies_count": len(post.replies),
-                "replies": post.replies,
+                "replies_count": len(visible_replies),
+                "replies": visible_replies,
                 "is_liked_by_current_user": post.id in liked_post_ids,
+                "is_shadow_banned": post.is_shadow_banned,
+                "shadow_ban_reason": post.shadow_ban_reason,
             }
             post_responses.append(PostResponse.model_validate(response_data))
         

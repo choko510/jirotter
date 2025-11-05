@@ -299,3 +299,83 @@ def test_delete_post_owner(test_client, test_db):
     # 削除されたか確認
     response = test_client.get(f"/api/v1/posts/{created_post['id']}")
     assert response.status_code == 404
+
+
+def test_post_rate_limit(test_client, test_db):
+    """短時間での投稿回数制限のテスト"""
+    user_data = {
+        "id": "ratelimituser",
+        "email": "ratelimit@example.com",
+        "password": "password123!"
+    }
+    response = test_client.post("/api/v1/auth/register", json=user_data)
+    token = response.json()["access_token"]
+
+    headers = {
+        "Authorization": f"Bearer {token}"
+    }
+
+    for i in range(5):
+        post_data = {"content": f"連続投稿テスト {i}"}
+        result = test_client.post("/api/v1/posts", data=post_data, headers=headers)
+        assert result.status_code == 201, result.text
+
+    overflow_post = {"content": "6件目の投稿"}
+    response = test_client.post("/api/v1/posts", data=overflow_post, headers=headers)
+
+    assert response.status_code == 429
+    assert "短時間に過剰なリクエスト" in response.json()["detail"]
+
+
+def test_post_spam_detection_shadow_bans(test_client, test_db):
+    """スパム投稿がシャドウバンされることを確認"""
+    user_data = {
+        "id": "spamuser",
+        "email": "spam@example.com",
+        "password": "password123!"
+    }
+    response = test_client.post("/api/v1/auth/register", json=user_data)
+    token = response.json()["access_token"]
+    headers = {"Authorization": f"Bearer {token}"}
+
+    spam_content = "完全無料で稼げる！ 完全無料で稼げる！ http://example.com http://example.com http://example.com"
+    post_data = {"content": spam_content}
+
+    response = test_client.post("/api/v1/posts", data=post_data, headers=headers)
+    created = response.json()
+
+    assert response.status_code == 201
+    assert created["is_shadow_banned"] is True
+    assert "スパム" in created["shadow_ban_reason"]
+
+    post_id = created["id"]
+
+    # 作成者は詳細を取得できる
+    detail_response = test_client.get(f"/api/v1/posts/{post_id}", headers=headers)
+    assert detail_response.status_code == 200
+    assert detail_response.json()["is_shadow_banned"] is True
+
+    # 別ユーザーを作成
+    other_data = {
+        "id": "legituser",
+        "email": "legit@example.com",
+        "password": "password123!"
+    }
+    other_token = test_client.post("/api/v1/auth/register", json=other_data).json()["access_token"]
+    other_headers = {"Authorization": f"Bearer {other_token}"}
+
+    # 他ユーザーのタイムラインには表示されない
+    other_timeline = test_client.get("/api/v1/posts", headers=other_headers).json()["posts"]
+    assert post_id not in [post["id"] for post in other_timeline]
+
+    # 未ログインのタイムラインにも表示されない
+    public_timeline = test_client.get("/api/v1/posts").json()["posts"]
+    assert post_id not in [post["id"] for post in public_timeline]
+
+    # 作成者のタイムラインには表示される
+    author_timeline = test_client.get("/api/v1/posts", headers=headers).json()["posts"]
+    assert post_id in [post["id"] for post in author_timeline]
+
+    # 他ユーザーは直接アクセスできない
+    other_detail = test_client.get(f"/api/v1/posts/{post_id}", headers=other_headers)
+    assert other_detail.status_code == 404
