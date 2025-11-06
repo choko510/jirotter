@@ -197,8 +197,6 @@ async def get_nearby_ramen_shops_optimized(
 async def get_all_ramen_shops(
     keyword: Optional[str] = Query(None, description="店名での検索キーワード"),
     prefecture: Optional[str] = Query(None, description="都道府県での絞り込み"),
-    page: int = Query(1, ge=1, description="ページ番号"),
-    per_page: int = Query(20, ge=1, le=100, description="1ページあたりの件数"),
     db: Session = Depends(get_db)
 ):
     """全てのラーメン店を返す、またはキーワードや都道府県で検索するエンドポイント"""
@@ -209,15 +207,9 @@ async def get_all_ramen_shops(
         if prefecture:
             query = query.filter(RamenShop.address.ilike(f"%{prefecture}%"))
 
-        total = query.count()
-        shops = (
-            query.order_by(RamenShop.id)
-            .offset((page - 1) * per_page)
-            .limit(per_page)
-            .all()
-        )
-        shop_responses = [RamenShopResponse.model_validate(shop) for shop in shops]
-        return RamenShopsResponse(shops=shop_responses, total=total)
+        all_shops = query.all()
+        shop_responses = [RamenShopResponse.model_validate(shop) for shop in all_shops]
+        return RamenShopsResponse(shops=shop_responses, total=len(shop_responses))
     except Exception as e:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
