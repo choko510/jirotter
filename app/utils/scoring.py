@@ -12,31 +12,31 @@ from app.utils.achievements import evaluate_new_titles, serialize_title_record
 
 RANK_DEFINITIONS = [
     {
-        "name": "味覚ビギナー",
+        "name": "初心者ジロリアン",
         "min_points": 0,
         "badge_color": "#9CA3AF",
         "description": "初めての一杯を記録し始めた初心者",
     },
     {
-        "name": "麺道サーチャー",
+        "name": "探求系ジロリアン",
         "min_points": 80,
         "badge_color": "#60A5FA",
         "description": "街の人気店を巡る探求者",
     },
     {
-        "name": "スープナビゲーター",
+        "name": "二郎スープマスター",
         "min_points": 180,
         "badge_color": "#34D399",
         "description": "味の違いを言葉にできる案内人",
     },
     {
-        "name": "麺匠キュレーター",
+        "name": "地域のジロリアン",
         "min_points": 320,
         "badge_color": "#FBBF24",
         "description": "地域のラーメン情報を牽引するキュレーター",
     },
     {
-        "name": "伝説のローカルガイド",
+        "name": "完璧で究極のジロリアン",
         "min_points": 520,
         "badge_color": "#F97316",
         "description": "多くの人に愛される伝説の案内人",
@@ -77,7 +77,7 @@ STATUS_MESSAGES = {
     "active": "健全な貢献状態です。次のランクを目指して投稿を続けましょう！",
     "warning": "コミュニティスコアが低下しています。より正確で安全な投稿を心掛けてください。",
     "restricted": "現在は投稿・チェックインが制限されています。コミュニティガイドラインに沿った利用を心掛けてください。",
-    "banned": "利用規約違反によりアカウントが停止されています。サポートまでお問い合わせください。",
+    "banned": "利用規約違反によりアカウントが停止されています。",
 }
 
 

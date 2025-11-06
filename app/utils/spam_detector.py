@@ -56,7 +56,7 @@ class SpamDetectorConfig:
         "suspicious_tld": 2.0,
         "url_shortener": 1.5,
         "keyword": 2.5,
-        "badwords": 3.0,  # 不適切な単語の重みを追加
+        "badwords": 10.0,  # 不適切な単語の重みを追加
         "repeated_chars": 2.0,
         "repetition": 1.5,
         "meaningless_reply": 1.0,
