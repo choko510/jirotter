@@ -874,7 +874,7 @@ const Theme = {
 window.Theme = Theme; // グローバルに公開
 
 // アプリケーションの初期化
-document.addEventListener('DOMContentLoaded', function() {
+function initializeApp() {
     Theme.init(); // テーマの初期化
     Utils.updateUserProfileUI();
     
@@ -894,4 +894,8 @@ document.addEventListener('DOMContentLoaded', function() {
     API.getCsrfToken().catch(error => {
         console.error('初期CSRFトークンの取得に失敗しました:', error);
     });
-});
+}
+
+window.initializeApp = initializeApp;
+
+document.addEventListener('DOMContentLoaded', initializeApp);
