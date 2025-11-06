@@ -3,6 +3,7 @@ const StampRallyComponent = {
     // 状態管理
     state: {
         shops: [],
+        totalShops: 0,
         checkins: [],
         visits: [],
         progress: [],
@@ -10,6 +11,7 @@ const StampRallyComponent = {
         isLoading: false,
         currentPage: 1,
         hasMoreShops: true,
+        isLoadingMore: false,
         selectedBrand: 'all',
         selectedPrefecture: 'all',
         currentView: 'list', // 'list', 'progress', or 'visited'
@@ -86,628 +88,8 @@ const StampRallyComponent = {
         await this.init(); // renderの前にinitを完了させる
         const contentArea = document.getElementById('contentArea');
         
+        
         contentArea.innerHTML = `
-            <style>
-                .stamp-rally-container {
-                    padding: 20px;
-                    max-width: 1200px;
-                    margin: 0 auto;
-                }
-                
-                .stamp-rally-header {
-                    text-align: center;
-                    margin-bottom: 30px;
-                }
-                
-                .stamp-rally-title {
-                    font-size: 28px;
-                    font-weight: bold;
-                    margin-bottom: 10px;
-                    color: var(--color-primary);
-                }
-                
-                .stamp-rally-subtitle {
-                    color: #666;
-                    font-size: 16px;
-                }
-                
-                .stamp-stats {
-                    display: flex;
-                    justify-content: center;
-                    gap: 30px;
-                    margin-bottom: 30px;
-                    flex-wrap: wrap;
-                }
-                
-                .stat-card {
-                    background: #f9f9f9;
-                    border-radius: 12px;
-                    padding: 20px;
-                    text-align: center;
-                    min-width: 150px;
-                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
-                }
-                
-                .stat-number {
-                    font-size: 32px;
-                    font-weight: bold;
-                    color: var(--color-primary);
-                    margin-bottom: 5px;
-                }
-                
-                .stat-label {
-                    color: #666;
-                    font-size: 14px;
-                }
-                
-                .filter-section {
-                    margin-bottom: 30px;
-                }
-                
-                .filter-header {
-                    margin-bottom: 15px;
-                }
-                
-                .filter-header h3 {
-                    margin: 0;
-                    font-size: 18px;
-                    color: var(--color-primary);
-                }
-                
-                .brand-filters {
-                    display: flex;
-                    justify-content: center;
-                    gap: 10px;
-                    margin-bottom: 20px;
-                    flex-wrap: wrap;
-                }
-                
-                .prefecture-filters {
-                    background: #f9f9f9;
-                    border-radius: 8px;
-                    padding: 10px;
-                    margin-bottom: 20px;
-                }
-
-                .region-details {
-                    margin-bottom: 5px;
-                }
-
-                .region-summary {
-                    font-weight: bold;
-                    cursor: pointer;
-                    padding: 5px;
-                }
-
-                .prefecture-buttons {
-                    display: flex;
-                    flex-wrap: wrap;
-                    gap: 8px;
-                    padding: 10px;
-                }
-
-                .progress-accordion {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 12px;
-                }
-
-                .region-progress-details {
-                    border: 1px solid #e0e0e0;
-                    border-radius: 8px;
-                    background: #fff;
-                    overflow: hidden;
-                }
-
-                .region-progress-summary {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    font-weight: bold;
-                    padding: 12px 16px;
-                    cursor: pointer;
-                    background: #fafafa;
-                }
-
-                .region-progress-summary span:last-child {
-                    font-size: 12px;
-                    color: #666;
-                }
-
-                .region-progress-details .progress-grid {
-                    padding: 16px;
-                }
-                
-                .brand-filter-btn,
-                .prefecture-filter-btn {
-                    background: #ffffff;
-                    border: 1px solid #e0e0e0;
-                    color: #666;
-                    padding: 8px 16px;
-                    border-radius: 20px;
-                    cursor: pointer;
-                    transition: all 0.2s;
-                    font-size: 14px;
-                }
-                
-                .brand-filter-btn:hover,
-                .prefecture-filter-btn:hover {
-                    background: #f5f5f5;
-                }
-                
-                .brand-filter-btn.active,
-                .prefecture-filter-btn.active {
-                    background: var(--color-primary);
-                    border-color: var(--color-primary);
-                    color: white;
-                }
-                
-                .shops-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-                    gap: 20px;
-                    margin-bottom: 30px;
-                }
-                
-                .shop-card {
-                    background: white;
-                    border-radius: 12px;
-                    overflow: hidden;
-                    box-shadow: 0 2px 10px rgba(0, 0, 0, 0.05);
-                    transition: all 0.2s;
-                    border: 1px solid #e0e0e0;
-                }
-                
-                .shop-card:hover {
-                    transform: translateY(-2px);
-                    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.1);
-                }
-                
-                .shop-card-header {
-                    padding: 15px;
-                    border-bottom: 1px solid #f0f0f0;
-                    display: flex;
-                    align-items: center;
-                    gap: 10px;
-                }
-                
-                .shop-brand-indicator {
-                    width: 16px;
-                    height: 16px;
-                    border-radius: 50%;
-                    flex-shrink: 0;
-                }
-                
-                .shop-name {
-                    font-weight: bold;
-                    font-size: 16px;
-                    flex: 1;
-                    white-space: nowrap;
-                    overflow: hidden;
-                    text-overflow: ellipsis;
-                }
-                
-                .shop-card-body {
-                    padding: 15px;
-                }
-                
-                .shop-address {
-                    color: #666;
-                    font-size: 14px;
-                    margin-bottom: 10px;
-                    display: -webkit-box;
-                    -webkit-line-clamp: 2;
-                    -webkit-box-orient: vertical;
-                    overflow: hidden;
-                }
-                
-                .shop-status {
-                    display: flex;
-                    align-items: center;
-                    gap: 10px;
-                    margin-bottom: 15px;
-                }
-
-                .shop-visit-images {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fill, minmax(80px, 1fr));
-                    gap: 10px;
-                    margin-bottom: 15px;
-                }
-
-                .shop-visit-image {
-                    position: relative;
-                    width: 100%;
-                    padding-top: 66.66%;
-                    border-radius: 8px;
-                    overflow: hidden;
-                    background: #f0f0f0;
-                }
-
-                .shop-visit-image img {
-                    position: absolute;
-                    top: 0;
-                    left: 0;
-                    width: 100%;
-                    height: 100%;
-                    object-fit: cover;
-                }
-                
-                .checkin-status {
-                    display: flex;
-                    align-items: center;
-                    gap: 5px;
-                    padding: 4px 8px;
-                    border-radius: 12px;
-                    font-size: 12px;
-                    font-weight: bold;
-                }
-                
-                .checkin-status.checked {
-                    background: #e8f5e8;
-                    color: #2e7d32;
-                }
-                
-                .checkin-status.unchecked {
-                    background: #f5f5f5;
-                    color: #666;
-                }
-                
-                .shop-actions {
-                    display: flex;
-                    gap: 10px;
-                }
-                
-                .shop-action-btn {
-                    flex: 1;
-                    padding: 8px 12px;
-                    border-radius: 6px;
-                    font-size: 14px;
-                    font-weight: bold;
-                    cursor: pointer;
-                    transition: all 0.2s;
-                    text-align: center;
-                }
-                
-                .checkin-btn {
-                    background: var(--color-primary);
-                    color: white;
-                    border: none;
-                }
-                
-                .checkin-btn:hover {
-                    background: #c19663;
-                }
-                
-                .checkin-btn:disabled {
-                    background: #ccc;
-                    cursor: not-allowed;
-                }
-                
-                .detail-btn {
-                    background: transparent;
-                    color: var(--color-primary);
-                    border: 1px solid var(--color-primary);
-                }
-                
-                .detail-btn:hover {
-                    background: rgba(212, 165, 116, 0.1);
-                }
-                
-                .loading {
-                    text-align: center;
-                    padding: 40px;
-                    color: #666;
-                }
-                
-                .load-more-container {
-                    text-align: center;
-                    margin: 20px 0;
-                }
-                
-                .load-more-shops {
-                    background: var(--color-primary);
-                    color: white;
-                    border: none;
-                    padding: 10px 20px;
-                    border-radius: 20px;
-                    cursor: pointer;
-                    font-weight: bold;
-                    transition: all 0.2s;
-                }
-                
-                .load-more-shops:hover {
-                    background: #c19663;
-                }
-                
-                .empty-state {
-                    text-align: center;
-                    padding: 60px 20px;
-                    color: #666;
-                }
-                
-                .empty-state i {
-                    font-size: 48px;
-                    margin-bottom: 16px;
-                    color: #ccc;
-                }
-                
-                .empty-state h3 {
-                    margin-bottom: 8px;
-                    color: #333;
-                }
-
-                .view-switcher {
-                    display: flex;
-                    justify-content: center;
-                    margin-bottom: 20px;
-                    border: 1px solid var(--color-primary);
-                    border-radius: 20px;
-                    overflow: hidden;
-                }
-
-                .view-switch-btn {
-                    padding: 10px 20px;
-                    cursor: pointer;
-                    border: none;
-                    background-color: transparent;
-                    color: var(--color-primary);
-                    font-weight: bold;
-                    transition: all 0.2s;
-                }
-
-                .view-switch-btn.active {
-                    background-color: var(--color-primary);
-                    color: white;
-                }
-
-                .progress-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
-                    gap: 20px;
-                }
-
-                .progress-card {
-                    background: #fff;
-                    border-radius: 8px;
-                    padding: 20px;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                    border: 1px solid #e0e0e0;
-                }
-
-                .progress-card h4 {
-                    margin-bottom: 15px;
-                    color: #333;
-                }
-
-                .progress-bar-container {
-                    background: #eee;
-                    border-radius: 5px;
-                    height: 10px;
-                    margin: 10px 0;
-                    overflow: hidden;
-                }
-
-                .progress-bar {
-                    background: var(--color-primary);
-                    height: 100%;
-                    border-radius: 5px;
-                    transition: width 0.5s ease-in-out;
-                }
-                
-                .progress-card p {
-                    text-align: right;
-                    color: #666;
-                    font-size: 14px;
-                }
-
-                /* Dark Mode Overrides */
-                .dark-mode .stamp-rally-subtitle,
-                .dark-mode .stat-label,
-                .dark-mode .shop-address {
-                    color: #aaa;
-                }
-                
-                .dark-mode .stat-card {
-                    background: #2a2a2a;
-                }
-                
-                .dark-mode .shop-card {
-                    background: #2a2a2a;
-                    border-color: #333;
-                }
-
-                .dark-mode .shop-visit-image {
-                    background: #333;
-                }
-                
-                .dark-mode .shop-card-header {
-                    border-bottom-color: #333;
-                }
-                
-                .dark-mode .brand-filter-btn {
-                    background: #2a2a2a;
-                    border-color: #333;
-                    color: #e0e0e0;
-                }
-                
-                .dark-mode .brand-filter-btn:hover {
-                    background: #333;
-                }
-                
-                .dark-mode .checkin-status.unchecked {
-                    background: #333;
-                    color: #aaa;
-                }
-                
-                .dark-mode .detail-btn {
-                    color: var(--color-primary);
-                    border-color: var(--color-primary);
-                }
-                
-                .dark-mode .empty-state {
-                    color: #aaa;
-                }
-                
-                .dark-mode .empty-state h3 {
-                    color: #e0e0e0;
-                }
-
-                .dark-mode .view-switcher {
-                    border-color: var(--color-primary);
-                }
-
-                .dark-mode .view-switch-btn {
-                    color: var(--color-primary);
-                }
-
-                .dark-mode .view-switch-btn.active {
-                    background-color: var(--color-primary);
-                    color: #1a1a1a;
-                }
-
-                .dark-mode .progress-card {
-                    background: #2a2a2a;
-                    border-color: #333;
-                }
-
-                .dark-mode .progress-card h4 {
-                    color: #e0e0e0;
-                }
-
-                .dark-mode .progress-bar-container {
-                    background: #333;
-                }
-
-                .dark-mode .progress-card p {
-                    color: #aaa;
-                }
-
-                .dark-mode .region-progress-details {
-                    background: #2a2a2a;
-                    border-color: #333;
-                }
-
-                .dark-mode .region-progress-summary {
-                    background: #1f1f1f;
-                    color: #e0e0e0;
-                }
-
-                .dark-mode .region-progress-summary span:last-child {
-                    color: #aaa;
-                }
-
-                /* Visited Shops Styles */
-                .visited-accordion {
-                    display: flex;
-                    flex-direction: column;
-                    gap: 12px;
-                }
-
-                .prefecture-visited-details {
-                    border: 1px solid #e0e0e0;
-                    border-radius: 8px;
-                    background: #fff;
-                    overflow: hidden;
-                }
-
-                .prefecture-visited-summary {
-                    display: flex;
-                    justify-content: space-between;
-                    align-items: center;
-                    font-weight: bold;
-                    padding: 12px 16px;
-                    cursor: pointer;
-                    background: #fafafa;
-                }
-
-                .prefecture-visited-summary span:last-child {
-                    font-size: 12px;
-                    color: #666;
-                }
-
-                .visited-shops-grid {
-                    display: grid;
-                    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
-                    gap: 20px;
-                    padding: 16px;
-                }
-
-                .visited-shop-card {
-                    border: 1px solid #e0e0e0;
-                    border-radius: 8px;
-                    overflow: hidden;
-                    background: #fff;
-                    box-shadow: 0 2px 4px rgba(0,0,0,0.1);
-                }
-
-                .shop-checkin-date {
-                    display: flex;
-                    align-items: center;
-                    gap: 8px;
-                    color: #666;
-                    font-size: 14px;
-                    margin-bottom: 10px;
-                }
-
-                .shop-checkin-date i {
-                    color: var(--color-primary);
-                }
-
-                /* Dark Mode for Visited Shops */
-                .dark-mode .prefecture-visited-details {
-                    background: #2a2a2a;
-                    border-color: #333;
-                }
-
-                .dark-mode .prefecture-visited-summary {
-                    background: #1f1f1f;
-                    color: #e0e0e0;
-                }
-
-                .dark-mode .prefecture-visited-summary span:last-child {
-                    color: #aaa;
-                }
-
-                .dark-mode .visited-shop-card {
-                    background: #2a2a2a;
-                    border-color: #333;
-                }
-
-                .dark-mode .shop-checkin-date {
-                    color: #aaa;
-                }
-
-                @media (max-width: 768px) {
-                    .stamp-rally-container {
-                        padding: 16px;
-                    }
-                    
-                    .stamp-stats {
-                        gap: 15px;
-                    }
-                    
-                    .stat-card {
-                        min-width: 120px;
-                        padding: 15px;
-                    }
-                    
-                    .stat-number {
-                        font-size: 24px;
-                    }
-                    
-                    .shops-grid {
-                        grid-template-columns: 1fr;
-                        gap: 15px;
-                    }
-                    
-                    .visited-shops-grid {
-                        grid-template-columns: 1fr;
-                        gap: 15px;
-                    }
-                }
-            </style>
-            
             <div class="stamp-rally-container">
                 <div class="stamp-rally-header">
                     <h1 class="stamp-rally-title">二郎スタンプラリー</h1>
@@ -719,7 +101,7 @@ const StampRallyComponent = {
                     <button class="view-switch-btn ${this.state.currentView === 'progress' ? 'active' : ''}" data-view="progress">進捗マップ</button>
                     <button class="view-switch-btn ${this.state.currentView === 'visited' ? 'active' : ''}" data-view="visited">訪問済み</button>
                 </div>
-                
+
                 <div id="stampRallyContent">
                     ${this.state.currentView === 'list' ? this.renderListView() :
                       this.state.currentView === 'progress' ? this.renderProgressView() :
@@ -728,12 +110,31 @@ const StampRallyComponent = {
             </div>
         `;
 
+
         // データを読み込み
         this.loadData();
     },
 
     // リストビューをレンダリング
     renderListView() {
+        const totalShops = this.state.totalShops || this.state.shops.length;
+        const displayedShops = this.state.shops.length;
+        const progressLabel = totalShops
+            ? `表示中 ${Math.min(displayedShops, totalShops)} / ${totalShops} 店舗`
+            : displayedShops > 0
+                ? `表示中 ${displayedShops} 店舗`
+                : '';
+        const loadMoreButton = this.state.hasMoreShops
+            ? `<button type="button" class="load-more-shops" ${this.state.isLoadingMore ? 'disabled' : ''}>${this.state.isLoadingMore ? '読み込み中…' : 'さらに表示'}</button>`
+            : '';
+        const loadMoreSection = (progressLabel || loadMoreButton)
+            ? `
+            <div class="load-more-container">
+                ${progressLabel ? `<div class="load-more-status">${progressLabel}</div>` : ''}
+                ${loadMoreButton}
+            </div>`
+            : '';
+
         return `
             <div class="stamp-stats" id="stampStats">
                 ${this.renderStats()}
@@ -753,6 +154,7 @@ const StampRallyComponent = {
             <div class="shops-grid" id="shopsGrid">
                 ${this.renderShopsGrid()}
             </div>
+            ${loadMoreSection}
         `;
     },
 
@@ -935,8 +337,10 @@ const StampRallyComponent = {
 
     // 統計情報をレンダリング
     renderStats() {
-        const totalShops = this.state.shops.length;
-        const checkedShops = this.state.checkins.length;
+        const totalShops = this.state.totalShops || this.state.shops.length;
+        const checkedShops = Array.isArray(this.state.checkins)
+            ? new Set(this.state.checkins.map(checkin => checkin.shop_id)).size
+            : 0;
         const completionRate = totalShops > 0 ? Math.round((checkedShops / totalShops) * 100) : 0;
 
         return `
@@ -1034,7 +438,7 @@ const StampRallyComponent = {
 
     // 店舗グリッドをレンダリング
     renderShopsGrid() {
-        if (this.state.isLoading) {
+        if (this.state.isLoading && !this.state.isLoadingMore && this.state.currentPage <= 1) {
             return '<div class="loading">読み込み中...</div>';
         }
 
@@ -1183,6 +587,7 @@ const StampRallyComponent = {
     // データを読み込み
     async loadData() {
         this.state.isLoading = true;
+        this.state.isLoadingMore = false;
         this.updateUI();
 
         try {
@@ -1190,19 +595,21 @@ const StampRallyComponent = {
                 this.state.progressMessage = '';
                 this.state.visitedMessage = '';
                 const perPage = 20;
-                const prefectureFilter = this.state.selectedBrand === 'all'
-                    ? this.state.selectedPrefecture
-                    : 'all';
+                const prefectureFilter = this.state.selectedPrefecture;
                 const [shopsResponse, checkinsResponse, visitsResponse] = await Promise.all([
                     this.loadShops(1, perPage, prefectureFilter),
                     this.loadCheckins(),
                     this.loadVisits()
                 ]);
-                this.state.shops = shopsResponse;
+                this.state.shops = shopsResponse.shops || [];
+                this.state.totalShops = typeof shopsResponse.total === 'number'
+                    ? shopsResponse.total
+                    : this.state.shops.length;
                 this.state.checkins = checkinsResponse;
                 this.state.visits = visitsResponse;
                 this.state.currentPage = 1;
-                this.state.hasMoreShops = shopsResponse.length === perPage;
+                this.state.hasMoreShops = this.state.shops.length < this.state.totalShops;
+                this.state.isLoadingMore = false;
             } else if (this.state.currentView === 'progress') {
                 const token = API.getCookie('authToken');
                 if (!token) {
@@ -1234,6 +641,10 @@ const StampRallyComponent = {
                 this.state.visitedMessage = error.message || '訪問済み店舗の取得に失敗しました。';
                 this.updateUI();
             } else {
+                this.state.shops = [];
+                this.state.totalShops = 0;
+                this.state.hasMoreShops = false;
+                this.state.isLoadingMore = false;
                 this.showError('データの読み込みに失敗しました');
             }
         }
@@ -1247,10 +658,13 @@ const StampRallyComponent = {
                 url += `&prefecture=${encodeURIComponent(prefecture)}`;
             }
             const data = await API.request(url, { includeAuth: false });
-            return data.shops || [];
+            return {
+                shops: data.shops || [],
+                total: typeof data.total === 'number' ? data.total : (data.shops ? data.shops.length : 0)
+            };
         } catch (error) {
             console.error('店舗データ読み込みエラー:', error);
-            return [];
+            return { shops: [], total: 0 };
         }
     },
 
@@ -1309,31 +723,32 @@ const StampRallyComponent = {
 
     // さらに店舗を読み込み
     async loadMoreShops() {
-        if (!this.state.hasMoreShops || this.state.isLoading) return;
-        
-        this.state.currentPage++;
-        this.state.isLoading = true;
-        
+        if (!this.state.hasMoreShops || this.state.isLoadingMore) return;
+
+        const nextPage = this.state.currentPage + 1;
+        this.state.isLoadingMore = true;
+        this.updateUI();
+
         try {
-            const prefectureFilter = this.state.selectedBrand === 'all'
-                ? this.state.selectedPrefecture
-                : 'all';
-            const newShops = await this.loadShops(this.state.currentPage, 20, prefectureFilter);
+            const response = await this.loadShops(nextPage, 20, this.state.selectedPrefecture);
+            const newShops = response.shops || [];
+
+            if (typeof response.total === 'number' && response.total >= 0) {
+                this.state.totalShops = response.total;
+            }
 
             if (newShops.length === 0) {
                 this.state.hasMoreShops = false;
             } else {
                 this.state.shops = [...this.state.shops, ...newShops];
-                if (newShops.length < 20) {
-                    this.state.hasMoreShops = false;
-                }
-                this.updateUI();
+                this.state.currentPage = nextPage;
+                this.state.hasMoreShops = this.state.shops.length < this.state.totalShops;
             }
-            
-            this.state.isLoading = false;
         } catch (error) {
             console.error('追加店舗読み込みエラー:', error);
-            this.state.isLoading = false;
+        } finally {
+            this.state.isLoadingMore = false;
+            this.updateUI();
         }
     },
 
