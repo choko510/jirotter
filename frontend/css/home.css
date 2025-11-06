@@ -461,7 +461,7 @@ body {
     transition: color 0.25s ease;
     color: var(--color-muted);
     text-decoration: none;
-    font-size: 0.75rem;
+    font-size: 11px; /* 0.75remから調整 */
 }
 
 .bottom-nav-item i {
@@ -677,8 +677,8 @@ body {
     }
 
     .tab {
-        padding: 12px 8px;
-        font-size: 15px;
+        padding: 10px 6px;
+        font-size: 14px;
         border-radius: 999px;
     }
 
@@ -867,6 +867,187 @@ body {
 }
 
 /* ---------------------------------------
+   Wait Time, Stamp Rally, Rankings pages
+--------------------------------------- */
+.waittime-container,
+.stamprally-container,
+.rankings-container {
+    padding: 20px;
+}
+
+.waittime-list,
+.rankings-list {
+    display: grid;
+    gap: 16px;
+}
+
+.waittime-card,
+.ranking-card {
+    display: flex;
+    align-items: center;
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    box-shadow: var(--shadow-xs);
+}
+
+.ranking-card .rank {
+    font-size: 1.5rem;
+    font-weight: 700;
+    color: var(--color-primary);
+    margin-right: 16px;
+    min-width: 30px;
+    text-align: center;
+}
+
+.waittime-card .shop-info,
+.ranking-card .shop-info {
+    flex: 1;
+}
+
+.waittime-card .shop-name,
+.ranking-card .shop-name {
+    font-weight: 600;
+}
+
+.waittime-card .details,
+.ranking-card .details {
+    font-size: 0.9rem;
+    color: var(--color-muted);
+}
+
+.waittime-card .time-info {
+    text-align: right;
+}
+
+.waittime-card .wait-time {
+    font-size: 1.2rem;
+    font-weight: 700;
+    color: var(--color-primary);
+}
+
+.waittime-card .last-updated {
+    font-size: 0.8rem;
+    color: var(--color-muted);
+}
+
+.stamprally-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 16px;
+}
+
+.stamp-card {
+    background: var(--color-surface);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    padding: 12px;
+    text-align: center;
+    box-shadow: var(--shadow-xs);
+    position: relative;
+}
+
+.stamp-card.unlocked::after {
+    content: '✓';
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    background: var(--color-primary);
+    color: white;
+    width: 24px;
+    height: 24px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+}
+
+.stamp-card img {
+    width: 100%;
+    height: auto;
+    border-radius: var(--radius-md);
+    margin-bottom: 8px;
+}
+
+.stamp-card .shop-name {
+    font-size: 0.9rem;
+    font-weight: 600;
+}
+
+/* ---------------------------------------
+   Guide, Settings, Contribute pages
+--------------------------------------- */
+.guide-container,
+.settings-container,
+.contribute-container {
+    padding: 20px;
+    max-width: 800px;
+    margin: 0 auto;
+}
+
+.guide-section h2 {
+    margin-bottom: 16px;
+    border-bottom: 2px solid var(--color-primary);
+    padding-bottom: 8px;
+}
+
+.qa-item {
+    margin-bottom: 24px;
+}
+
+.qa-question {
+    font-weight: 700;
+    margin-bottom: 8px;
+}
+
+.settings-section {
+    margin-bottom: 32px;
+}
+
+.settings-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 16px 0;
+    border-bottom: 1px solid var(--color-border);
+}
+
+.settings-item label {
+    font-weight: 600;
+}
+
+.settings-item .control {
+    min-width: 150px;
+}
+
+.contribute-form .form-group {
+    margin-bottom: 24px;
+}
+
+.contribute-form label {
+    display: block;
+    margin-bottom: 8px;
+    font-weight: 600;
+}
+
+.contribute-form input,
+.contribute-form textarea {
+    width: 100%;
+    padding: 12px;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    font-size: 1rem;
+}
+
+.contribute-form .submit-btn {
+    width: 100%;
+    padding: 14px;
+    font-size: 1.1rem;
+}
+
+/* ---------------------------------------
    Loading and error states
 --------------------------------------- */
 .loading {
@@ -1031,6 +1212,40 @@ html.dark-mode, .dark-mode body {
 #appIcon:hover {
     transform: scale(1.05);
     opacity: 0.8;
+}
+
+/* ---------------------------------------
+   Leaflet/Map customizations
+--------------------------------------- */
+.leaflet-popup-content-wrapper {
+    border-radius: var(--radius-md);
+    box-shadow: var(--shadow-md);
+}
+
+.leaflet-popup-content {
+    margin: 14px 18px;
+    font-family: var(--font-family-base);
+    line-height: 1.6;
+}
+
+.leaflet-popup-content h4 {
+    margin-bottom: 8px;
+    font-size: 1.1rem;
+}
+
+.leaflet-popup-content p {
+    margin-top: 0;
+    margin-bottom: 10px;
+}
+
+.leaflet-popup-tip {
+    box-shadow: none;
+}
+
+@media (max-width: 768px) {
+    .leaflet-popup-content-wrapper {
+        max-width: 280px;
+    }
 }
 
 /* ---------------------------------------
