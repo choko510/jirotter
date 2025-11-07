@@ -105,30 +105,18 @@ const MapComponent = {
         // レイアウト監視関連
         resizeObserver: null,
         resizeListener: null,
-        pendingResizeFrame: null,
-
-        // 検索入力関連
-        searchInputElement: null,
-        searchInputListener: null,
-        searchOutsideClickHandler: null,
-        searchDebounceTimer: null
+        pendingResizeFrame: null
     },
 
     // フィルターエリアの開閉
     toggleFilters() {
         const container = document.getElementById('collapsible-filters');
         const button = document.getElementById('toggle-filters-btn');
-        if (!container || !button) return;
+        container.classList.toggle('collapsed');
+        button.classList.toggle('collapsed');
 
-        const isCollapsed = container.classList.toggle('collapsed');
-        button.classList.toggle('collapsed', isCollapsed);
-        button.setAttribute('aria-expanded', String(!isCollapsed));
-
-        const icon = button.querySelector('i');
-        if (icon) {
-            icon.classList.toggle('fa-chevron-up', !isCollapsed);
-            icon.classList.toggle('fa-chevron-down', isCollapsed);
-        }
+        // CSSのtransform: rotateでアイコンの向きを制御するため、
+        // JavaScriptでのクラス切り替えは不要。
 
         // 折り畳み操作後にマップのレイアウトを更新
         this.scheduleMapResize();
@@ -375,9 +363,14 @@ const MapComponent = {
 
         // DocumentFragmentを使用してDOMを効率的に構築
         const fragment = document.createDocumentFragment();
-
+        
+        // スタイル要素を作成
+        const styleElement = document.createElement('style');
+        styleElement.textContent = this.getMapStyles(mapHeight);
+        fragment.appendChild(styleElement);
+        
         // コンテナ要素を作成
-        const containerElement = this.getMapContainerElement(mapHeight);
+        const containerElement = this.getMapContainerElement();
         fragment.appendChild(containerElement);
         
         // 一度にDOMに追加
@@ -393,28 +386,764 @@ const MapComponent = {
             await this.initializeMap();
             // ブランドフィルターUIを初期化
             this.initializeBrandFilters();
-            // 検索入力フィールドを初期化
-            this.initializeSearchInput();
+            // 検索入力フィールドを追加
+            this.addSearchInput();
         }, 100);
 
         // サイズ変化を監視してマップを適宜リサイズ
         this.initializeResizeObserver();
     },
 
+    // マップのスタイルを取得
+    getMapStyles(mapHeight) {
+        return `
+            .map-container {
+                padding: 0;
+                height: ${mapHeight};
+                width: 100%;
+                display: flex;
+                flex-direction: column;
+            }
+            
+            .map-header {
+                padding: 16px;
+                background: white;
+                border-bottom: 1px solid #e0e0e0;
+                z-index: 1000;
+                position: relative;
+            }
+            
+            .map-title-container {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 8px;
+            }
+
+            .map-title {
+                font-size: 20px;
+                font-weight: bold;
+                margin: 0;
+                display: flex;
+                align-items: center;
+                gap: 8px;
+            }
+
+            .toggle-filters-btn {
+                background: transparent;
+                border: none;
+                font-size: 18px;
+                cursor: pointer;
+                padding: 4px;
+                transition: transform 0.3s ease;
+            }
+
+            .toggle-filters-btn.collapsed {
+                transform: rotate(180deg);
+            }
+
+            .collapsible-filters {
+                max-height: none; /* 高さ制限を解除し、すべてのフィルターが表示されるようにする */
+                overflow: hidden;
+                transition: max-height 0.5s ease-in-out;
+            }
+
+            .collapsible-filters.collapsed {
+                max-height: 0;
+            }
+            
+            .map-controls {
+                display: flex;
+                gap: 12px;
+                margin-top: 12px;
+            }
+            
+            .map-search {
+                flex: 1;
+                position: relative;
+            }
+            
+            .map-search-input-container {
+                flex: 1;
+                position: relative;
+            }
+            
+            .map-search-input {
+                width: 100%;
+                padding: 8px 36px 8px 12px;
+                border: 1px solid #e0e0e0;
+                border-radius: 20px;
+                font-size: 14px;
+                outline: none;
+                background: #f5f5f5;
+            }
+            
+            .map-search-input:focus {
+                border-color: var(--color-primary);
+                background: white;
+            }
+            
+            .map-search-btn {
+                position: absolute;
+                right: 8px;
+                top: 50%;
+                transform: translateY(-50%);
+                background: transparent;
+                border: none;
+                color: #666;
+                cursor: pointer;
+                padding: 4px;
+            }
+            
+            .map-search-results {
+                position: absolute;
+                top: 100%;
+                left: 0;
+                right: 0;
+                background: white;
+                border: 1px solid #e0e0e0;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+                max-height: 200px;
+                overflow-y: auto;
+                z-index: 1000;
+                margin-top: 4px;
+            }
+            
+            .search-result-item {
+                padding: 10px 12px;
+                cursor: pointer;
+                border-bottom: 1px solid #f0f0f0;
+            }
+            
+            .search-result-item:last-child {
+                border-bottom: none;
+            }
+            
+            .search-result-item:hover {
+                background: #f5f5f5;
+            }
+            
+            .search-result-name {
+                font-weight: bold;
+                font-size: 14px;
+                margin-bottom: 4px;
+            }
+            
+            .search-result-address {
+                font-size: 12px;
+                color: #666;
+                margin-bottom: 4px;
+            }
+            
+            .search-result-brand {
+                font-size: 11px;
+                font-weight: bold;
+                padding: 2px 6px;
+                border-radius: 10px;
+                background: rgba(212, 165, 116, 0.1);
+                display: inline-block;
+            }
+            
+            .search-no-results, .search-error {
+                padding: 10px 12px;
+                font-size: 14px;
+                color: #666;
+                text-align: center;
+            }
+            
+            .map-filter-btn {
+                padding: 8px 16px;
+                background: #f5f5f5;
+                border: 1px solid #e0e0e0;
+                border-radius: 20px;
+                font-size: 14px;
+                cursor: pointer;
+                transition: all 0.2s;
+                white-space: nowrap;
+            }
+            
+            .map-filter-btn:hover {
+                background: var(--color-primary);
+                border-color: var(--color-primary);
+                color: white;
+            }
+            
+            .map-filter-btn.active {
+                background: var(--color-primary);
+                border-color: var(--color-primary);
+                color: white;
+            }
+            
+            .brand-filters {
+                padding: 12px 16px;
+                background: #f9f9f9;
+                border-bottom: 1px solid #e0e0e0;
+            }
+            
+            .filter-title {
+                font-size: 14px;
+                font-weight: bold;
+                margin-bottom: 8px;
+                color: #333;
+            }
+            
+            .filter-buttons {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                margin-bottom: 12px;
+            }
+            
+            .filter-actions {
+                display: flex;
+                gap: 8px;
+            }
+            
+            .filter-action-btn {
+                padding: 4px 12px;
+                background: white;
+                border: 1px solid #e0e0e0;
+                border-radius: 16px;
+                font-size: 12px;
+                cursor: pointer;
+                transition: all 0.2s;
+            }
+            
+            .filter-action-btn:hover {
+                background: #f0f0f0;
+            }
+            
+            .map-content {
+                flex: 1;
+                position: relative;
+                width: 100%;
+            }
+            
+            #map {
+                width: 100%;
+                height: 100%;
+                min-height: 100%;
+            }
+            
+            .map-loading {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: white;
+                padding: 20px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+                text-align: center;
+                z-index: 1000;
+            }
+            
+            .map-spinner {
+                width: 32px;
+                height: 32px;
+                border: 3px solid #f3f3f3;
+                border-top: 3px solid var(--color-primary);
+                border-radius: 50%;
+                animation: spin 1s linear infinite;
+                margin: 0 auto 12px;
+            }
+            
+            @keyframes spin {
+                0% { transform: rotate(0deg); }
+                100% { transform: rotate(360deg); }
+            }
+            
+            .map-error {
+                position: absolute;
+                top: 50%;
+                left: 50%;
+                transform: translate(-50%, -50%);
+                background: white;
+                padding: 20px;
+                border-radius: 8px;
+                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
+                text-align: center;
+                z-index: 1000;
+                max-width: 300px;
+            }
+            
+            .map-error h3 {
+                color: #d32f2f;
+                margin-bottom: 8px;
+            }
+            
+            .map-error button {
+                margin-top: 12px;
+                padding: 8px 16px;
+                background: var(--color-primary);
+                color: white;
+                border: none;
+                border-radius: 4px;
+                cursor: pointer;
+            }
+            
+            .map-legend {
+                position: absolute;
+                bottom: 20px;
+                right: 20px;
+                background: white;
+                border-radius: 8px;
+                padding: 12px;
+                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+                z-index: 1000;
+            }
+            
+            .legend-title {
+                font-weight: bold;
+                margin-bottom: 8px;
+                font-size: 14px;
+            }
+            
+            .legend-item {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                margin-bottom: 4px;
+                font-size: 12px;
+            }
+            
+            .marker-icon {
+                width: 16px;
+                height: 16px;
+                border-radius: 50%;
+            }
+            
+            @media (max-width: 768px) {
+                .map-container {
+                    height: calc(100vh - 120px);
+                    width: 100vw;
+                    max-width: 100%;
+                }
+                
+                .map-header {
+                    padding: 12px 16px;
+                }
+                
+                .map-title {
+                    font-size: 18px;
+                }
+                
+                .map-controls {
+                    flex-direction: column;
+                    gap: 8px;
+                }
+                
+                .brand-filters {
+                    padding: 8px 12px;
+                }
+                
+                .filter-buttons {
+                    gap: 6px;
+                }
+                
+                .map-filter-btn {
+                    padding: 6px 12px;
+                    font-size: 12px;
+                }
+                
+                .filter-actions {
+                    flex-wrap: wrap;
+                }
+                
+                .filter-action-btn {
+                    font-size: 11px;
+                    padding: 3px 8px;
+                }
+                
+                .map-legend {
+                    bottom: 10px;
+                    right: 10px;
+                    padding: 8px;
+                    font-size: 11px;
+                }
+                
+                .legend-item {
+                    font-size: 11px;
+                }
+            }
+
+            /* Dark Mode Overrides */
+            .dark-mode .map-header,
+            .dark-mode .map-loading,
+            .dark-mode .map-error,
+            .dark-mode .map-legend {
+                background: #2a2a2a;
+                border-color: #333;
+            }
+
+            .dark-mode .map-search-input {
+                background: #1a1a1a;
+                border-color: #333;
+                color: #e0e0e0;
+            }
+            .dark-mode .map-search-input:focus {
+                background: #2a2a2a;
+            }
+            .dark-mode .map-search-btn {
+                color: #aaa;
+            }
+            .dark-mode .map-search-results {
+                background: #2a2a2a;
+                border-color: #333;
+            }
+            .dark-mode .search-result-item {
+                border-bottom-color: #333;
+            }
+            .dark-mode .search-result-item:hover {
+                background: #333;
+            }
+            .dark-mode .search-no-results, .dark-mode .search-error {
+                color: #aaa;
+            }
+            .dark-mode .search-result-brand {
+                background: rgba(212, 165, 116, 0.2);
+            }
+            .dark-mode .map-filter-btn {
+                background: #1a1a1a;
+                border-color: #333;
+                color: #e0e0e0;
+            }
+            .dark-mode .map-filter-btn:hover {
+                background: var(--color-primary);
+                border-color: var(--color-primary);
+                color: #1a1a1a;
+            }
+            .dark-mode .map-filter-btn.active {
+                background: var(--color-primary);
+                border-color: var(--color-primary);
+                color: #1a1a1a;
+            }
+
+            .dark-mode .brand-filters {
+                background: #2a2a2a;
+                border-bottom-color: #333;
+            }
+
+            .dark-mode .filter-title {
+                color: #e0e0e0;
+            }
+
+            .dark-mode .filter-action-btn {
+                background: #1a1a1a;
+                border-color: #333;
+                color: #e0e0e0;
+            }
+
+            .dark-mode .filter-action-btn:hover {
+                background: #333;
+            }
+
+            /* Shop Detail Panel */
+            .shop-detail-panel {
+                position: absolute;
+                top: 0;
+                left: 0;
+                width: 350px;
+                height: 100%;
+                background: white;
+                z-index: 5;
+                transform: translateX(-100%);
+                transition: transform 0.3s ease-in-out, z-index 0.3s ease-in-out;
+                box-shadow: 2px 0 10px rgba(0,0,0,0.1);
+                overflow-y: auto;
+                visibility: hidden;
+            }
+
+            .shop-detail-panel.show {
+                transform: translateX(0);
+                z-index: 1010;
+                visibility: visible;
+            }
+
+            .dark-mode .shop-detail-panel {
+                background: #2a2a2a;
+                border-right: 1px solid #333;
+            }
+
+            .shop-info-card {
+                border: 1px solid #e0e0e0;
+                border-radius: 8px;
+                overflow: hidden;
+                margin-bottom: 12px;
+                background: white;
+            }
+
+            .shop-details {
+                padding: 12px;
+            }
+
+            .shop-brand-badge {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                padding: 6px 12px;
+                border-radius: 999px;
+                font-size: 12px;
+                font-weight: bold;
+                margin-bottom: 12px;
+                box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
+            }
+
+            .shop-brand-badge i {
+                font-size: 14px;
+            }
+
+            .shop-meta-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+                gap: 12px;
+                margin-bottom: 12px;
+            }
+
+            .shop-meta-item {
+                background: #f9f9f9;
+                border: 1px solid #f0f0f0;
+                border-radius: 8px;
+                padding: 10px 12px;
+            }
+
+            .shop-meta-label {
+                display: block;
+                font-size: 12px;
+                color: #666;
+                margin-bottom: 4px;
+            }
+
+            .shop-meta-value {
+                font-size: 16px;
+                font-weight: bold;
+                color: #333;
+                display: flex;
+                align-items: center;
+                gap: 6px;
+                flex-wrap: wrap;
+            }
+
+            .shop-actions {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                margin-top: 8px;
+            }
+
+            .shop-action-btn {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                padding: 8px 12px;
+                border-radius: 6px;
+                border: 1px solid #e0e0e0;
+                background: white;
+                font-size: 13px;
+                color: #333;
+                text-decoration: none;
+                transition: all 0.2s ease-in-out;
+            }
+
+            .shop-action-btn:hover {
+                background: #f5f5f5;
+                border-color: var(--color-primary);
+                color: var(--color-primary);
+            }
+
+            .dark-mode .shop-info-card {
+                background: #1f1f1f;
+                border-color: #333;
+            }
+
+            .dark-mode .shop-details {
+                color: #e0e0e0;
+            }
+
+            .dark-mode .shop-meta-item {
+                background: rgba(255, 255, 255, 0.05);
+                border-color: rgba(255, 255, 255, 0.08);
+            }
+
+            .dark-mode .shop-meta-label {
+                color: #bbb;
+            }
+
+            .dark-mode .shop-meta-value {
+                color: white;
+            }
+
+            .dark-mode .shop-action-btn {
+                background: rgba(255, 255, 255, 0.08);
+                border-color: rgba(255, 255, 255, 0.12);
+                color: white;
+            }
+
+            .dark-mode .shop-action-btn:hover {
+                background: rgba(212, 165, 116, 0.2);
+                border-color: var(--color-primary);
+                color: var(--color-primary);
+            }
+
+            @media (max-width: 768px) {
+                .shop-detail-panel {
+                    width: 100%;
+                    top: 40%; /* Start from 40% from the top */
+                    bottom: 0; /* Go all the way to the bottom */
+                    left: 0;
+                    transform: translateY(100%);
+                    border-top: 1px solid #e0e0e0;
+                    visibility: hidden;
+                }
+
+                .shop-detail-panel.show {
+                    transform: translateY(0);
+                    visibility: visible;
+                }
+
+                .dark-mode .shop-detail-panel {
+                    border-top: 1px solid #333;
+                    border-right: none;
+                }
+            }
+
+            /* Marker Cluster Styles */
+            .marker-cluster {
+                background: rgba(255, 255, 255, 0.8);
+                border-radius: 50%;
+                text-align: center;
+                font-weight: bold;
+                font-family: Arial, sans-serif;
+                border: 2px solid rgba(0, 0, 0, 0.2);
+            }
+            .marker-cluster div {
+                width: 30px;
+                height: 30px;
+                margin-left: 5px;
+                margin-top: 5px;
+                border-radius: 50%;
+                text-align: center;
+                line-height: 30px;
+            }
+            .marker-cluster span {
+                line-height: 30px;
+            }
+            /* クラスターサイズ別スタイル */
+            .marker-cluster-small {
+                background-color: rgba(181, 226, 140, 0.6);
+            }
+            .marker-cluster-small div {
+                background-color: rgba(110, 204, 57, 0.6);
+            }
+            .marker-cluster-medium {
+                background-color: rgba(241, 211, 87, 0.6);
+            }
+            .marker-cluster-medium div {
+                background-color: rgba(240, 194, 12, 0.6);
+            }
+            .marker-cluster-large {
+                background-color: rgba(253, 156, 115, 0.6);
+            }
+            .marker-cluster-large div {
+                background-color: rgba(241, 128, 23, 0.6);
+            }
+            /* 豚山ブランド用のピンククラスタースタイル */
+            .marker-cluster-pink {
+                background-color: rgba(252, 215, 0, 0.3) !important;
+                border: 2px solid rgba(252, 215, 0, 0.8) !important;
+            }
+            .marker-cluster-pink div {
+                background-color: rgba(252, 215, 0, 0.8) !important;
+                color: black !important;
+            }
+            .marker-cluster-pink.marker-cluster-small {
+                background-color: rgba(252, 215, 0, 0.3) !important;
+            }
+            .marker-cluster-pink.marker-cluster-small div {
+                background-color: rgba(252, 215, 0, 0.6) !important;
+            }
+            .marker-cluster-pink.marker-cluster-medium {
+                background-color: rgba(252, 215, 0, 0.4) !important;
+            }
+            .marker-cluster-pink.marker-cluster-medium div {
+                background-color: rgba(252, 215, 0, 0.7) !important;
+            }
+            .marker-cluster-pink.marker-cluster-large {
+                background-color: rgba(252, 215, 0, 0.5) !important;
+            }
+            .marker-cluster-pink.marker-cluster-large div {
+                background-color: rgba(252, 215, 0, 0.9) !important;
+            }
+            /* 他のブランド用のクラスタースタイル */
+            .marker-cluster-ramenso {
+                background-color: rgba(52, 152, 219, 0.3) !important;
+                border: 2px solid rgba(52, 152, 219, 0.8) !important;
+            }
+            .marker-cluster-ramenso div {
+                background-color: rgba(52, 152, 219, 0.8) !important;
+                color: white !important;
+            }
+            .marker-cluster-rakeiko {
+                background-color: rgba(46, 204, 113, 0.3) !important;
+                border: 2px solid rgba(46, 204, 113, 0.8) !important;
+            }
+            .marker-cluster-rakeiko div {
+                background-color: rgba(46, 204, 113, 0.8) !important;
+                color: white !important;
+            }
+            .marker-cluster-ahare {
+                background-color: rgba(231, 76, 60, 0.3) !important;
+                border: 2px solid rgba(231, 76, 60, 0.8) !important;
+            }
+            .marker-cluster-ahare div {
+                background-color: rgba(231, 76, 60, 0.8) !important;
+                color: white !important;
+            }
+            .marker-cluster-tachikawa {
+                background-color: rgba(155, 89, 182, 0.3) !important;
+                border: 2px solid rgba(155, 89, 182, 0.8) !important;
+            }
+            .marker-cluster-tachikawa div {
+                background-color: rgba(155, 89, 182, 0.8) !important;
+                color: white !important;
+            }
+            .marker-cluster-tsukemensha {
+                background-color: rgba(26, 188, 156, 0.3) !important;
+                border: 2px solid rgba(26, 188, 156, 0.8) !important;
+            }
+            .marker-cluster-tsukemensha div {
+                background-color: rgba(26, 188, 156, 0.8) !important;
+                color: white !important;
+            }
+            .marker-cluster-jiro {
+                background-color: rgba(212, 165, 116, 0.3) !important;
+                border: 2px solid var(--color-primary) !important;
+            }
+            .marker-cluster-jiro div {
+                background-color: var(--color-primary) !important;
+                color: white !important;
+            }
+            .marker-cluster-other {
+                background-color: rgba(149, 165, 166, 0.3) !important;
+                border: 2px solid rgba(149, 165, 166, 0.8) !important;
+            }
+            .marker-cluster-other div {
+                background-color: rgba(149, 165, 166, 0.8) !important;
+                color: white !important;
+            }
+        `;
+    },
 
     // マップコンテナ要素を取得
-    getMapContainerElement(mapHeight) {
+    getMapContainerElement() {
         const container = document.createElement('div');
         container.className = 'map-container';
-        if (mapHeight) {
-            container.style.setProperty('--map-height', mapHeight);
-            container.style.setProperty('--map-height-mobile', mapHeight);
-        }
-
+        
         // ヘッダー要素
         const header = document.createElement('div');
         header.className = 'map-header';
-
+        
         // タイトルとトグルボタン
         const titleContainer = document.createElement('div');
         titleContainer.className = 'map-title-container';
@@ -425,13 +1154,9 @@ const MapComponent = {
 
         const toggleBtn = document.createElement('button');
         toggleBtn.id = 'toggle-filters-btn';
-        toggleBtn.type = 'button';
         toggleBtn.className = 'toggle-filters-btn';
-        toggleBtn.setAttribute('aria-controls', 'collapsible-filters');
-        toggleBtn.setAttribute('aria-expanded', 'true');
-        toggleBtn.setAttribute('aria-label', 'フィルターを開閉');
         toggleBtn.onclick = () => this.toggleFilters();
-        toggleBtn.innerHTML = '<i class="fas fa-chevron-up" aria-hidden="true"></i>';
+        toggleBtn.innerHTML = '<i class="fas fa-chevron-up"></i>'; // 初期アイコン
 
         titleContainer.appendChild(title);
         titleContainer.appendChild(toggleBtn);
@@ -445,40 +1170,23 @@ const MapComponent = {
         // コントロール
         const controls = document.createElement('div');
         controls.className = 'map-controls';
-
-        // 検索入力
-        const searchContainer = document.createElement('div');
-        searchContainer.className = 'map-search';
-
-        const searchInput = document.createElement('input');
-        searchInput.id = 'mapSearchInput';
-        searchInput.type = 'search';
-        searchInput.className = 'map-search-input';
-        searchInput.placeholder = '店名で検索...';
-        searchInput.setAttribute('aria-label', '店名で検索');
-        searchContainer.appendChild(searchInput);
-
-        const searchIcon = document.createElement('i');
-        searchIcon.className = 'fas fa-search map-search-icon';
-        searchIcon.setAttribute('aria-hidden', 'true');
-        searchContainer.appendChild(searchIcon);
-
-        const searchResults = document.createElement('div');
-        searchResults.id = 'mapSearchResults';
-        searchResults.className = 'map-search-results';
-        searchContainer.appendChild(searchResults);
-
+        
+        // 検索
+        const searchBtn = document.createElement('button');
+        searchBtn.className = 'map-filter-btn';
+        searchBtn.onclick = () => this.openSearchModal();
+        searchBtn.innerHTML = '<i class="fas fa-search"></i> 検索';
+        
         // 現在地ボタン
         const locationBtn = document.createElement('button');
-        locationBtn.type = 'button';
         locationBtn.className = 'map-filter-btn';
         locationBtn.onclick = () => this.getCurrentLocation();
         locationBtn.innerHTML = '<i class="fas fa-location-arrow"></i> 現在地';
-
-        controls.appendChild(searchContainer);
+        
+        controls.appendChild(searchBtn);
         controls.appendChild(locationBtn);
         collapsibleContainer.appendChild(controls);
-
+        
         // ブランドフィルター
         const brandFilters = document.createElement('div');
         brandFilters.className = 'brand-filters';
@@ -510,23 +1218,11 @@ const MapComponent = {
         filterActions.appendChild(selectAllBtn);
         filterActions.appendChild(clearBtn);
         brandFilters.appendChild(filterActions);
-
+        
         collapsibleContainer.appendChild(brandFilters);
         header.appendChild(collapsibleContainer);
         container.appendChild(header);
-
-        const shouldCollapse = typeof window !== 'undefined' && window.innerWidth <= 768;
-        if (shouldCollapse) {
-            collapsibleContainer.classList.add('collapsed');
-            toggleBtn.classList.add('collapsed');
-            toggleBtn.setAttribute('aria-expanded', 'false');
-            const icon = toggleBtn.querySelector('i');
-            if (icon) {
-                icon.classList.remove('fa-chevron-up');
-                icon.classList.add('fa-chevron-down');
-            }
-        }
-
+        
         // コンテンツ
         const content = document.createElement('div');
         content.className = 'map-content';
@@ -1533,6 +2229,10 @@ const MapComponent = {
         }
     },
 
+    // 検索モーダルを開く
+    openSearchModal() {
+        SearchComponent.openModal(this.handleShopSelection.bind(this));
+    },
 
     // 店舗選択ハンドラ
     handleShopSelection(shop) {
@@ -1544,68 +2244,58 @@ const MapComponent = {
         }
     },
 
-    // 検索入力フィールドを初期化
-    initializeSearchInput() {
-        const searchContainer = document.querySelector('.map-search');
+    // 検索入力フィールドを追加
+    addSearchInput() {
+        const controls = document.querySelector('.map-controls');
+        if (!controls) return;
+
+        // 既存の検索入力フィールドがあれば削除
+        const existingSearch = document.querySelector('.map-search-input-container');
+        if (existingSearch) {
+            existingSearch.remove();
+        }
+
+        // 検索入力フィールドコンテナを作成
+        const searchContainer = document.createElement('div');
+        searchContainer.className = 'map-search-input-container';
+        searchContainer.innerHTML = `
+            <div class="map-search">
+                <input type="text" id="mapSearchInput" class="map-search-input" placeholder="店名で検索...">
+            </div>
+            <div id="mapSearchResults" class="map-search-results" style="display: none;">
+                <!-- 検索結果がここに表示される -->
+            </div>
+        `;
+
+        // 既存のコントロールの先頭に検索フィールドを追加
+        controls.insertBefore(searchContainer, controls.firstChild);
+
+        // イベントリスナーを設定
         const searchInput = document.getElementById('mapSearchInput');
         const searchResults = document.getElementById('mapSearchResults');
 
-        if (!searchContainer || !searchInput || !searchResults) {
-            return;
-        }
-
-        if (this.state.searchDebounceTimer) {
-            clearTimeout(this.state.searchDebounceTimer);
-            this.state.searchDebounceTimer = null;
-        }
-
-        if (this.state.searchInputElement && this.state.searchInputListener) {
-            this.state.searchInputElement.removeEventListener('input', this.state.searchInputListener);
-        }
-        if (this.state.searchOutsideClickHandler) {
-            document.removeEventListener('click', this.state.searchOutsideClickHandler);
-        }
-
-        searchResults.style.display = 'none';
-
-        const inputListener = (event) => {
-            const query = event.target.value;
-            if (this.state.searchDebounceTimer) {
-                clearTimeout(this.state.searchDebounceTimer);
-            }
-            this.state.searchDebounceTimer = setTimeout(() => {
-                this.handleMapSearch(query);
+        // 検索入力のデバウンス処理
+        let searchTimeout;
+        searchInput.addEventListener('input', (e) => {
+            clearTimeout(searchTimeout);
+            searchTimeout = setTimeout(() => {
+                this.handleMapSearch(e.target.value);
             }, 300);
-        };
+        });
 
-        searchInput.addEventListener('input', inputListener);
-        this.state.searchInputElement = searchInput;
-        this.state.searchInputListener = inputListener;
-
-        const outsideClickHandler = (event) => {
-            if (!searchContainer.contains(event.target)) {
+        // 検索結果外クリックで結果を閉じる
+        document.addEventListener('click', (e) => {
+            if (!searchContainer.contains(e.target)) {
                 searchResults.style.display = 'none';
             }
-        };
-
-        document.addEventListener('click', outsideClickHandler);
-        this.state.searchOutsideClickHandler = outsideClickHandler;
+        });
     },
 
     // マップ検索処理
     async handleMapSearch(query) {
         const searchResults = document.getElementById('mapSearchResults');
-        if (!searchResults) {
-            return;
-        }
-
-        if (this.state.searchDebounceTimer) {
-            clearTimeout(this.state.searchDebounceTimer);
-            this.state.searchDebounceTimer = null;
-        }
-
+        
         if (!query || query.trim().length < 2) {
-            searchResults.innerHTML = '';
             searchResults.style.display = 'none';
             return;
         }
