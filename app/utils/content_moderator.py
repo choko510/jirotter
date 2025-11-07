@@ -4,8 +4,11 @@ import asyncio
 from typing import Dict, List, Optional, Tuple, Union
 from pydantic import BaseModel
 from sqlalchemy.orm import Session
+from fastapi import UploadFile
 from app.models import Post, Report, User
 from app.utils.scoring import apply_penalty
+from app.utils.image_validation import validate_image_file
+from app.utils.image_processor import process_image
 from google import genai
 from google.genai import types
 
@@ -79,58 +82,122 @@ class ContentModerator:
             print(f"分析中にエラーが発生しました: {str(e)}")
             return {"is_violation": False, "confidence": 0.0, "reason": f"AI分析中にエラーが発生しました: {str(e)}"}
     
-    async def analyze_multimodal_content(self, content: str, media_path: str = None, media_type: str = None, reason: str = "", user_history: str = "") -> Dict:
-        """テキストとメディア（画像/動画）を含むコンテンツを分析する"""
+    async def analyze_multimodal_content(
+        self,
+        content: Optional[str] = None,
+        image: Optional[UploadFile] = None,
+        media_path: Optional[str] = None,
+        media_type: Optional[str] = None,
+        reason: str = "",
+        user_history: str = "",
+    ) -> Dict:
+        """
+        テキストと画像を含むコンテンツを分析する（画像アップロード対応版）
+
+        - image が指定されていれば優先して使用
+        - media_path / media_type は後方互換用
+        """
         if not self.api_key or not self.client:
-            return {"is_violation": False, "confidence": 0.0, "reason": "APIキーが設定されていません"}
-        
-        # コンテンツの準備
-        contents = []
-        
-        # テキストコンテンツを追加
+            return {
+                "is_violation": False,
+                "confidence": 0.0,
+                "reason": "APIキーが設定されていません",
+            }
+
+        contents: List = []
+
+        # テキストコンテンツ
         if content:
             contents.append(content)
-        
-        # メディアコンテンツを追加
-        if media_path and media_type:
-            try:
-                if media_type.startswith("image/"):
-                    # 画像の場合
-                    from PIL import Image
-                    image = Image.open(media_path)
-                    contents.append(image)
-                elif media_type.startswith("video/"):
-                    # 動画の場合 - ファイルをアップロード
-                    video_file = await self.client.aio.files.upload(file=media_path)
-                    contents.append(video_file)
-            except Exception as e:
-                return {"is_violation": False, "confidence": 0.0, "reason": f"メディアファイルの読み込みに失敗しました: {str(e)}"}
-        
-        # 分析プロンプト
-        prompt = f"""
-        以下の投稿内容（テキストおよびメディア）を分析し、コミュニティガイドラインに違反しているか判断してください。
-        
-        通報理由: {reason}
-        
-        {user_history}
-        
-        以下の基準で評価してください：
-        1. ヘイトスピーチや差別的な内容
-        2. 暴力的または脅迫的な内容
-        3. スパムや宣伝目的の投稿
-        4. 性的に露骨な内容
-        5. 誹謗中傷や個人攻撃
-        6. デマや偽情報
-        7. 不適切な画像や動画コンテンツ
-        
-        ユーザーの過去の行動パターンも考慮に入れて判断してください。
-        過去に同様の違反を繰り返している場合は、より厳しく判定してください。
-        """
-        
-        contents.append(prompt)
-        
+
+        # 画像（UploadFile）入力に対応
+        temp_media_path: Optional[str] = None
+        temp_media_type: Optional[str] = None
+
         try:
-            print(f"マルチモーダルコンテンツ分析を開始します... (メディアタイプ: {media_type})")
+            if image is not None:
+                # 画像バリデーション
+                validation = validate_image_file(image)
+                if not validation.get("is_valid", False):
+                    return {
+                        "is_violation": False,
+                        "confidence": 0.0,
+                        "reason": f"画像バリデーションエラー: {validation.get('error')}",
+                    }
+
+                # 画像処理（WebP化など）＋保存
+                thumbnail_url, original_url = process_image(image, user_id="moderation")
+                if not original_url:
+                    return {
+                        "is_violation": False,
+                        "confidence": 0.0,
+                        "reason": "画像処理に失敗しました",
+                    }
+
+                # Gemini API に渡すために実ファイルパスを取得
+                # process_image は "/uploads/..." を返すため先頭の "/" を落として相対パスとして扱う
+                temp_media_path = original_url.lstrip("/")
+                temp_media_type = "image/webp"
+
+            # 後方互換: media_path/media_type が直接指定されるケース
+            if not temp_media_path and media_path and media_type:
+                temp_media_path = media_path
+                temp_media_type = media_type
+
+            # メディアがあれば Gemini 用に組み立て
+            if temp_media_path and temp_media_type:
+                from google.genai import types as genai_types
+
+                if temp_media_type.startswith("image/"):
+                    try:
+                        with open(temp_media_path, "rb") as f:
+                            image_bytes = f.read()
+                        contents.append(
+                            genai_types.Part.from_bytes(
+                                data=image_bytes,
+                                mime_type=temp_media_type,
+                            )
+                        )
+                    except Exception as exc:
+                        return {
+                            "is_violation": False,
+                            "confidence": 0.0,
+                            "reason": f"画像ファイルの読み込みに失敗しました: {exc}",
+                        }
+                elif temp_media_type.startswith("video/"):
+                    try:
+                        video_file = await self.client.aio.files.upload(file=temp_media_path)
+                        contents.append(video_file)
+                    except Exception as exc:
+                        return {
+                            "is_violation": False,
+                            "confidence": 0.0,
+                            "reason": f"動画ファイルのアップロードに失敗しました: {exc}",
+                        }
+
+            # 分析プロンプト
+            prompt = f"""
+以下の投稿内容（テキストおよびメディア）を分析し、コミュニティガイドラインに違反しているか判断してください。
+
+通報理由: {reason}
+
+{user_history}
+
+以下の基準で評価してください：
+1. ヘイトスピーチや差別的な内容
+2. 暴力的または脅迫的な内容
+3. スパムや宣伝目的の投稿
+4. 性的に露骨な内容
+5. 誹謗中傷や個人攻撃
+6. デマや偽情報
+7. 不適切な画像や動画コンテンツ
+
+ユーザーの過去の行動パターンも考慮に入れて判断してください。
+過去に同様の違反を繰り返している場合は、より厳しく判定してください。
+"""
+            contents.append(prompt)
+
+            print(f"マルチモーダルコンテンツ分析を開始します... (media_type: {temp_media_type})")
             response = await self.client.aio.models.generate_content(
                 model="gemini-flash-latest",
                 contents=contents,
@@ -139,22 +206,28 @@ class ContentModerator:
                     response_mime_type="application/json",
                     response_schema=ContentAnalysisResult,
                     temperature=0.4,
-                )
+                ),
             )
-            
-            # レスポンスを解析
+
             if response and response.text:
                 analysis = json.loads(response.text)
                 print(f"マルチモーダル分析結果: {analysis}")
                 return analysis
-            else:
-                print("APIからの応答が空です")
-                return {"is_violation": False, "confidence": 0.0, "reason": "APIからの応答が空です"}
-            
+
+            print("APIからの応答が空です")
+            return {
+                "is_violation": False,
+                "confidence": 0.0,
+                "reason": "APIからの応答が空です",
+            }
+
         except Exception as e:
-            # 例外発生時は安全と判定
-            print(f"マルチモーダル分析中にエラーが発生しました: {str(e)}")
-            return {"is_violation": False, "confidence": 0.0, "reason": f"AI分析中にエラーが発生しました: {str(e)}"}
+            print(f"マルチモーダル分析中にエラーが発生しました: {e}")
+            return {
+                "is_violation": False,
+                "confidence": 0.0,
+                "reason": f"AI分析中にエラーが発生しました: {e}",
+            }
     
     async def analyze_content_with_thinking(self, content: str, reason: str = "", user_history: str = "") -> Dict:
         """思考機能を使用して複雑なコンテンツ判断を行う"""

@@ -11,35 +11,60 @@ from app.utils.achievements import evaluate_new_titles, serialize_title_record
 
 
 RANK_DEFINITIONS = [
+    
     {
-        "name": "初心者ジロリアン",
+        "name": "啜りし者",
         "min_points": 0,
         "badge_color": "#9CA3AF",
-        "description": "初めての一杯を記録し始めた初心者",
+        "description": "初めての一杯を記録し始めた初心者。すべてはここから始まる。"
     },
     {
-        "name": "探求系ジロリアン",
-        "min_points": 80,
+        "name": "スープの底を覗く者",
+        "min_points": 150,
         "badge_color": "#60A5FA",
-        "description": "街の人気店を巡る探求者",
+        "description": "街の人気店を巡り、スープの深淵を覗き始めた探求者。"
     },
     {
-        "name": "二郎スープマスター",
-        "min_points": 180,
-        "badge_color": "#34D399",
-        "description": "味の違いを言葉にできる案内人",
-    },
-    {
-        "name": "地域のジロリアン",
-        "min_points": 320,
+        "name": "天地返し中毒者",
+        "min_points": 500,
         "badge_color": "#FBBF24",
-        "description": "地域のラーメン情報を牽引するキュレーター",
+        "description": "天地返しの快感に取り憑かれ、麺とスープを一体化させる者"
     },
     {
-        "name": "完璧で究極のジロリアン",
-        "min_points": 520,
+        "name": "呪文詠唱 ニンニクヤサイアブラ",
+        "min_points": 1000,
+        "badge_color": "#C084FC",
+        "description": "唱えれば己を覚醒させる禁断のコールを会得した者"
+    },
+    {
+        "name": "真のジロリアン",
+        "min_points": 1500,
+        "badge_color": "#34D399",
+        "description": "味、量、雰囲気…二郎の全てを理解した者"
+    },
+    {
+        "name": "人類ジロリアン化計画",
+        "min_points": 2000,
+        "badge_color": "#F59E0B",
+        "description": "新しいジロリアンを生むための研究員の一員"
+    },
+    {
+        "name": "人間やめますか",
+        "min_points": 2500,
         "badge_color": "#F97316",
-        "description": "多くの人に愛される伝説の案内人",
+        "description": "常識を捨て、二郎と共に生きることを選んだ伝説のジロリアン"
+    },
+    {
+        "name": "私は完璧で究極のジロリアン",
+        "min_points": 5000,
+        "badge_color": "#EF4444",
+        "description": "すべてのジロリアンを見守る、神の領域に到達した究極の存在。"
+    },
+    {
+        "name": "二郎の歴史を刻むもの",
+        "min_points": 10000,
+        "badge_color": "#F43F5E",
+        "description": "その名を聞くだけで列が伸びる。二郎界の頂点に最も近い者。"
     },
 ]
 

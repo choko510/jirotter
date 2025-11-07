@@ -798,7 +798,10 @@ const TimelineComponent = {
         // ユーザーハンドルの@を除去してエスケープ
         const userHandle = post.user.handle ? post.user.handle.substring(1) : '';
         const escapedUserHandle = API.escapeHtml(userHandle);
-        
+
+        const currentUser = API.getCurrentUser();
+        const isOwner = currentUser && String(currentUser.id) === String(post.user_id);
+
         return `
             <div class="post-card" id="post-${post.id}" onclick="router.navigate('comment', [${post.id}])">
                 <div class="post-header" onclick="event.stopPropagation(); router.navigate('profile', ['${escapedUserHandle}'])">
@@ -824,13 +827,19 @@ const TimelineComponent = {
                 ` : ''}
                 ${this.createPostImageHTML(post)}
                 <div class="post-engagement">
-                    <button class="engagement-btn" onclick="event.stopPropagation(); TimelineComponent.openCommentModal(${post.id})"><i class="fas fa-comment"></i> ${post.engagement.comments}</button>
+                    <button class="engagement-btn" onclick="event.stopPropagation(); TimelineComponent.openCommentModal(${post.id})">
+                        <i class="fas fa-comment"></i> ${post.engagement.comments}
+                    </button>
                     <button class="engagement-btn" onclick="event.stopPropagation(); TimelineComponent.handleLike(${post.id})">
                         <i class="fas fa-heart ${post.isLiked ? 'liked' : ''}"></i> <span>${post.engagement.likes}</span>
                     </button>
                     <button class="engagement-btn" onclick="event.stopPropagation(); TimelineComponent.openReportModal(${post.id})" title="通報">
                         <i class="fas fa-flag"></i>
                     </button>
+                    ${isOwner ? `
+                    <button class="engagement-btn" onclick="event.stopPropagation(); TimelineComponent.confirmAndDeletePost(${post.id})" title="削除">
+                        <i class="fas fa-trash"></i>
+                    </button>` : ''}
                 </div>
             </div>
         `;
@@ -1563,6 +1572,62 @@ const TimelineComponent = {
         } else {
             // フォールバック：新しいタブで画像を開く
             window.open(imageUrl, '_blank');
+        }
+    },
+
+    // 投稿削除の確認ダイアログと処理
+    async confirmAndDeletePost(postId) {
+        const token = API.getCookie('authToken');
+        if (!token) {
+            alert('削除するにはログインしてください');
+            router.navigate('auth', ['login']);
+            return;
+        }
+
+        if (!window.confirm('この投稿を削除しますか？')) {
+            return;
+        }
+
+        try {
+            const result = await API.request(`/api/v1/posts/${postId}`, {
+                method: 'DELETE',
+                includeAuth: true
+            });
+
+            // 成功時: stateとDOMから削除
+            this.removePostFromStateAndDOM(postId);
+
+            // サーバーから message が返る想定（app/routes/posts.py の delete_post）
+            if (result && result.message) {
+                console.log(result.message);
+            }
+        } catch (error) {
+            console.error('投稿削除エラー:', error);
+            if (error && error.detail) {
+                alert(`削除に失敗しました: ${error.detail}`);
+            } else {
+                alert('削除に失敗しました');
+            }
+        }
+    },
+
+    // stateおよびDOMから投稿を削除
+    removePostFromStateAndDOM(postId) {
+        // stateから削除
+        this.state.posts = this.state.posts.filter(p => p.id !== postId);
+
+        // DOMから削除
+        const postElement = document.getElementById(`post-${postId}`);
+        if (postElement && postElement.parentNode) {
+            postElement.parentNode.removeChild(postElement);
+        }
+
+        // 投稿が0件になった場合の表示
+        if (this.state.posts.length === 0) {
+            const timeline = document.getElementById('timeline');
+            if (timeline) {
+                timeline.innerHTML = `<div style="text-align: center; padding: 40px; color: var(--color-muted);"><p>投稿がありません</p></div>`;
+            }
         }
     },
 

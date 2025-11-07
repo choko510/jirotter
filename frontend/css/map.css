@@ -10,8 +10,9 @@
     padding: 16px;
     background: white;
     border-bottom: 1px solid #e0e0e0;
-    z-index: 1000;
     position: relative;
+    z-index: 1000;
+    overflow: visible; /* 検索結果ドロップダウンをヘッダー外にも表示可能にする */
 }
 
 .map-title-container {
@@ -69,6 +70,11 @@
 .map-search {
     flex: 1;
     position: relative;
+}
+
+/* 検索結果ドロップダウンを他要素より前面に出す（特にLeafletマップより優先） */
+.map-search-results {
+    z-index: 3000; /* Leafletレイヤより十分高く */
 }
 
 .map-search-input {
@@ -196,6 +202,16 @@
     flex: 1;
     position: relative;
     display: flex;
+    z-index: 0;
+}
+
+/* 検索結果ドロップダウンがマップより前面に表示されるようにする */
+.map-search {
+    z-index: 20;
+}
+
+.map-search-results {
+    z-index: 2000;
 }
 
 #map {
@@ -209,6 +225,11 @@
     border-left: 1px solid #e0e0e0;
     overflow-y: auto;
     padding: 16px;
+    display: none; /* デフォルトは非表示。詳細表示時に .show で表示 */
+}
+
+.shop-detail-panel.show {
+    display: block;
 }
 
 .map-loading,

@@ -31,7 +31,7 @@ METRIC_LABELS: Dict[str, str] = {
 TITLE_DEFINITIONS: List[Dict[str, object]] = [
     {
         "key": "first_checkin",
-        "name": "初陣チェックイン",
+        "name": "スープの呼び声",
         "description": "最初の一杯を記録しました。ここからラーメンガイドの旅が始まります。",
         "category": "checkin",
         "icon": "📍",
@@ -42,7 +42,7 @@ TITLE_DEFINITIONS: List[Dict[str, object]] = [
     },
     {
         "key": "checkin_scout",
-        "name": "巡礼スカウト",
+        "name": "全国汁統一計画",
         "description": "10店舗をチェックインして街のラーメン事情を熟知してきました。",
         "category": "checkin",
         "icon": "🧭",
@@ -53,7 +53,7 @@ TITLE_DEFINITIONS: List[Dict[str, object]] = [
     },
     {
         "key": "waittime_guardian",
-        "name": "行列ガーディアン",
+        "name": "行列観測者",
         "description": "待ち時間情報を5回共有し、混雑緩和に貢献しました。",
         "category": "community",
         "icon": "⏱️",
@@ -64,7 +64,7 @@ TITLE_DEFINITIONS: List[Dict[str, object]] = [
     },
     {
         "key": "photo_curator",
-        "name": "麺線フォトキュレーター",
+        "name": "盛りの化身",
         "description": "写真投稿を5回行い、魅力的な一杯を届けました。",
         "category": "creation",
         "icon": "📸",
@@ -86,7 +86,7 @@ TITLE_DEFINITIONS: List[Dict[str, object]] = [
     },
     {
         "key": "ramen_columnist",
-        "name": "ラーメンコラムニスト",
+        "name": "味覚データベース・ジロ型",
         "description": "30件の投稿で味の体験を記録に残しました。",
         "category": "creation",
         "icon": "📝",
@@ -97,7 +97,7 @@ TITLE_DEFINITIONS: List[Dict[str, object]] = [
     },
     {
         "key": "community_builder",
-        "name": "コミュニティビルダー",
+        "name": "教団形成済み",
         "description": "フォロワーが20人以上になり、仲間の輪を広げました。",
         "category": "community",
         "icon": "🤝",
@@ -108,7 +108,7 @@ TITLE_DEFINITIONS: List[Dict[str, object]] = [
     },
     {
         "key": "ramen_legend",
-        "name": "伝道のラーメンレジェンド",
+        "name": "真のジロリアン",
         "description": "累計ポイントが600ptに到達。あなたの活動が皆を導いています。",
         "category": "milestone",
         "icon": "🏆",
@@ -119,7 +119,7 @@ TITLE_DEFINITIONS: List[Dict[str, object]] = [
     },
     {
         "key": "all_round_contributor",
-        "name": "オールラウンド貢献者",
+        "name": "完全マシマシ行動派",
         "description": "チェックイン・投稿・待ち時間報告で50アクションを達成しました。",
         "category": "community",
         "icon": "🌐",

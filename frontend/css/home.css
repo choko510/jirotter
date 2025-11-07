@@ -71,23 +71,45 @@ body {
         grid-template-columns: 1fr;
         padding-bottom: 70px;
     }
+
+    /* メインは常に表示。左右サイドバーはモバイルでは非表示にし、
+       左サイドバーは .show クラス時のみスライドインさせる */
     .left-sidebar,
     .right-sidebar {
         display: none;
     }
+
+    .left-sidebar.show {
+        display: flex;
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 80%;
+        max-width: 300px;
+        background: var(--color-surface);
+        z-index: 1000;
+        transform: translateX(0);
+        box-shadow: 2px 0 10px rgba(47, 37, 25, 0.12);
+    }
+
     .main-content {
         max-width: 100%;
         border-right: none;
     }
+
     .main-header-content {
         padding: 12px 16px;
     }
+
     .header-left {
         gap: 12px;
     }
+
     .propose-button {
         display: none;
     }
+
     .floating-propose-button {
         display: inline-flex;
     }
@@ -527,7 +549,7 @@ body {
     inset: 0;
     background: rgba(0, 0, 0, 0.45);
     display: none;
-    z-index: 1200;
+    z-index: 900; /* サイドバーより下、ボトムナビより上 */
 }
 
 .mobile-menu.show {
@@ -586,7 +608,7 @@ body {
     position: fixed;
     inset: 0;
     background: var(--color-surface);
-    z-index: 1300;
+    z-index: 950;
     flex-direction: column;
 }
 
@@ -643,20 +665,6 @@ body {
 
     .mobile-menu-btn:hover {
         transform: translateY(-2px);
-    }
-
-    .left-sidebar.show {
-        display: flex;
-        position: fixed;
-        top: 0;
-        left: 0;
-        bottom: 0;
-        width: 80%;
-        max-width: 300px;
-        background: var(--color-surface);
-        z-index: 1000;
-        transform: translateX(0);
-        box-shadow: 2px 0 10px rgba(47, 37, 25, 0.08);
     }
 
     .main-header {

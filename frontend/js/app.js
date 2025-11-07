@@ -143,6 +143,7 @@ const API = {
 
             const formattedPosts = data.posts.map(post => ({
                 id: post.id,
+                user_id: post.user_id,
                 user: {
                     name: post.author_username,
                     handle: `@${post.author_username}`,

@@ -531,16 +531,16 @@ const MapComponent = {
         const content = document.createElement('div');
         content.className = 'map-content';
         
-        // マップ
-        const map = document.createElement('div');
-        map.id = 'map';
-        content.appendChild(map);
-        
-        // 店舗詳細パネル
+        // 店舗詳細パネル（左側）
         const shopDetailPanel = document.createElement('div');
         shopDetailPanel.id = 'shopDetailPanel';
         shopDetailPanel.className = 'shop-detail-panel';
         content.appendChild(shopDetailPanel);
+
+        // マップ（右側）
+        const map = document.createElement('div');
+        map.id = 'map';
+        content.appendChild(map);
         
         // ローディング
         const loading = document.createElement('div');

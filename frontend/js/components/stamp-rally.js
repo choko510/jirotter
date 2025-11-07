@@ -389,9 +389,9 @@ const StampRallyComponent = {
         `;
 
         for (const region in this.REGION_PREFECTURES) {
-            const shouldOpen = this.state.selectedPrefecture === 'all'
-                ? region === '関東'
-                : this.REGION_PREFECTURES[region].includes(this.state.selectedPrefecture);
+            // 「全国」選択時は全て閉じる（shouldOpen=false）
+            const shouldOpen = this.state.selectedPrefecture !== 'all'
+                && this.REGION_PREFECTURES[region].includes(this.state.selectedPrefecture);
 
             buttonsHtml += `
                 <details class="region-details"${shouldOpen ? ' open' : ''}>
