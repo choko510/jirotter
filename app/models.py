@@ -313,3 +313,45 @@ class CheckinVerification(Base):
     
     # Relationships
     checkin = relationship('Checkin', backref='verifications')
+
+
+class ShopEditLock(Base):
+    """店舗編集ロックモデル（行単位ロック）"""
+    __tablename__ = 'shop_edit_locks'
+    __table_args__ = (
+        Index('ix_shop_edit_locks_shop_id', 'shop_id'),
+        Index('ix_shop_edit_locks_expires_at', 'expires_at'),
+        UniqueConstraint('shop_id', name='uq_shop_edit_locks_shop_id'),
+    )
+
+    id = Column(Integer, primary_key=True)
+    shop_id = Column(Integer, ForeignKey('ramen_shops.id'), nullable=False)
+    user_id = Column(String(80), ForeignKey('users.id'), nullable=False)
+    locked_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    last_heartbeat = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    expires_at = Column(DateTime, nullable=False)
+
+    shop = relationship('RamenShop', backref='edit_locks')
+    user = relationship('User', backref='shop_edit_locks')
+
+
+class ShopChangeHistory(Base):
+    """店舗変更履歴モデル"""
+    __tablename__ = 'shop_change_history'
+    __table_args__ = (
+        Index('ix_shop_change_history_shop_id', 'shop_id'),
+        Index('ix_shop_change_history_user_id', 'user_id'),
+        Index('ix_shop_change_history_changed_at', 'changed_at'),
+    )
+
+    id = Column(Integer, primary_key=True)
+    shop_id = Column(Integer, ForeignKey('ramen_shops.id'), nullable=False)
+    user_id = Column(String(80), ForeignKey('users.id'), nullable=False)
+    field_name = Column(String(50), nullable=False)
+    old_value = Column(Text, nullable=True)
+    new_value = Column(Text, nullable=True)
+    changed_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    change_type = Column(String(20), nullable=False, default='update')  # 'create', 'update', 'delete'
+
+    shop = relationship('RamenShop', backref='change_history')
+    user = relationship('User', backref='shop_change_history')

@@ -413,27 +413,44 @@ class AdminShopDetail(AdminShopSummary):
     submissions_total: int
 
 
+class AdminShopCreate(RamenShopBase):
+    wait_time: Optional[int] = None
+
+
+class AdminShopUpdate(BaseModel):
+    name: Optional[str] = None
+    address: Optional[str] = None
+    business_hours: Optional[str] = None
+    closed_day: Optional[str] = None
+    seats: Optional[str] = None
+    latitude: Optional[float] = None
+    longitude: Optional[float] = None
+    wait_time: Optional[int] = None
+
+
 class AdminShopListResponse(BaseModel):
     shops: List[AdminShopSummary]
     total: int
 
 
-class AdminShopUpdate(BaseModel):
-    name: Optional[str] = Field(None, max_length=255)
-    address: Optional[str] = Field(None, max_length=255)
-    business_hours: Optional[str] = Field(None, max_length=255)
-    closed_day: Optional[str] = Field(None, max_length=255)
-    seats: Optional[str] = Field(None, max_length=255)
-    latitude: Optional[float] = None
-    longitude: Optional[float] = None
-    wait_time: Optional[int] = Field(None, ge=0)
+class ShopLockRequest(BaseModel):
+    shop_id: int
+    # WebSocketではサーバ側で current_admin_user を使うのでここでは最低限
 
 
-class AdminShopCreate(AdminShopUpdate):
-    name: str = Field(..., max_length=255)
-    address: str = Field(..., max_length=255)
-    latitude: float
-    longitude: float
+class ShopHistoryItem(BaseModel):
+    id: int
+    field: str
+    old_value: Optional[str]
+    new_value: Optional[str]
+    changed_at: datetime
+    changed_by: str
+    change_type: str
+
+
+class ShopHistoryResponse(BaseModel):
+    history: List[ShopHistoryItem]
+    total: int
 
 
 class SubmissionUserInfo(BaseModel):

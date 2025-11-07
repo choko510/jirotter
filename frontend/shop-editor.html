@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+  <meta charset="UTF-8">
+  <title>店舗管理エディタ | Jirotter</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <link rel="stylesheet" href="/css/base.css">
+  <link rel="stylesheet" href="/css/shop-editor.css">
+</head>
+<body>
+  <header class="shop-editor-header">
+    <div class="logo">Jirotter 店舗管理エディタ</div>
+    <div class="user-info">
+      <span id="shop-editor-current-user"></span>
+      <button id="shop-editor-logout-btn" class="btn btn-outline">ログアウト</button>
+    </div>
+  </header>
+
+  <main class="shop-editor-main">
+    <section id="shop-editor-notification-area" class="notification-area" aria-live="polite"></section>
+
+    <section class="toolbar">
+      <div class="toolbar-left">
+        <input
+          id="shop-editor-search"
+          class="toolbar-input"
+          type="text"
+          placeholder="🔍 店名、住所で検索..."
+        />
+        <button id="shop-editor-filter-editing" class="btn btn-secondary">編集中のみ</button>
+        <button id="shop-editor-sort-name" class="btn btn-secondary">店名でソート</button>
+      </div>
+      <div class="toolbar-right">
+        <button id="shop-editor-show-history" class="btn">📜 変更履歴</button>
+        <button id="shop-editor-reload" class="btn">再読み込み</button>
+      </div>
+    </section>
+
+    <section class="table-wrapper">
+      <table id="shop-editor-table" class="shop-editor-table">
+        <thead>
+          <tr>
+            <th class="col-lock">状態</th>
+            <th>店名</th>
+            <th>住所</th>
+            <th>営業時間</th>
+            <th>定休日</th>
+            <th>座席数</th>
+            <th>待ち時間</th>
+            <th>最終更新</th>
+            <th>編集者</th>
+          </tr>
+        </thead>
+        <tbody id="shop-editor-tbody">
+          <!-- JSで挿入 -->
+        </tbody>
+      </table>
+    </section>
+
+    <section id="shop-editor-status-bar" class="status-bar">
+      <span id="shop-editor-record-info">0件</span>
+      <span id="shop-editor-connection-status">WebSocket: 接続中...</span>
+      <span id="shop-editor-last-updated">最終更新: -</span>
+    </section>
+  </main>
+
+  <div id="shop-editor-history-modal" class="modal hidden" aria-hidden="true">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h2>変更履歴</h2>
+        <button id="shop-editor-history-close" class="modal-close">✕</button>
+      </div>
+      <div class="modal-body">
+        <table class="history-table">
+          <thead>
+            <tr>
+              <th>日時</th>
+              <th>店舗ID</th>
+              <th>項目</th>
+              <th>変更前</th>
+              <th>変更後</th>
+              <th>変更者</th>
+            </tr>
+          </thead>
+          <tbody id="shop-editor-history-body">
+          </tbody>
+        </table>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/shop-editor.js"></script>
+</body>
+</html>

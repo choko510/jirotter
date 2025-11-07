@@ -5,8 +5,17 @@ from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, or_
 from sqlalchemy.orm import Session
 
+
 from database import get_db
-from app.models import Post, Report, RamenShop, RamenShopSubmission, User
+from app.models import (
+    Post,
+    Report,
+    RamenShop,
+    RamenShopSubmission,
+    User,
+    ShopEditLock,
+    ShopChangeHistory,
+)
 from app.schemas import (
     AdminOverviewResponse,
     AdminShopCreate,
@@ -18,6 +27,8 @@ from app.schemas import (
     AdminUserListResponse,
     AdminUserModerationUpdate,
     AdminUserSummary,
+    ShopHistoryItem,
+    ShopHistoryResponse,
 )
 from app.utils.auth import get_current_admin_user
 from app.utils.scoring import compute_effective_account_status, update_user_account_status
@@ -349,37 +360,244 @@ async def create_shop(
     return _build_shop_detail(db, shop)
 
 
+@router.post("/shops/{shop_id}/lock")
+async def acquire_shop_lock(
+    shop_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user),
+):
+    """
+    店舗編集ロック取得 API
+
+    - 既に他ユーザーがロックしている場合は成功=Falseを返す
+    - 自分のロックが存在する場合は有効期限を延長
+    """
+    now = datetime.utcnow()
+
+    existing = (
+        db.query(ShopEditLock)
+        .filter(ShopEditLock.shop_id == shop_id)
+        .first()
+    )
+
+    if existing:
+        # 自分のロックなら延長
+        if existing.user_id == current_user.id:
+            existing.last_heartbeat = now
+            existing.expires_at = now + timedelta(minutes=5)
+            db.commit()
+            db.refresh(existing)
+            return {
+                "success": True,
+                "lock": {
+                    "shop_id": shop_id,
+                    "user_id": existing.user_id,
+                    "expires_at": existing.expires_at,
+                },
+            }
+
+        # 有効期限切れなら再取得を許可
+        if existing.expires_at <= now:
+            db.delete(existing)
+            db.commit()
+        else:
+            locked_by = existing.user.username if existing.user and existing.user.username else existing.user_id
+            return {
+                "success": False,
+                "error": "already_locked",
+                "locked_by": locked_by,
+                "locked_at": existing.locked_at,
+            }
+
+    new_lock = ShopEditLock(
+        shop_id=shop_id,
+        user_id=current_user.id,
+        locked_at=now,
+        last_heartbeat=now,
+        expires_at=now + timedelta(minutes=5),
+    )
+    db.add(new_lock)
+    db.commit()
+    db.refresh(new_lock)
+
+    return {
+        "success": True,
+        "lock": {
+            "shop_id": shop_id,
+            "user_id": new_lock.user_id,
+            "expires_at": new_lock.expires_at,
+        },
+    }
+
+
+@router.delete("/shops/{shop_id}/lock")
+async def release_shop_lock(
+    shop_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user),
+):
+    """
+    店舗編集ロック解放 API
+    """
+    lock = (
+        db.query(ShopEditLock)
+        .filter(ShopEditLock.shop_id == shop_id)
+        .first()
+    )
+    if not lock:
+        return {"success": True, "message": "ロックは存在しません"}
+
+    if lock.user_id != current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="他人のロックは解放できません",
+        )
+
+    db.delete(lock)
+    db.commit()
+    return {"success": True, "message": "ロックを解放しました"}
+
+
+@router.put("/shops/{shop_id}/lock/heartbeat")
+async def update_shop_lock_heartbeat(
+    shop_id: int,
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_admin_user),
+):
+    """
+    店舗編集ロックのハートビート更新 API
+    """
+    lock = (
+        db.query(ShopEditLock)
+        .filter(ShopEditLock.shop_id == shop_id, ShopEditLock.user_id == current_user.id)
+        .first()
+    )
+    if not lock:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="有効なロックが見つかりません",
+        )
+
+    now = datetime.utcnow()
+    lock.last_heartbeat = now
+    lock.expires_at = now + timedelta(minutes=5)
+    db.commit()
+    db.refresh(lock)
+
+    return {"success": True, "expires_at": lock.expires_at}
+
+
+@router.get("/shops/{shop_id}/history", response_model=ShopHistoryResponse)
+async def get_shop_history(
+    shop_id: int,
+    limit: int = Query(50, ge=1, le=200),
+    offset: int = Query(0, ge=0),
+    field: Optional[str] = Query(None, description="フィールド名でフィルター"),
+    db: Session = Depends(get_db),
+    _: User = Depends(get_current_admin_user),
+):
+    """
+    店舗の変更履歴取得 API
+    """
+    query = db.query(ShopChangeHistory).filter(ShopChangeHistory.shop_id == shop_id)
+
+    if field:
+        query = query.filter(ShopChangeHistory.field_name == field)
+
+    total = query.count()
+    rows = (
+        query.order_by(ShopChangeHistory.changed_at.desc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
+
+    history_items: List[ShopHistoryItem] = []
+    for h in rows:
+        changed_by = h.user.username if h.user and h.user.username else h.user_id
+        history_items.append(
+            ShopHistoryItem(
+                id=h.id,
+                field=h.field_name,
+                old_value=h.old_value,
+                new_value=h.new_value,
+                changed_at=h.changed_at,
+                changed_by=changed_by,
+                change_type=h.change_type,
+            )
+        )
+
+    return ShopHistoryResponse(history=history_items, total=total)
+
+
 @router.patch("/shops/{shop_id}", response_model=AdminShopDetail)
 async def update_shop(
     shop_id: int,
     payload: AdminShopUpdate,
     db: Session = Depends(get_db),
-    _: User = Depends(get_current_admin_user),
+    admin_user: User = Depends(get_current_admin_user),
 ):
+    """
+    店舗情報更新 API（部分更新 + ロック確認 + 履歴記録）
+
+    WebSocket からの更新と整合性を保つため、行ロックが存在し他人が保持している場合は 409 を返す。
+    """
     shop = db.query(RamenShop).filter(RamenShop.id == shop_id).first()
     if not shop:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="店舗が見つかりません")
 
-    if payload.name is not None:
-        shop.name = payload.name
-    if payload.address is not None:
-        shop.address = payload.address
-    if payload.business_hours is not None:
-        shop.business_hours = payload.business_hours
-    if payload.closed_day is not None:
-        shop.closed_day = payload.closed_day
-    if payload.seats is not None:
-        shop.seats = payload.seats
-    if payload.latitude is not None:
-        shop.latitude = payload.latitude
-    if payload.longitude is not None:
-        shop.longitude = payload.longitude
-    if payload.wait_time is not None:
-        shop.wait_time = payload.wait_time
+    # ロック状態確認（存在し、他人が保持している場合は更新拒否）
+    lock = (
+        db.query(ShopEditLock)
+        .filter(ShopEditLock.shop_id == shop_id)
+        .first()
+    )
+    now = datetime.utcnow()
+    if lock and lock.expires_at > now and lock.user_id != admin_user.id:
+        locked_by = lock.user.username if lock.user and lock.user.username else lock.user_id
+        raise HTTPException(
+            status_code=status.HTTP_409_CONFLICT,
+            detail=f"この店舗は{locked_by}が編集中です",
+        )
 
-    shop.last_update = datetime.utcnow()
+    old_values = {}
+    new_values = {}
 
-    db.add(shop)
-    db.commit()
-    db.refresh(shop)
+    def set_field(field: str, new_val):
+        nonlocal old_values, new_values
+        current = getattr(shop, field)
+        if new_val is not None and current != new_val:
+            old_values[field] = current
+            new_values[field] = new_val
+            setattr(shop, field, new_val)
+
+    set_field("name", payload.name)
+    set_field("address", payload.address)
+    set_field("business_hours", payload.business_hours)
+    set_field("closed_day", payload.closed_day)
+    set_field("seats", payload.seats)
+    set_field("latitude", payload.latitude)
+    set_field("longitude", payload.longitude)
+    set_field("wait_time", payload.wait_time)
+
+    if old_values:
+        shop.last_update = now
+        db.add(shop)
+        db.commit()
+        db.refresh(shop)
+
+        # 変更履歴を記録
+        for field, old_val in old_values.items():
+            history = ShopChangeHistory(
+                shop_id=shop_id,
+                user_id=admin_user.id,
+                field_name=field,
+                old_value=str(old_val) if old_val is not None else None,
+                new_value=str(new_values[field]) if new_values[field] is not None else None,
+                changed_at=now,
+                change_type="update",
+            )
+            db.add(history)
+        db.commit()
+
     return _build_shop_detail(db, shop)

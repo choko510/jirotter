@@ -170,6 +170,7 @@ class Router {
     // 404ページのレンダリング
     renderNotFound() {
         const contentArea = document.getElementById('contentArea');
+        if (!contentArea) return;
         contentArea.innerHTML = `
             <div class="error">
                 <div>
@@ -190,6 +191,10 @@ document.addEventListener('DOMContentLoaded', function() {
     // 店舗詳細ページのルートを登録
     router.register('shop', ShopDetailComponent);
     
+    // 店舗管理エディタは専用ページ (/admin/shop-editor) として提供するため
+    // SPAルーター上の 'admin-shop-editor' ルートは利用しない。
+    // （既存ハッシュナビゲーションと混在させず、URL直打ち or 外部リンクで遷移）
+
     // スタンプラリーページのルートを登録
     if (typeof StampRallyComponent !== 'undefined') {
         router.register('stamp-rally', StampRallyComponent);

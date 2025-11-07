@@ -26,6 +26,7 @@ from app.routes.stamps import router as stamps_router
 from app.routes.visits import router as visits_router
 from app.routes.shop_submissions import router as shop_submissions_router
 from app.routes.admin import router as admin_router
+from app.routes.shop_editor_ws import router as shop_editor_ws_router
 from app.models import User
 from app.utils.auth import verify_token
 
@@ -199,6 +200,12 @@ def create_app():
     app.include_router(admin_router, prefix=settings.API_V1_STR)
 
     def render_html(filename: str) -> HTMLResponse:
+        """
+        frontend/{filename} を読み込み、DEBUG 時のみ query パラメータ付きの
+        CSS/JS/asset パスに書き換える。
+        ここでは base.html 等の相対パス (css/..., js/...) のみを対象とし、
+        ルートプレフィックスや /admin/... などには余計な付与をしない。
+        """
         template_path = os.path.join(os.path.dirname(__file__), "..", f"frontend/{filename}")
         with open(template_path, "r", encoding="utf-8") as f:
             content = f.read()
@@ -210,16 +217,19 @@ def create_app():
             random_str = ''.join(random.choices(string.ascii_letters + string.digits, k=8))
             cache_bust_param = f"v={timestamp}_{random_str}"
 
-            def _append_cache_bust(pattern: str, source: str) -> str:
+            # href="css/..." / src="js/..." / src="assets/..." にだけ付与する
+            def _append_cache_bust(prefix: str, attr: str, source: str) -> str:
+                # prefix は css|js|assets を想定
+                pattern = rf'({attr}="{prefix}/[^"?"]+)(\")'
                 return re.sub(
                     pattern,
-                    lambda m: f"{m.group(1)}?{cache_bust_param}\"",
+                    lambda m: f'{m.group(1)}?{cache_bust_param}{m.group(2)}',
                     source,
                 )
 
-            content = _append_cache_bust(r'(href="css/[^"]+)"', content)
-            content = _append_cache_bust(r'(src="js/[^"]+)"', content)
-            content = _append_cache_bust(r'(src="assets/[^"]+)"', content)
+            content = _append_cache_bust("css", "href", content)
+            content = _append_cache_bust("js", "src", content)
+            content = _append_cache_bust("assets", "src", content)
 
         headers = {}
         if settings.DEVELOPMENT:
@@ -235,11 +245,6 @@ def create_app():
     async def read_index():
         """index.htmlを返すエンドポイント"""
         return render_html("index.html")
-
-    @app.get("/explanation", response_class=HTMLResponse)
-    async def explanation_page():
-        """explanation.htmlを返すエンドポイント"""
-        return render_html("explanation.html")
 
     @app.get("/contribute", response_class=HTMLResponse)
     async def contribute_page():
@@ -266,6 +271,29 @@ def create_app():
             db.close()
 
         return render_html("admin-review.html")
+
+    @app.get("/admin/shop-editor", response_class=HTMLResponse)
+    async def admin_shop_editor_page(request: Request):
+        """店舗管理エディタページ (shop-editor.html) を返すエンドポイント"""
+        token = request.cookies.get("authToken")
+        if not token:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ページが見つかりません")
+
+        user_id = verify_token(token)
+        if user_id is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ページが見つかりません")
+
+        db = SessionLocal()
+        try:
+            user = db.query(User).filter(User.id == user_id).first()
+        finally:
+            db.close()
+
+        if not user or not getattr(user, "is_admin", False):
+            # 管理者以外には存在しないページとして扱う
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ページが見つかりません")
+
+        return render_html("shop-editor.html")
 
     @app.get("/admin/dashboard", response_class=HTMLResponse)
     async def admin_dashboard_page(request: Request):
