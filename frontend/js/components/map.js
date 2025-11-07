@@ -446,16 +446,23 @@ const MapComponent = {
                 max-height: none; /* 高さ制限を解除し、すべてのフィルターが表示されるようにする */
                 overflow: hidden;
                 transition: max-height 0.5s ease-in-out;
+                margin-top: 12px;
             }
 
             .collapsible-filters.collapsed {
                 max-height: 0;
+                margin-top: 0;
             }
             
             .map-controls {
                 display: flex;
                 gap: 12px;
                 margin-top: 12px;
+            }
+
+            .map-controls--persistent {
+                justify-content: flex-end;
+                margin-top: 0;
             }
             
             .map-search {
@@ -1153,7 +1160,7 @@ const MapComponent = {
 
         const toggleBtn = document.createElement('button');
         toggleBtn.id = 'toggle-filters-btn';
-        toggleBtn.className = 'toggle-filters-btn';
+        toggleBtn.className = 'toggle-filters-btn collapsed';
         toggleBtn.onclick = () => this.toggleFilters();
         toggleBtn.innerHTML = '<i class="fas fa-chevron-up"></i>'; // 初期アイコン
 
@@ -1161,31 +1168,29 @@ const MapComponent = {
         titleContainer.appendChild(toggleBtn);
         header.appendChild(titleContainer);
 
-        // 開閉可能なフィルターコンテナ
-        const collapsibleContainer = document.createElement('div');
-        collapsibleContainer.id = 'collapsible-filters';
-        collapsibleContainer.className = 'collapsible-filters';
-
-        // コントロール
+        // 検索・現在地など常に利用可能なコントロール
         const controls = document.createElement('div');
-        controls.className = 'map-controls';
-        
-        // 検索
+        controls.className = 'map-controls map-controls--persistent';
+
         const searchBtn = document.createElement('button');
         searchBtn.className = 'map-filter-btn';
         searchBtn.onclick = () => this.openSearchModal();
         searchBtn.innerHTML = '<i class="fas fa-search"></i> 検索';
-        
-        // 現在地ボタン
+
         const locationBtn = document.createElement('button');
         locationBtn.className = 'map-filter-btn';
         locationBtn.onclick = () => this.getCurrentLocation();
         locationBtn.innerHTML = '<i class="fas fa-location-arrow"></i> 現在地';
-        
+
         controls.appendChild(searchBtn);
         controls.appendChild(locationBtn);
-        collapsibleContainer.appendChild(controls);
-        
+        header.appendChild(controls);
+
+        // 開閉可能なフィルターコンテナ
+        const collapsibleContainer = document.createElement('div');
+        collapsibleContainer.id = 'collapsible-filters';
+        collapsibleContainer.className = 'collapsible-filters collapsed';
+
         // ブランドフィルター
         const brandFilters = document.createElement('div');
         brandFilters.className = 'brand-filters';
