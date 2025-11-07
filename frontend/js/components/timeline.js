@@ -1341,43 +1341,12 @@ const TimelineComponent = {
                         <label for="reportReason">通報理由</label>
                         <select id="reportReason">
                             <option value="">選択してください</option>
-                            <optgroup label="スパム・宣伝">
-                                <option value="スパム・広告">スパム・広告</option>
-                                <option value="過度な宣伝">過度な宣伝</option>
-                                <option value="繰り返し投稿">繰り返し投稿</option>
-                            </optgroup>
-                            <optgroup label="不適切な内容">
-                                <option value="暴力的・グロテスクな内容">暴力的・グロテスクな内容</option>
-                                <option value="性的な内容">性的な内容</option>
-                                <option value="不快な表現">不快な表現</option>
-                            </optgroup>
-                            <optgroup label="ヘイトスピーチ・差別">
-                                <option value="人種・民族差別">人種・民族差別</option>
-                                <option value="性差別">性差別</option>
-                                <option value="障害者差別">障害者差別</option>
-                                <option value="その他の差別">その他の差別</option>
-                            </optgroup>
-                            <optgroup label="ハラスメント">
-                                <option value="個人攻撃">個人攻撃</option>
-                                <option value="脅迫">脅迫</option>
-                                <option value="いじめ">いじめ</option>
-                                <option value="ストーカー行為">ストーカー行為</option>
-                            </optgroup>
-                            <optgroup label="偽情報">
-                                <option value="デマ・偽情報">デマ・偽情報</option>
-                                <option value="医療・健康に関する誤情報">医療・健康に関する誤情報</option>
-                                <option value="政治に関する誤情報">政治に関する誤情報</option>
-                            </optgroup>
-                            <optgroup label="著作権侵害">
-                                <option value="無断転載">無断転載</option>
-                                <option value="画像の無断使用">画像の無断使用</option>
-                                <option value="その他の著作権侵害">その他の著作権侵害</option>
-                            </optgroup>
-                            <optgroup label="その他">
-                                <option value="プライバシー侵害">プライバシー侵害</option>
-                                <option value="自殺・自傷を助長する内容">自殺・自傷を助長する内容</option>
-                                <option value="その他">その他</option>
-                            </optgroup>
+                            <option value="スパム・広告">スパム・広告</option>
+                            <option value="性的な内容">性的な内容</option>
+                            <option value="差別・攻撃的な内容">差別・攻撃的な内容</option>
+                            <option value="デマ・偽情報">デマ・偽情報</option>
+                            <option value="権利侵害">権利侵害</option>
+                            <option value="その他">その他</option>
                         </select>
                     </div>
                 </div>

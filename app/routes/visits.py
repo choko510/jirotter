@@ -79,7 +79,8 @@ def create_visit(
         "created_at": visit_with_relations.created_at,
         "shop_name": visit_with_relations.shop.name,
         "shop_address": visit_with_relations.shop.address,
-        "author_username": visit_with_relations.user.username,
+        # username は任意入力のため None の場合は id をフォールバック
+        "author_username": visit_with_relations.user.username or visit_with_relations.user.id,
     }
 
     return VisitResponse.model_validate(response_data)
@@ -125,7 +126,8 @@ def get_my_visits(
                 "created_at": visit.created_at,
                 "shop_name": visit.shop.name,
                 "shop_address": visit.shop.address,
-                "author_username": visit.user.username,
+                # username は任意入力なので None の場合は id を返す
+                "author_username": visit.user.username or visit.user.id,
             })
         )
 

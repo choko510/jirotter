@@ -1,6 +1,13 @@
+import os
 import pytest
 from playwright.sync_api import Page, expect
 import uuid
+
+# Playwright 環境がない場合はこのモジュール全体をスキップ
+pytestmark = pytest.mark.skipif(
+    "PLAYWRIGHT_BROWSERS_PATH" not in os.environ,
+    reason="Playwright environment not configured",
+)
 
 # Generate a unique user ID for each test run to avoid conflicts
 TEST_USER_ID = f"testuser_{uuid.uuid4().hex[:8]}"

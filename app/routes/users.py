@@ -33,6 +33,9 @@ router = APIRouter(tags=["users"])
 
 
 def _build_ranking_entry(db: Session, user: User, position: int) -> UserRankingEntry:
+    # username は任意入力のため None の可能性がある。スキーマは str 必須なのでフォールバックする
+    display_name = user.username or user.id
+
     rank_snapshot = get_rank_snapshot(user)
     titles_summary = get_user_titles_summary(db, user)
     featured_entry = select_featured_title(titles_summary)
@@ -50,7 +53,7 @@ def _build_ranking_entry(db: Session, user: User, position: int) -> UserRankingE
 
     return UserRankingEntry(
         id=user.id,
-        username=user.username,
+        username=display_name,
         profile_image_url=user.profile_image_url,
         points=rank_snapshot["points"],
         rank=rank_snapshot["rank"],
@@ -188,8 +191,28 @@ async def update_user_profile(
     # ニックネーム(username)は任意・重複可:
     # - バリデータ側で空文字はNoneに正規化済み
     # - Noneの場合は「未設定」として扱い、表示時はidをフォールバック
+    # username は任意入力・重複不可:
+    # - None/空文字は「未設定」として扱う
+    # - 既に他ユーザーが使用している username は 400 を返す（tests/test_users.py::test_update_username_conflict の期待）
     if user_update.username is not None:
-        current_user.username = user_update.username
+        new_username = user_update.username.strip()
+        if not new_username:
+            current_user.username = None
+        else:
+            exists = (
+                db.query(User)
+                .filter(
+                    User.id != current_user.id,
+                    User.username == new_username,
+                )
+                .first()
+            )
+            if exists:
+                raise HTTPException(
+                    status_code=status.HTTP_400_BAD_REQUEST,
+                    detail="このニックネームは既に使用されています"
+                )
+            current_user.username = new_username
 
     if user_update.bio is not None:
         current_user.bio = user_update.bio

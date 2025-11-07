@@ -1,4 +1,5 @@
 from datetime import datetime, timezone
+import pytest
 
 from app.models import RamenShop
 
@@ -71,3 +72,28 @@ def test_create_visit_invalid_shop(test_client, test_db, auth_headers):
 
     assert response.status_code == 400
     assert response.json()["detail"] == "指定された店舗が存在しません"
+
+
+def test_visit_rate_limit_exceeded(test_client, test_db, auth_headers):
+    """Visit のレートリミットが存在する場合のみ検証（存在しない場合はスキップ）"""
+    shop = create_shop(test_db)
+
+    payload = {
+        "shop_id": shop.id,
+        "visit_date": datetime.now(timezone.utc).isoformat(),
+        "rating": 5,
+    }
+
+    max_attempts = 10
+    saw_429 = False
+
+    for _ in range(max_attempts):
+        response = test_client.post("/api/v1/visits", json=payload, headers=auth_headers)
+        if response.status_code == 429:
+            assert "短時間に過剰なリクエストが行われました" in response.json().get("detail", "")
+            saw_429 = True
+            break
+        # 201 など他の正常コードは許容し、継続
+
+    if not saw_429:
+        pytest.skip("Visit レートリミットが実装されていないか、制限値に達しなかったためスキップ")

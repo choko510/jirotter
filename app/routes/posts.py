@@ -362,7 +362,8 @@ async def get_posts(
                 "id": post.id,
                 "content": post.content,
                 "user_id": post.user_id,
-                "author_username": post.author.username,
+                # username は任意入力のため None の場合は id をフォールバック
+                "author_username": post.author.username or post.author.id,
                 "author_profile_image_url": post.author.profile_image_url,
                 "image_url": post.image_url,  # 後方互換性
                 "thumbnail_url": post.thumbnail_url,
@@ -442,7 +443,8 @@ async def get_post(
         "id": post.id,
         "content": post.content,
         "user_id": post.user_id,
-        "author_username": post.author.username,
+        # username は任意入力のため None の場合は id をフォールバック
+        "author_username": post.author.username or post.author.id,
         "author_profile_image_url": post.author.profile_image_url,
         "image_url": post.image_url,  # 後方互換性
         "thumbnail_url": post.thumbnail_url,

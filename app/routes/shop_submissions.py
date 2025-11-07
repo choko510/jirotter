@@ -29,7 +29,8 @@ def _serialize_submission(submission: RamenShopSubmission) -> RamenShopSubmissio
     if submission.reviewer:
         reviewer_info = SubmissionUserInfo(
             id=submission.reviewer.id,
-            username=submission.reviewer.username,
+            # username は任意入力のため None の場合は id をフォールバック
+            username=submission.reviewer.username or submission.reviewer.id,
         )
 
     return RamenShopSubmissionResponse(

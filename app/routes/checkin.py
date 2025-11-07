@@ -351,7 +351,11 @@ async def create_checkin(
         .first()
     )
     if last_user_checkin:
-        elapsed = now - last_user_checkin.checkin_date
+        last_dt = last_user_checkin.checkin_date
+        # last_dt が naive（tz情報なし）の場合は UTC として扱う
+        if last_dt.tzinfo is None or last_dt.tzinfo.utcoffset(last_dt) is None:
+            last_dt = last_dt.replace(tzinfo=timezone.utc)
+        elapsed = now - last_dt
         if elapsed < timedelta(minutes=30):
             remaining = timedelta(minutes=30) - elapsed
             raise HTTPException(
@@ -370,7 +374,11 @@ async def create_checkin(
         .first()
     )
     if last_same_shop_checkin:
-        elapsed_shop = now - last_same_shop_checkin.checkin_date
+        last_shop_dt = last_same_shop_checkin.checkin_date
+        # last_shop_dt が naive（tz情報なし）の場合は UTC として扱う
+        if last_shop_dt.tzinfo is None or last_shop_dt.tzinfo.utcoffset(last_shop_dt) is None:
+            last_shop_dt = last_shop_dt.replace(tzinfo=timezone.utc)
+        elapsed_shop = now - last_shop_dt
         if elapsed_shop < timedelta(hours=3):
             remaining = timedelta(hours=3) - elapsed_shop
             raise HTTPException(

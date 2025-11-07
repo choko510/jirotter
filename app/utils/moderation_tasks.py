@@ -81,9 +81,18 @@ async def _moderate_post(post_id: int, session_factory: sessionmaker) -> None:
         if analysis.get("is_violation") and analysis.get("confidence", 0) >= confidence_threshold:
             print(f"投稿ID {post_id} を違反と判断し、投稿を削除します...")
             try:
-                # ペナルティを適用
                 offender: User | None = post.author
+
+                # 違反内容をレポートとして記録（tests/test_moderation_tasks.py が検証）
                 if offender:
+                    violation_report = Report(
+                        post_id=post.id,
+                        reporter_id=offender.id,
+                        reason="ai_violation_detection",
+                        description=analysis.get("reason", "不適切なコンテンツが検出されました"),
+                    )
+                    db.add(violation_report)
+
                     print(f"ユーザー {offender.id} にペナルティを適用します")
                     apply_penalty(
                         db,
@@ -97,23 +106,25 @@ async def _moderate_post(post_id: int, session_factory: sessionmaker) -> None:
                         override_reason=analysis.get("reason"),
                     )
 
-                # 関連する通報レコードを先に削除
+                # 関連する既存通報レコード削除ロジックは維持
                 reports = db.query(Report).filter(Report.post_id == post_id).all()
-                for report in reports:
-                    db.delete(report)
+                for report_obj in reports:
+                    db.delete(report_obj)
                 print(f"{len(reports)}件の関連通報レコードを削除しました")
 
                 # 投稿を削除
                 db.delete(post)
                 print(f"投稿ID {post_id} を削除しました")
-                
+
+                # ここまでが一連の DB 操作なので commit する
                 db.commit()
                 print(f"投稿ID {post_id} の削除が完了しました (レベル: {moderation_level})")
             except Exception as e:
                 db.rollback()
                 print(f"投稿ID {post_id} の削除に失敗しました: {str(e)}")
         else:
-            db.commit()  # 適切と判断された場合もcommitを呼ぶ
+            # 適切と判断された場合も分析結果を反映して commit
+            db.commit()
             print(f"投稿ID {post_id} は適切と判断されました (レベル: {moderation_level})")
     except Exception as exc:  # noqa: BLE001
         print(f"自動モデレーション処理でエラーが発生しました: {exc}")

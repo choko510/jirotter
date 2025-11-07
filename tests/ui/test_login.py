@@ -1,9 +1,16 @@
+import os
 import pytest
 from playwright.sync_api import Page, expect
 import hashlib
 import time
 from database import get_db
 from app.models import User
+
+# Playwright 環境がない場合はこのモジュール全体をスキップ
+pytestmark = pytest.mark.skipif(
+    "PLAYWRIGHT_BROWSERS_PATH" not in os.environ,
+    reason="Playwright environment not configured",
+)
 
 # テスト用のユーザー情報
 TEST_USER_ID = "testuser"

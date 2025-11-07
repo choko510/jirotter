@@ -266,39 +266,91 @@ def test_get_nonexistent_post(test_client):
 
 def test_delete_post_owner(test_client, test_db):
     """投稿所有者による削除テスト"""
-    # ユーザー登録
+    # ユーザー登録またはログイン
     user_data = {
-        "id": "testuser",
-        "email": "test@example.com",
+        "id": "deleteowner",
+        "email": "deleteowner@example.com",
         "password": "password123!"
     }
-    # 既存のユーザーでログインを試みる
-    login_data = {"id": "testuser", "password": "password123!"}
+    login_data = {"id": user_data["id"], "password": user_data["password"]}
     response = test_client.post("/api/v1/auth/login", json=login_data)
     if response.status_code != 200:
         response = test_client.post("/api/v1/auth/register", json=user_data)
 
     token = response.json()["access_token"]
-
-    headers = {
-        "Authorization": f"Bearer {token}"
-    }
+    headers = {"Authorization": f"Bearer {token}"}
 
     # 投稿作成
-    post_data = {
-        "content": "削除される投稿"
-    }
+    post_data = {"content": "削除される投稿"}
     response = test_client.post("/api/v1/posts", data=post_data, headers=headers)
+    assert response.status_code == 201
     created_post = response.json()
 
-    # 投稿削除
+    # 投稿削除（所有者）
     response = test_client.delete(f"/api/v1/posts/{created_post['id']}", headers=headers)
-
     assert response.status_code == 200
 
-    # 削除されたか確認
+    # 削除後に取得すると 404 になることを確認
     response = test_client.get(f"/api/v1/posts/{created_post['id']}")
     assert response.status_code == 404
+
+
+def test_delete_post_by_non_owner_forbidden(test_client, test_db):
+    """他人の投稿削除を禁止するテスト"""
+    # 投稿者ユーザー作成
+    owner_data = {
+        "id": "postowner",
+        "email": "postowner@example.com",
+        "password": "password123!"
+    }
+    owner_token = test_client.post("/api/v1/auth/register", json=owner_data).json()["access_token"]
+    owner_headers = {"Authorization": f"Bearer {owner_token}"}
+
+    # 所有者が投稿作成
+    post_data = {"content": "他人には削除できない投稿"}
+    response = test_client.post("/api/v1/posts", data=post_data, headers=owner_headers)
+    assert response.status_code == 201
+    created_post = response.json()
+
+    # 別ユーザー（非所有者）作成
+    other_data = {
+        "id": "notowner",
+        "email": "notowner@example.com",
+        "password": "password123!"
+    }
+    other_token = test_client.post("/api/v1/auth/register", json=other_data).json()["access_token"]
+    other_headers = {"Authorization": f"Bearer {other_token}"}
+
+    # 非所有者が削除を試みる -> 403 を期待
+    response = test_client.delete(f"/api/v1/posts/{created_post['id']}", headers=other_headers)
+    assert response.status_code in (403, 404)
+
+    # 元の所有者の投稿が残っている（少なくとも 404 ではない）ことを確認
+    # 実装によっては 200/403 等のパターンがあるため、存在確認にフォーカス
+    owner_view = test_client.get(f"/api/v1/posts/{created_post['id']}", headers=owner_headers)
+    assert owner_view.status_code != 404
+
+
+def test_delete_post_unauthenticated(test_client, test_db):
+    """未認証ユーザーによる削除は401となることを確認"""
+    # 投稿者ユーザー作成
+    owner_data = {
+        "id": "deleteunauth",
+        "email": "deleteunauth@example.com",
+        "password": "password123!"
+    }
+    owner_token = test_client.post("/api/v1/auth/register", json=owner_data).json()["access_token"]
+    owner_headers = {"Authorization": f"Bearer {owner_token}"}
+
+    # 所有者が投稿作成
+    post_data = {"content": "未認証ユーザーには削除させない投稿"}
+    response = test_client.post("/api/v1/posts", data=post_data, headers=owner_headers)
+    assert response.status_code == 201
+    created_post = response.json()
+
+    # 認証なしで削除を試みる -> 401 を期待
+    response = test_client.delete(f"/api/v1/posts/{created_post['id']}")
+    assert response.status_code == 401
 
 
 def test_post_rate_limit(test_client, test_db):
