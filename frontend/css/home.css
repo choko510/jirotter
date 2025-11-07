@@ -73,10 +73,25 @@ body {
     }
 
     /* メインは常に表示。左右サイドバーはモバイルでは非表示にし、
-       左サイドバーは .show クラス時のみスライドインさせる */
+       左サイドバーは .show クラス時のみスライドインさせる
+       (スマホ環境下ではleft-sidebarをデフォルトで非表示) */
     .left-sidebar,
     .right-sidebar {
-        display: none;
+        display: none !important;
+    }
+
+    .left-sidebar.show {
+        display: flex !important;
+        position: fixed;
+        top: 0;
+        left: 0;
+        bottom: 0;
+        width: 80%;
+        max-width: 300px;
+        background: var(--color-surface);
+        z-index: 1000;
+        transform: translateX(0);
+        box-shadow: 2px 0 10px rgba(47, 37, 25, 0.12);
     }
 
     .left-sidebar.show {
@@ -287,6 +302,8 @@ body {
     border-radius: 2px;
 }
 
+/* 共通ボタンスタイル */
+.primary-button,
 .propose-button,
 .contribute-button {
     display: inline-flex;
@@ -303,12 +320,14 @@ body {
     white-space: nowrap;
 }
 
+.primary-button:hover,
 .propose-button:hover,
 .contribute-button:hover {
     transform: translateY(-2px);
     box-shadow: var(--shadow-md);
 }
 
+.primary-button i,
 .propose-button i,
 .contribute-button i {
     font-size: 1rem;
@@ -431,6 +450,8 @@ body {
     right: 20px;
     bottom: 100px;
     display: none;
+    z-index: 1100;
+    /* 共通ボタンスタイルを継承 */
     align-items: center;
     gap: 8px;
     background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
@@ -440,7 +461,6 @@ body {
     font-weight: 600;
     text-decoration: none;
     box-shadow: var(--shadow-md);
-    z-index: 1100;
     transition: transform 0.25s ease, box-shadow 0.25s ease;
 }
 
@@ -458,7 +478,7 @@ body {
     background: rgba(255, 255, 255, 0.96);
     border-top: 1px solid rgba(231, 220, 205, 0.8);
     padding: 10px 0;
-    z-index: 100;
+    z-index: 2000;
     backdrop-filter: blur(14px);
 }
 
@@ -898,50 +918,59 @@ body {
 }
 
 /* ---------------------------------------
-   Dark mode
+   Dark mode (unified tokens)
 --------------------------------------- */
-html.dark-mode, .dark-mode body {
-    background-color: var(--color-text);
-    color: rgba(231, 220, 205, 0.7);
+html.dark-mode,
+.dark-mode body {
+    background-color: var(--app-bg);
+    color: var(--app-text-main);
 }
 
-.dark-mode .left-sidebar,
+/* Left sidebar in dark mode:
+   - Slightly raised surface
+   - Clear separation from background
+   - Soft border using app-border-subtle
+*/
+.dark-mode .left-sidebar {
+    background-color: var(--app-surface);
+    border-right: 1px solid var(--app-border-subtle);
+    color: var(--app-text-main);
+}
+
+/* Main/right columns keep subtle separators */
 .dark-mode .main-content,
 .dark-mode .right-sidebar {
-    border-color: var(--color-text);
+    background-color: var(--app-bg);
+    border-color: var(--app-border-subtle);
 }
 
 .dark-mode .nav-item:hover {
-    background: #2a2a2a;
+    background: var(--app-surface-muted);
 }
-
 .dark-mode .nav-item.active {
-    background: rgba(212, 165, 116, 0.1);
-    color: var(--color-primary);
+    background: var(--app-primary-soft);
+    color: var(--app-primary);
 }
 
-.dark-mode .main-content,
-.dark-mode .right-sidebar,
 .dark-mode .bottom-nav,
 .dark-mode .mobile-menu-content,
 .dark-mode .mobile-search {
-    background-color: var(--color-text);
+    background-color: var(--app-bg);
 }
 
 .dark-mode .bottom-nav-item {
-    color: #bbb;
+    color: var(--app-text-muted);
 }
 
 .dark-mode .bottom-nav-item.active {
-    color: #f0cfa2;
+    color: var(--app-primary);
 }
 
 .dark-mode .bottom-nav-checkin-label {
-    color: #f0cfa2;
+    color: var(--app-primary);
 }
-
 .dark-mode .bottom-nav-checkin-button {
-    box-shadow: 0 6px 16px rgba(0, 0, 0, 0.45);
+    box-shadow: var(--shadow-sm);
 }
 
 .dark-mode .bottom-nav-checkin-button:hover {
@@ -1058,6 +1087,7 @@ html.dark-mode, .dark-mode body {
 @media (prefers-reduced-motion: reduce) {
     .nav-item,
     .tab,
+    .primary-button,
     .propose-button,
     .contribute-button,
     .floating-propose-button {

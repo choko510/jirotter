@@ -833,9 +833,11 @@ const TimelineComponent = {
                     <button class="engagement-btn" onclick="event.stopPropagation(); TimelineComponent.handleLike(${post.id})">
                         <i class="fas fa-heart ${post.isLiked ? 'liked' : ''}"></i> <span>${post.engagement.likes}</span>
                     </button>
+                    ${!isOwner ? `
                     <button class="engagement-btn" onclick="event.stopPropagation(); TimelineComponent.openReportModal(${post.id})" title="通報">
                         <i class="fas fa-flag"></i>
                     </button>
+                    ` : ''}
                     ${isOwner ? `
                     <button class="engagement-btn" onclick="event.stopPropagation(); TimelineComponent.confirmAndDeletePost(${post.id})" title="削除">
                         <i class="fas fa-trash"></i>

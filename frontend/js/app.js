@@ -634,6 +634,16 @@ const API = {
     async getAuthStatus() {
         try {
             const data = await this.request('/api/v1/auth/status');
+            
+            // 存在しないアカウント or 未認証の場合はクッキー削除 + リロードで強制ログアウト
+            if (!data || data.authenticated === false) {
+                this.deleteCookie('authToken');
+                this.deleteCookie('user');
+                // ページ全体をリロードして状態をクリーンにする
+                window.location.reload();
+                return { success: false, status: data || null };
+            }
+
             return { success: true, status: data };
         } catch (error) {
             console.error('認証状態の取得に失敗しました:', error);
@@ -649,11 +659,27 @@ const Utils = {
         const sidebar = document.getElementById('leftSidebar');
         const overlay = document.getElementById('sidebarOverlay');
         
-        sidebar.classList.toggle('show');
-        overlay.classList.toggle('show');
-        
-        if (sidebar.classList.contains('show')) {
+        if (!sidebar || !overlay) return;
+
+        const isOpening = !sidebar.classList.contains('show');
+
+        // 開閉トグル
+        sidebar.classList.toggle('show', isOpening);
+        overlay.classList.toggle('show', isOpening);
+
+        if (isOpening) {
             document.body.style.overflow = 'hidden';
+
+            // サイドバー内メニュークリック時に確実に自動クローズ
+            const menuLinks = sidebar.querySelectorAll('a, button, [data-close-sidebar]');
+            menuLinks.forEach(link => {
+                // 既存のハンドラを壊さず、バブリングで拾う
+                link.addEventListener('click', () => {
+                    sidebar.classList.remove('show');
+                    overlay.classList.remove('show');
+                    document.body.style.overflow = 'auto';
+                });
+            });
         } else {
             document.body.style.overflow = 'auto';
         }
@@ -838,19 +864,18 @@ window.toggleSidebar = Utils.toggleSidebar;
 window.closeSidebarOnOverlay = Utils.closeSidebarOnOverlay;
 window.closeBanNotification = Utils.closeBanNotification;
 
-// --- ダークモード対応 ---
+ // --- ダークモード対応 ---
 const Theme = {
     apply() {
         try {
             const settings = JSON.parse(localStorage.getItem('appSettings'));
-            let theme = (settings && settings.theme) ? settings.theme : 'system';
-            let darkModeEnabled = false;
+            const theme = (settings && settings.theme) ? settings.theme : 'system';
 
-            if (theme === 'system') {
-                darkModeEnabled = window.matchMedia('(prefers-color-scheme: dark)').matches;
-            } else if (theme === 'dark') {
-                darkModeEnabled = true;
-            }
+            const prefersDark = window.matchMedia &&
+                window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+            const darkModeEnabled =
+                theme === 'dark' || (theme === 'system' && prefersDark);
 
             if (darkModeEnabled) {
                 document.documentElement.classList.add('dark-mode');
@@ -859,18 +884,26 @@ const Theme = {
             }
         } catch (e) {
             console.error("Failed to apply theme", e);
-            // フォールバックとしてシステムのテーマ設定を利用
-            if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+
+            if (window.matchMedia &&
+                window.matchMedia('(prefers-color-scheme: dark)').matches) {
                 document.documentElement.classList.add('dark-mode');
+            } else {
+                document.documentElement.classList.remove('dark-mode');
             }
         }
     },
     init() {
         this.apply();
-        // OSのテーマ変更をリッスン
-        window.matchMedia('(prefers-color-scheme: dark)').addEventListener('change', this.apply);
+        if (window.matchMedia) {
+            window
+                .matchMedia('(prefers-color-scheme: dark)')
+                .addEventListener('change', () => this.apply());
+        }
     }
 };
+
+window.Theme = Theme; // グローバルに公開
 
 window.Theme = Theme; // グローバルに公開
 

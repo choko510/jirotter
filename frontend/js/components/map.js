@@ -716,7 +716,7 @@ const MapComponent = {
             
             @media (max-width: 768px) {
                 .map-container {
-                    height: calc(100vh - 120px);
+                    height: calc(100vh - 100px);
                     width: 100vw;
                     max-width: 100%;
                 }
@@ -730,7 +730,6 @@ const MapComponent = {
                 }
                 
                 .map-controls {
-                    flex-direction: column;
                     gap: 8px;
                 }
                 

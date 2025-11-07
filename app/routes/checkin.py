@@ -340,7 +340,44 @@ async def create_checkin(
             status_code=status.HTTP_404_NOT_FOUND,
             detail="指定された店舗が見つかりません"
         )
-    
+
+    # レート制限: ユーザー単位 30分に1回
+    now = datetime.now(timezone.utc)
+
+    last_user_checkin = (
+        db.query(Checkin)
+        .filter(Checkin.user_id == current_user.id)
+        .order_by(desc(Checkin.checkin_date))
+        .first()
+    )
+    if last_user_checkin:
+        elapsed = now - last_user_checkin.checkin_date
+        if elapsed < timedelta(minutes=30):
+            remaining = timedelta(minutes=30) - elapsed
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"チェックインは30分に1回までです。あと{int(remaining.total_seconds() // 60)}分お待ちください。"
+            )
+
+    # レート制限: 同一店舗 3時間に1回
+    last_same_shop_checkin = (
+        db.query(Checkin)
+        .filter(
+            Checkin.user_id == current_user.id,
+            Checkin.shop_id == checkin_data.shop_id
+        )
+        .order_by(desc(Checkin.checkin_date))
+        .first()
+    )
+    if last_same_shop_checkin:
+        elapsed_shop = now - last_same_shop_checkin.checkin_date
+        if elapsed_shop < timedelta(hours=3):
+            remaining = timedelta(hours=3) - elapsed_shop
+            raise HTTPException(
+                status_code=status.HTTP_429_TOO_MANY_REQUESTS,
+                detail=f"同一店舗へのチェックインは3時間に1回までです。あと{int(remaining.total_seconds() // 60)}分お待ちください。"
+            )
+
     # 位置情報検証
     verification_request = CheckinVerificationRequest(
         latitude=checkin_data.latitude,
@@ -353,15 +390,15 @@ async def create_checkin(
         is_mobile_network=checkin_data.is_mobile_network,
         exif_data=checkin_data.extra_data.get('exif') if checkin_data.extra_data else None
     )
-    
+
     verification_result = verify_checkin_location(verification_request, shop, db)
-    
+
     if not verification_result.is_valid:
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail=f"チェックインできません: {'; '.join(verification_result.errors)}"
         )
-    
+
     # チェックインを作成
     checkin = Checkin(
         user_id=current_user.id,

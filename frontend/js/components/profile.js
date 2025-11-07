@@ -1073,9 +1073,11 @@ const ProfileComponent = {
 
             const infoDiv = document.createElement('div');
 
+            const displayName = username && username.trim() !== '' ? username : id;
+
             const nameDiv = document.createElement('div');
             nameDiv.className = 'profile-name';
-            nameDiv.textContent = username;
+            nameDiv.textContent = displayName;
             infoDiv.appendChild(nameDiv);
 
             const idDiv = document.createElement('div');
@@ -1223,6 +1225,16 @@ const ProfileComponent = {
                 actionButton.classList.toggle('is-following', Boolean(is_following));
                 actionButton.setAttribute('aria-pressed', Boolean(is_following));
                 actionButton.addEventListener('click', () => this.toggleFollow(id));
+
+                // プロフィール通報ボタン（他人のプロフィールのみ表示）
+                const reportBtn = document.createElement('button');
+                reportBtn.className = 'profile-action-button';
+                reportBtn.style.marginLeft = '12px';
+                reportBtn.style.background = '#ef4444';
+                reportBtn.style.boxShadow = '0 12px 24px rgba(239,68,68,0.35)';
+                reportBtn.textContent = 'このプロフィールを通報';
+                reportBtn.addEventListener('click', () => this.openUserReportDialog(this.state.user));
+                infoDiv.appendChild(reportBtn);
             }
             infoDiv.appendChild(actionButton);
             header.appendChild(infoDiv);
@@ -1685,6 +1697,196 @@ const ProfileComponent = {
         }
     },
 
+    openUserReportDialog(targetUser) {
+        if (!targetUser) return;
+
+        const token = API.getCookie('authToken');
+        if (!token) {
+            Utils.showNotification('通報するにはログインしてください', 'info');
+            router.navigate('auth', ['login']);
+            return;
+        }
+
+        const overlay = document.createElement('div');
+        overlay.className = 'profile-edit-modal-overlay';
+
+        const modal = document.createElement('div');
+        modal.className = 'profile-edit-modal';
+
+        const title = document.createElement('h2');
+        title.textContent = 'プロフィールを通報する';
+        modal.appendChild(title);
+
+        const description = document.createElement('p');
+        description.textContent = '以下のユーザーを運営に通報します。内容を確認し、通報理由を入力してください。';
+        modal.appendChild(description);
+
+        const summary = document.createElement('div');
+        summary.style.fontSize = '13px';
+        summary.style.marginBottom = '12px';
+        summary.style.padding = '10px 12px';
+        summary.style.borderRadius = '10px';
+        summary.style.background = '#f9fafb';
+        summary.style.border = '1px solid #e5e7eb';
+        summary.innerHTML = `
+            ユーザー名: ${API.escapeHtml(targetUser.username || '')}<br>
+            ユーザーID: ${API.escapeHtml(String(targetUser.id))}<br>
+            アイコンURL: ${API.escapeHtml(targetUser.profile_image_url || '未設定')}
+        `;
+        modal.appendChild(summary);
+
+        const reasonLabel = document.createElement('label');
+        reasonLabel.textContent = '通報理由（必須）';
+        reasonLabel.style.display = 'block';
+        reasonLabel.style.marginBottom = '4px';
+        modal.appendChild(reasonLabel);
+
+        // サーバー側の ReportCreate バリデーションに合わせた選択肢
+        const reasonSelect = document.createElement('select');
+        reasonSelect.style.width = '100%';
+        reasonSelect.style.marginBottom = '10px';
+        reasonSelect.style.padding = '8px 10px';
+        reasonSelect.style.borderRadius = '8px';
+        reasonSelect.style.border = '1px solid #d1d5db';
+
+        const reasonOptions = [
+            'スパム・広告',
+            '過度な宣伝',
+            '繰り返し投稿',
+            '暴力的・グロテスクな内容',
+            '性的な内容',
+            '不快な表現',
+            '人種・民族差別',
+            '性差別',
+            '障害者差別',
+            'その他の差別',
+            '個人攻撃',
+            '脅迫',
+            'いじめ',
+            'ストーカー行為',
+            'デマ・偽情報',
+            '医療・健康に関する誤情報',
+            '政治に関する誤情報',
+            '無断転載',
+            '画像の無断使用',
+            'その他の著作権侵害',
+            'プライバシー侵害',
+            '自殺・自傷を助長する内容',
+            'その他'
+        ];
+
+        const placeholderOption = document.createElement('option');
+        placeholderOption.value = '';
+        placeholderOption.textContent = '選択してください';
+        placeholderOption.disabled = true;
+        placeholderOption.selected = true;
+        reasonSelect.appendChild(placeholderOption);
+
+        reasonOptions.forEach(text => {
+            const opt = document.createElement('option');
+            opt.value = text;
+            opt.textContent = text;
+            reasonSelect.appendChild(opt);
+        });
+
+        modal.appendChild(reasonSelect);
+
+        const detailLabel = document.createElement('label');
+        detailLabel.textContent = '詳細な説明（任意）';
+        detailLabel.style.display = 'block';
+        detailLabel.style.marginBottom = '4px';
+        modal.appendChild(detailLabel);
+
+        const detailInput = document.createElement('textarea');
+        detailInput.rows = 4;
+        detailInput.placeholder = '問題となる行為が発生した経緯や該当する投稿などを具体的に記載してください。';
+        detailInput.style.width = '100%';
+        detailInput.style.padding = '8px 10px';
+        detailInput.style.borderRadius = '8px';
+        detailInput.style.border = '1px solid #d1d5db';
+        modal.appendChild(detailInput);
+
+        const actions = document.createElement('div');
+        actions.className = 'modal-actions';
+
+        const cancelBtn = document.createElement('button');
+        cancelBtn.type = 'button';
+        cancelBtn.textContent = 'キャンセル';
+        cancelBtn.style.padding = '8px 14px';
+        cancelBtn.style.borderRadius = '999px';
+        cancelBtn.style.border = 'none';
+        cancelBtn.style.background = '#6b7280';
+        cancelBtn.style.color = '#fff';
+        cancelBtn.addEventListener('click', () => {
+            document.body.removeChild(overlay);
+        });
+        actions.appendChild(cancelBtn);
+
+        const submitBtn = document.createElement('button');
+        submitBtn.type = 'button';
+        submitBtn.textContent = '通報を送信';
+        submitBtn.style.padding = '8px 16px';
+        submitBtn.style.borderRadius = '999px';
+        submitBtn.style.border = 'none';
+        submitBtn.style.background = '#ef4444';
+        submitBtn.style.color = '#fff';
+        submitBtn.style.fontWeight = '600';
+        submitBtn.addEventListener('click', async () => {
+            const reason = (reasonSelect.value || '').trim();
+            const description = detailInput.value.trim();
+
+            if (!reason) {
+                Utils.showNotification('通報理由を入力してください', 'warning');
+                return;
+            }
+
+            submitBtn.disabled = true;
+            submitBtn.textContent = '送信中...';
+
+            try {
+                const apiBase = (typeof API !== 'undefined' && API.baseUrl) ? API.baseUrl : '/api/v1';
+                const res = await fetch(`${apiBase}/users/${encodeURIComponent(targetUser.id)}/report`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Authorization': `Bearer ${token}`
+                    },
+                    body: JSON.stringify({
+                        reason,
+                        description
+                    })
+                });
+
+                const data = await res.json().catch(() => ({}));
+
+                if (!res.ok) {
+                    const msg = data.detail || data.message || '通報の送信に失敗しました';
+                    throw new Error(msg);
+                }
+
+                Utils.showNotification('通報を受け付けました。ご協力ありがとうございます。', 'success');
+                document.body.removeChild(overlay);
+            } catch (err) {
+                console.error('Failed to report user', err);
+                Utils.showNotification(`通報に失敗しました: ${err.message || err}`, 'error');
+                submitBtn.disabled = false;
+                submitBtn.textContent = '通報を送信';
+            }
+        });
+        actions.appendChild(submitBtn);
+
+        modal.appendChild(actions);
+        overlay.appendChild(modal);
+
+        overlay.addEventListener('click', (e) => {
+            if (e.target === overlay) {
+                document.body.removeChild(overlay);
+            }
+        });
+
+        document.body.appendChild(overlay);
+    },
+
     async toggleFollow(userId) {
         const token = API.getCookie('authToken');
         if (!token) {
@@ -1784,7 +1986,7 @@ const ProfileComponent = {
             return group;
         };
 
-        modal.appendChild(createFormGroup('username', 'ニックネーム', 'input', this.state.user.username || ''));
+        modal.appendChild(createFormGroup('username', 'ニックネーム（任意・重複可／表示名）', 'input', this.state.user.username || ''));
         modal.appendChild(createFormGroup('bio', '自己紹介', 'textarea', this.state.user.bio || ''));
         modal.appendChild(createFormGroup('profileImageUrl', 'アイコンURL', 'input', this.state.user.profile_image_url || ''));
 
@@ -1866,7 +2068,8 @@ const ProfileComponent = {
     },
 
     async handleUpdateProfile(closeModal) {
-        const username = document.getElementById('username').value;
+        const usernameInput = document.getElementById('username');
+        const username = usernameInput ? usernameInput.value : null;
         const bio = document.getElementById('bio').value;
         const profileImageUrlInput = document.getElementById('profileImageUrl');
         const fileInput = document.getElementById('profileImageFile');

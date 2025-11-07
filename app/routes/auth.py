@@ -47,9 +47,12 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db), request
         )
     
     # ユーザー作成
+    # username は任意・重複可のニックネームとして扱う:
+    # - UserCreate にはusernameフィールドは無く、初期状態では None
+    # - 空文字は未設定とみなし None に正規化（ここでは受け取らない想定）
     user = User(
         id=user_data.id,
-        username=user_data.id, # ユーザー名をIDと同じ値で初期化
+        username=None,
         email=user_data.email
     )
     user.set_password(user_data.password)
@@ -110,6 +113,7 @@ async def login(login_data: UserLogin, db: Session = Depends(get_db)):
     access_token = create_access_token(data={"sub": user.id})
     
     # ユーザーレスポンスの作成
+    # usernameは任意なので、そのまま返却し、フロント側で未設定時はidを表示に使用する
     user_response = UserResponse.model_validate(user)
     
     return {

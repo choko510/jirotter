@@ -34,7 +34,8 @@ class UserResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: str
-    username: str
+    # ニックネーム（任意・重複可）。nullの場合はフロント側でidをフォールバック表示する想定。
+    username: Optional[str] = None
     email: EmailStr
     created_at: datetime
     bio: Optional[str] = None
@@ -43,8 +44,8 @@ class UserResponse(BaseModel):
     rank: str
     internal_score: int
     account_status: str
-
 class UserUpdate(BaseModel):
+    # ニックネーム（任意・重複可）
     username: Optional[str] = None
     bio: Optional[str] = None
     profile_image_url: Optional[str] = None
@@ -52,9 +53,16 @@ class UserUpdate(BaseModel):
     @field_validator('username')
     @classmethod
     def validate_username_update(cls, v):
-        if v is not None:
-            if not re.match(r'^[a-zA-Z0-9_]{3,20}$', v):
-                raise ValueError('ユーザー名は3〜20文字の英数字とアンダースコア(_)のみ使用できます')
+        if v is None:
+            return v
+        value = v.strip()
+        if value == "":
+            # 空文字は未設定扱いとしてNoneに正規化
+            return None
+        # 許可: 任意文字列（長さ制限のみ）※重複可
+        if len(value) > 40:
+            raise ValueError('ニックネームは40文字以内で入力してください')
+        return value
         return v
 
     @field_validator('bio')
@@ -214,6 +222,23 @@ class UserRankingResponse(BaseModel):
     total_users: int
     last_updated: datetime
     title_catalog: List[UserTitleSummary] = Field(default_factory=list)
+
+class ReportCreate(BaseModel):
+    reason: str = Field(..., min_length=1, max_length=255)
+    description: Optional[str] = Field(None, max_length=2000)
+
+
+class ReportResponse(BaseModel):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    post_id: Optional[int] = None
+    # NOTE: ユーザー通報で user_id を使う場合はモデルに合わせて Optional[str] などで拡張
+    reporter_id: str
+    reason: str
+    description: Optional[str] = None
+    created_at: datetime
+
 
 # Reply Schemas
 class ReplyBase(BaseModel):

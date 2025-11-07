@@ -1,12 +1,15 @@
 :root {
     color-scheme: light;
     --font-family-base: 'Noto Sans Japanese', 'Hiragino Sans', 'Yu Gothic', sans-serif;
+
+    /* Light theme tokens */
     --color-bg: #f6f1ea;
     --color-canvas: #f4efe6;
     --color-surface: #ffffff;
     --color-surface-muted: #fbf7f1;
     --color-border: #e7dccd;
     --color-text: #2f2519;
+    --color-text-soft: #786c5f;
     --color-muted: #786c5f;
     --color-primary: #d4a574;
     --color-primary-hover: #c48c4d;
@@ -14,6 +17,8 @@
     --color-accent: #f2bf7b;
     --color-danger: #d16a5f;
     --color-warning: #f0a04b;
+
+    /* Common tokens */
     --shadow-xs: 0 4px 12px rgba(47, 37, 25, 0.08);
     --shadow-sm: 0 8px 20px rgba(47, 37, 25, 0.08);
     --shadow-md: 0 12px 32px rgba(47, 37, 25, 0.12);
@@ -22,6 +27,61 @@
     --radius-md: 14px;
     --radius-lg: 18px;
     --transition-base: 0.3s ease;
+
+    /* Semantic aliases (used by components/layout) */
+    --app-bg: var(--color-bg);
+    --app-surface: var(--color-surface);
+    --app-surface-muted: var(--color-surface-muted);
+    --app-border-subtle: rgba(231, 220, 205, 0.7);
+    --app-text-main: var(--color-text);
+    --app-text-muted: var(--color-text-soft);
+    --app-text-soft: var(--color-text-soft);
+    --app-primary: var(--color-primary);
+    --app-primary-soft: var(--color-primary-soft);
+}
+
+/* Unified dark theme tokens
+   NOTE:
+   - All pages/components should rely on semantic tokens above instead of hard-coded #111 / #2a2a2a, etc.
+   - Existing scattered .dark-mode rules will be refactored gradually to these tokens.
+*/
+:root.dark-mode,
+.dark-mode :root {
+    color-scheme: dark;
+
+    /* Dark theme base palette */
+    --color-bg: #050608;               /* app background */
+    --color-canvas: #050608;
+    --color-surface: #0d1016;          /* main surfaces */
+    --color-surface-muted: #141821;    /* muted surfaces / cards */
+    --color-border: #262b36;
+    --color-text: #e5e7eb;             /* main text */
+    --color-text-soft: #9ca3af;        /* secondary text */
+    --color-muted: #9ca3af;
+
+    --color-primary: #d4a574;          /* keep brand color */
+    --color-primary-hover: #e1b986;
+    --color-primary-soft: rgba(212, 165, 116, 0.16);
+    --color-accent: #f2bf7b;
+    --color-danger: #f97373;
+    --color-warning: #fbbf24;
+
+    /* Shadows tuned for dark backgrounds */
+    --shadow-xs: 0 6px 16px rgba(0, 0, 0, 0.55);
+    --shadow-sm: 0 10px 26px rgba(0, 0, 0, 0.65);
+    --shadow-md: 0 16px 40px rgba(0, 0, 0, 0.75);
+    --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.85);
+
+    /* Semantic aliases */
+    --app-bg: var(--color-bg);
+    --app-surface: #0d1016;
+    --app-surface-muted: #141821;
+    --app-border-subtle: rgba(75, 85, 99, 0.6);
+    --app-text-main: var(--color-text);
+    --app-text-muted: var(--color-text-soft);
+    --app-text-soft: var(--color-text-soft);
+    --app-primary: var(--color-primary);
+    --app-primary-soft: var(--color-primary-soft);
 }
 
 * {

@@ -186,12 +186,30 @@ const AuthComponent = {
                 <form class="auth-form" id="authForm" onsubmit="AuthComponent.handleSubmit(event)">
                     <div class="form-group">
                         <label class="form-label">ユーザーID</label>
-                        <input type="text" class="form-input" id="id" placeholder="ユーザーIDを入力（英数字とアンダースコアのみ）" pattern="[a-zA-Z0-9_]+" title="ユーザーIDは英数字とアンダースコア(_)のみで入力してください" required>
+                        <input
+                            type="text"
+                            class="form-input"
+                            id="id"
+                            placeholder="例: ramen_taro（英数字とアンダースコアのみ）"
+                            pattern="[a-zA-Z0-9_]+"
+                            title="ユーザーIDは英数字とアンダースコア(_)のみで入力してください"
+                            required
+                        >
                     </div>
                     ${view === 'register' ? `
                         <div class="form-group">
                             <label class="form-label">メールアドレス</label>
                             <input type="email" class="form-input" id="email" placeholder="メールアドレスを入力" required>
+                        </div>
+                        <div class="form-group">
+                            <label class="form-label">ニックネーム</label>
+                            <input
+                                type="text"
+                                class="form-input"
+                                id="username"
+                                placeholder="プロフィールに表示する名前（任意）"
+                                maxlength="40"
+                            >
                         </div>
                     ` : ''}
                     <div class="form-group">
@@ -245,7 +263,22 @@ const AuthComponent = {
                     document.getElementById('authSubmitBtn').disabled = false;
                     return;
                 }
-                result = await API.register(userId, email, password);
+
+                // 任意ニックネーム（空文字は送信しない）
+                const usernameInput = document.getElementById('username');
+                const rawUsername = usernameInput ? usernameInput.value.trim() : '';
+                const payload = {
+                    id: userId,
+                    email,
+                    password
+                };
+                // バックエンドのUserCreateは現状usernameを受け取らないため、
+                // 将来的に拡張する場合はここでpayload.usernameを追加。
+                // if (rawUsername) payload.username = rawUsername;
+
+                result = await API.registerWithPayload
+                    ? await API.registerWithPayload(payload)
+                    : await API.register(userId, email, password);
             }
             
             if (result.success) {

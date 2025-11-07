@@ -150,9 +150,10 @@ async def get_user_profile(
             Follow.followed_id == user.id
         ).first() is not None
 
+    display_name = user.username if user.username else user.id
     return UserProfileResponse(
         id=user.id,
-        username=user.username,
+        username=display_name,
         email=user.email,
         created_at=user.created_at,
         bio=user.bio,
@@ -184,14 +185,10 @@ async def update_user_profile(
     current_user: User = Depends(get_current_user)
 ):
     """認証済みユーザーのプロフィールを更新する"""
+    # ニックネーム(username)は任意・重複可:
+    # - バリデータ側で空文字はNoneに正規化済み
+    # - Noneの場合は「未設定」として扱い、表示時はidをフォールバック
     if user_update.username is not None:
-        # ユーザー名の重複チェック
-        existing_user = db.query(User).filter(User.username == user_update.username).first()
-        if existing_user and existing_user.id != current_user.id:
-            raise HTTPException(
-                status_code=status.HTTP_400_BAD_REQUEST,
-                detail="このニックネームは既に使用されています"
-            )
         current_user.username = user_update.username
 
     if user_update.bio is not None:
@@ -212,9 +209,10 @@ async def update_user_profile(
     featured_entry = select_featured_title(titles_summary)
     featured_title = serialize_title_brief(featured_entry)
 
+    display_name = current_user.username if current_user.username else current_user.id
     return UserProfileResponse(
         id=current_user.id,
-        username=current_user.username,
+        username=display_name,
         email=current_user.email,
         created_at=current_user.created_at,
         bio=current_user.bio,

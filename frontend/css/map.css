@@ -507,22 +507,21 @@
     font-size: 12px;
     color: #666;
 }
-
-/* ダークモード */
+/* ダークモード（統一トークン適用） */
 .dark-mode .map-header,
 .dark-mode .map-loading,
 .dark-mode .map-error,
 .dark-mode .map-legend,
 .dark-mode .shop-detail-panel {
-    background: #2a2a2a;
+    background: var(--app-surface);
     border-color: #333;
     color: #e0e0e0;
 }
 
 .dark-mode .map-search-input {
-    background: #1a1a1a;
-    border-color: #333;
-    color: #e0e0e0;
+    background: var(--app-surface-muted);
+    border-color: var(--app-border-subtle);
+    color: var(--app-text-main);
 }
 
 .dark-mode .map-search-input:focus {

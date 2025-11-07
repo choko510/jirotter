@@ -8,7 +8,8 @@ class User(Base):
     __tablename__ = 'users'
     
     id = Column(String(80), primary_key=True, unique=True, nullable=False)
-    username = Column(String(80), unique=True, nullable=False)
+    # ニックネーム: 任意入力・重複可。nullのみ未設定扱いとし、空文字はアプリ側で禁止する。
+    username = Column(String(80), unique=False, nullable=True)
     email = Column(String(120), unique=True, nullable=False)
     password_hash = Column(String(128), nullable=False)
     created_at = Column(DateTime, default=datetime.utcnow)
