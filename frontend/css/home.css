@@ -62,7 +62,7 @@ body {
         grid-template-columns: 260px 1fr;
     }
     .right-sidebar {
-        display: none;
+        display: none!important;
     }
 }
 
