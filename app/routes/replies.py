@@ -6,7 +6,7 @@ from database import get_db
 from app.models import Reply, Post, User
 from app.schemas import ReplyCreate, ReplyResponse
 from app.utils.auth import get_current_active_user, get_current_user_optional
-from app.utils.security import validate_reply_content, escape_html
+from app.utils.security import validate_reply_content
 from app.utils.scoring import ensure_user_can_contribute
 from app.utils.rate_limiter import rate_limiter
 from app.utils.spam_detector import spam_detector

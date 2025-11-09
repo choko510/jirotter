@@ -178,19 +178,49 @@ const API = {
     },
 
     // 店舗検索
-    async getShops(query, filters) {
+    async getShops(query = '', filters = {}) {
         try {
-            const url = query ? `/api/v1/ramen?keyword=${encodeURIComponent(query)}` : '/api/v1/ramen';
+            const params = new URLSearchParams();
+            let endpoint = '/api/v1/ramen';
+            const hasLocation = filters &&
+                filters.latitude !== undefined &&
+                filters.longitude !== undefined &&
+                filters.latitude !== '' &&
+                filters.longitude !== '' &&
+                Number.isFinite(Number(filters.latitude)) &&
+                Number.isFinite(Number(filters.longitude));
+
+            if (hasLocation) {
+                endpoint = '/api/v1/ramen/nearby';
+                params.append('latitude', Number(filters.latitude));
+                params.append('longitude', Number(filters.longitude));
+                const radius = Number.isFinite(Number(filters.radius_km)) ? Number(filters.radius_km) : 5;
+                params.append('radius_km', radius);
+            } else {
+                if (query) {
+                    params.append('keyword', query);
+                }
+                if (filters && filters.prefecture) {
+                    params.append('prefecture', filters.prefecture);
+                }
+            }
+
+            const url = params.toString() ? `${endpoint}?${params.toString()}` : endpoint;
             const data = await this.request(url);
-            return data.shops.map(shop => ({
+            const shops = Array.isArray(data?.shops) ? data.shops : [];
+
+            return shops.map(shop => ({
                 id: shop.id,
                 name: shop.name,
                 address: shop.address,
-                rating: 5.0, // APIに評価がないためダミー
-                category: 'ラーメン', // APIにカテゴリがないためダミー
-                reviews: 100, // APIにレビュー数がないためダミー
+                business_hours: shop.business_hours ?? null,
+                closed_day: shop.closed_day ?? null,
+                seats: shop.seats ?? null,
                 latitude: shop.latitude,
-                longitude: shop.longitude
+                longitude: shop.longitude,
+                distance: typeof shop.distance === 'number' ? shop.distance : null,
+                wait_time: typeof shop.wait_time === 'number' ? shop.wait_time : null,
+                last_update: shop.last_update ?? null
             }));
         } catch (error) {
             console.error('店舗の検索に失敗しました:', error);
@@ -691,24 +721,6 @@ const Utils = {
         }
     },
 
-    // モバイル検索の開閉
-    openMobileSearch() {
-        document.getElementById('mobileSearch').classList.add('show');
-        document.body.style.overflow = 'hidden';
-        // 検索結果をレンダリング
-        this.renderMobileShops();
-    },
-
-    closeMobileSearch() {
-        document.getElementById('mobileSearch').classList.remove('show');
-        document.body.style.overflow = 'auto';
-    },
-
-    // モバイル用店舗リスト表示
-    async renderMobileShops() {
-        // ... (変更なし)
-    },
-
     // ユーザープロフィールUI更新
     async updateUserProfileUI() {
         const authToken = API.getCookie('authToken');
@@ -902,11 +914,10 @@ const Theme = {
         }
     }
 };
-
-window.Theme = Theme; // グローバルに公開
-
-window.Theme = Theme; // グローバルに公開
-
+ 
+// グローバルに公開
+window.Theme = Theme;
+ 
 // アプリケーションの初期化
 document.addEventListener('DOMContentLoaded', function() {
     Theme.init(); // テーマの初期化

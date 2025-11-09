@@ -10,7 +10,7 @@ from database import get_db
 from app.models import Post, User, Like, Reply, RamenShop, Follow
 from app.schemas import PostCreate, PostResponse, PostsResponse
 from app.utils.auth import get_current_user, get_current_active_user, get_current_user_optional
-from app.utils.security import validate_post_content, escape_html
+from app.utils.security import validate_post_content
 from app.utils.image_processor import process_image
 from app.utils.image_validation import validate_image_file
 from app.utils.video_validation import validate_video_file

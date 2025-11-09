@@ -1279,7 +1279,7 @@ const TimelineComponent = {
     // 店舗検索して移動
     async searchAndNavigateToShop(shopName) {
         try {
-            const shops = await API.getShops(shopName, {});
+            const shops = await API.getShops(shopName);
             if (shops.length > 0) {
                 // 最初の検索結果に移動
                 router.navigate('shop', [shops[0].id]);

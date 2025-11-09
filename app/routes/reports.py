@@ -4,7 +4,7 @@ from typing import Dict, Any, List
 
 from database import get_db
 from app.models import Post, User, Report, Visit
-from app.schemas import ReportCreate, ReportResponse
+from app.schemas import PostReportCreate, PostReportResponse
 from app.utils.auth import get_current_active_user
 from app.utils.content_moderator import content_moderator
 
@@ -14,7 +14,7 @@ router = APIRouter(tags=["reports"])
 @router.post("/users/{reported_user_id}/report", response_model=Dict[str, Any], status_code=status.HTTP_201_CREATED)
 async def create_user_report(
     reported_user_id: str,
-    report_data: ReportCreate,
+    report_data: PostReportCreate,
     background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
@@ -158,10 +158,10 @@ async def create_user_report(
         )
 
 
-@router.post("/posts/{post_id}/report", response_model=ReportResponse, status_code=status.HTTP_201_CREATED)
+@router.post("/posts/{post_id}/report", response_model=PostReportResponse, status_code=status.HTTP_201_CREATED)
 async def create_report(
     post_id: int,
-    report_data: ReportCreate,
+    report_data: PostReportCreate,
     background_tasks: BackgroundTasks,
     current_user: User = Depends(get_current_active_user),
     db: Session = Depends(get_db),
