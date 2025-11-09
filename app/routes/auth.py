@@ -29,14 +29,32 @@ def skip_csrf_check(func):
         
         return await func(*args, **kwargs)
     return wrapper
+from app.utils.rate_limiter import rate_limiter
 
 @router.post("/auth/register", response_model=Token, status_code=status.HTTP_201_CREATED)
 @skip_csrf_check
 async def register(user_data: UserCreate, db: Session = Depends(get_db), request: Request = None):
     """ユーザー登録エンドポイント"""
+
+    # IPベースのレートリミット: 同一IPからの登録試行を短時間に連発させない
+    # 例: 3分間に30回まで
+    client_ip = request.client.host if request and request.client else "unknown"
+    await rate_limiter.hit(f"register:{client_ip}", limit=30, window_seconds=180)
+
+    # 簡易bot対策: hiddenフィールド（例: honeypot）値を検査
+    # - 正常なフロントエンドはこのフィールドを空で送信する
+    # - botが全フィールドを埋める実装だと検知できる
+    payload = user_data.model_dump()
+    honeypot = payload.get("extra_info") or payload.get("honeypot") or ""
+    if isinstance(honeypot, str) and honeypot.strip():
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="不正な登録試行が検出されました。",
+        )
+
     # デバッグログ
     print(f"登録リクエスト受信: {user_data}")
-    
+
     # バリデーション
     validation_errors = validate_registration_data(user_data.model_dump(), db)
     if validation_errors:

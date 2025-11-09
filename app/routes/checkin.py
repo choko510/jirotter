@@ -495,7 +495,7 @@ async def create_checkin(
         'extra_data': checkin.extra_data,
         'shop_name': shop.name,
         'shop_address': shop.address,
-        'author_username': current_user.username
+        'author_username': current_user.username or current_user.id
     }
     
     return CheckinResponse.model_validate(checkin_dict)
@@ -559,7 +559,7 @@ async def get_user_checkins(
             'extra_data': checkin.extra_data,
             'shop_name': shop.name,
             'shop_address': shop.address,
-            'author_username': user.username
+            'author_username': user.username or user.id
         }
         checkin_responses.append(CheckinResponse.model_validate(checkin_dict))
     

@@ -1,6 +1,6 @@
 from fastapi import FastAPI, Request, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
 from fastapi.middleware.gzip import GZipMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
@@ -13,6 +13,7 @@ import os
 import time
 import random
 import string
+import user_agents
 
 from app.routes.auth import router as auth_router
 from app.routes.posts import router as posts_router
@@ -92,6 +93,110 @@ class CacheBustingMiddleware(BaseHTTPMiddleware):
         
         return re.sub(pattern, replace_func, content)
 
+class BrowserEnforcementMiddleware(BaseHTTPMiddleware):
+    """
+    「しっかりとしたブラウザ」でない（= 一般的なモダンブラウザでない）User-Agentや、
+    典型的な自動操作ツール / クローラ由来のヘッダを持つアクセスを 403 にする。
+    DEBUG=False（本番相当）のときのみ有効。
+    """
+    async def dispatch(self, request: Request, call_next):
+        # DEBUG=True（開発・検証環境）の場合は一切制限しない
+        if settings.DEBUG:
+            return await call_next(request)
+
+        # 静的ファイルとトップページは常に許可（エラーにせず次の処理へ）
+        # ここでは "/js", "/css", "/assets", "/uploads" と "/" をホワイトリスト
+        path = request.url.path
+        if path == "/" or path.startswith(("/js/", "/css/", "/assets/", "/uploads/")):
+            return await call_next(request)
+
+        ua_string = request.headers.get("user-agent", "")
+
+        # UA 未設定は 403 を返す（Starlette が正しく処理できる HTTPException）
+        if not ua_string:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Forbidden"
+            )
+
+        # Bot/自動ツール特有のヘッダ検出（簡易・低誤検知寄り）
+        lower_headers = {k.lower(): v.lower() for k, v in request.headers.items()}
+
+        suspicious_header_keys = {
+            "x-scrapy",
+            "x-phantomjs",
+            "x-playwright",
+            "x-puppeteer",
+            "x-crawler",
+        }
+        if any(key in lower_headers for key in suspicious_header_keys):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Forbidden"
+            )
+
+        # ヘッダ値に含まれる典型的 Bot/ツール名（限定的に）
+        suspicious_value_signatures = [
+            "scrapy",
+            "httplib2",
+            "python-requests",
+            "java/",        # 多くはクローラ用途
+            "curl/",
+        ]
+        joined_header_values = " ".join(lower_headers.values())
+        if any(sig in joined_header_values for sig in suspicious_value_signatures):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Forbidden"
+            )
+
+        ua = user_agents.parse(ua_string)
+        lowered = ua_string.lower()
+
+        # Selenium / Playwright 等の代表的自動操作 UA 文字列を拒否
+        automation_signatures = [
+            "selenium",
+            "webdriver",
+            "headlesschrome",
+            "headless chrome",
+            "phantomjs",
+            "playwright",
+            "puppeteer",
+            "cypress",
+        ]
+        if any(sig in lowered for sig in automation_signatures):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Forbidden"
+            )
+
+        # - 明らかなボット (is_bot)
+        # - ブラウザ種別が PC / Mobile / Tablet いずれでもないもの
+        if ua.is_bot or (not ua.is_pc and not ua.is_mobile and not ua.is_tablet):
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Forbidden"
+            )
+
+        # 代表的なブラウザのみ許可（ホワイトリスト）
+        allowed_families = {
+            "Chrome",
+            "Chromium",
+            "Firefox",
+            "Safari",
+            "Edge",
+            "Opera",
+            "Mobile Safari",
+            "Samsung Internet",
+        }
+        if ua.browser.family not in allowed_families:
+            raise HTTPException(
+                status_code=status.HTTP_403_FORBIDDEN,
+                detail="Forbidden"
+            )
+
+        return await call_next(request)
+
 class SecurityHeadersMiddleware(BaseHTTPMiddleware):
     async def dispatch(self, request: Request, call_next):
         response = await call_next(request)
@@ -141,6 +246,10 @@ def create_app():
     
     # Add SessionMiddleware
     app.add_middleware(SessionMiddleware, secret_key=settings.SESSION_SECRET_KEY)
+
+    # User-Agent によるブラウザ判定 (しっかりとしたブラウザ以外は 403)
+    # API / HTML 問わず全リクエストに適用
+    app.add_middleware(BrowserEnforcementMiddleware)
 
     # Debugモード時にキャッシュ破壊ミドルウェアを追加
     if settings.DEBUG:
@@ -244,11 +353,15 @@ def create_app():
     @app.get("/", response_class=HTMLResponse)
     async def read_index():
         """index.htmlを返すエンドポイント"""
+        # ルートは常に正規URL扱い（/ のみ）、クエリ付きアクセスはそのまま許容（UTM等）
         return render_html("index.html")
 
     @app.get("/contribute", response_class=HTMLResponse)
     async def contribute_page():
-        """店舗情報投稿ページを返すエンドポイント"""
+        """
+        店舗情報投稿ページ
+        - /contribute を正規URLとして運用
+        """
         return render_html("contribute.html")
 
     @app.get("/admin/review", response_class=HTMLResponse)
@@ -315,6 +428,52 @@ def create_app():
             db.close()
 
         return render_html("admin-dashboard.html")
+
+    @app.get("/robots.txt", include_in_schema=False)
+    async def robots_txt():
+        """
+        robots.txt を静的に返却
+        - 一般公開ページはクロール許可
+        - 管理画面系やAPIルートなどはクロール対象外
+        - テスト環境 / DEBUG 時は全体 noindex 相当の制御も検討可能
+        """
+        # テスト環境・ローカル環境では全体をブロックしたい場合はここで条件分岐も可能
+        disallow_admin = "Disallow: /admin/\n"
+        disallow_api = "Disallow: /api/\n"
+        disallow_uploads = "Disallow: /uploads/\n"
+
+        content = (
+            "User-agent: *\n"
+            f"{disallow_admin}"
+            f"{disallow_api}"
+            f"{disallow_uploads}"
+            "Allow: /\n"
+            "Sitemap: " + settings.BASE_URL.rstrip("/") + "/sitemap.xml\n"
+        )
+        return Response(content=content, media_type="text/plain")
+
+    @app.get("/sitemap.xml", include_in_schema=False)
+    async def sitemap_xml():
+        """
+        シンプルな静的 sitemap.xml
+        - 必要に応じて動的URL(店舗詳細等)は後で拡張
+        """
+        base = settings.BASE_URL.rstrip("/")
+        urls = [
+            f"{base}/",
+            f"{base}/contribute",
+        ]
+        xml_urls = "\n".join(
+            f'  <url><loc>{loc}</loc><changefreq>daily</changefreq><priority>0.8</priority></url>'
+            for loc in urls
+        )
+        content = (
+            '<?xml version="1.0" encoding="UTF-8"?>\n'
+            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+            f"{xml_urls}\n"
+            "</urlset>\n"
+        )
+        return Response(content=content, media_type="application/xml")
 
     @app.get("/api")
     async def root():

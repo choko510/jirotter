@@ -98,6 +98,160 @@ body {
     -webkit-font-smoothing: antialiased;
 }
 
+/* Search modal overlay */
+.search-modal-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.45);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    z-index: 2100; /* ヘッダーや他要素より前面 */
+}
+
+/* Search modal body */
+.search-modal {
+    background: var(--color-surface);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    width: min(520px, 92vw);
+    max-height: 80vh;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* Header */
+.search-modal-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 14px 18px;
+    border-bottom: 1px solid rgba(231, 220, 205, 0.7);
+    gap: 12px;
+}
+
+.search-modal-header h3 {
+    margin: 0;
+    font-size: 1.1rem;
+    font-weight: 600;
+    color: var(--color-text);
+}
+
+.search-modal-header .close-modal {
+    background: transparent;
+    border: none;
+    font-size: 1.6rem;
+    line-height: 1;
+    cursor: pointer;
+    color: var(--color-text);
+}
+
+/* Content */
+.search-modal-content {
+    padding: 14px 18px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+/* Search bar inside modal */
+.search-modal .search-bar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    background: var(--color-surface-muted);
+    border-radius: 999px;
+    padding: 8px 12px;
+    border: 1px solid rgba(231, 220, 205, 0.8);
+}
+
+.search-modal .search-bar input[type="text"] {
+    flex: 1;
+    border: none;
+    background: transparent;
+    outline: none;
+    font-size: 0.95rem;
+    color: var(--color-text);
+}
+
+.search-modal .search-bar button {
+    border: none;
+    background: var(--color-primary);
+    color: #fff;
+    width: 32px;
+    height: 32px;
+    border-radius: 999px;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+}
+
+/* Results */
+.search-modal .search-results {
+    margin-top: 8px;
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    max-height: 48vh;
+    overflow-y: auto;
+    border: 1px solid rgba(231, 220, 205, 0.5);
+}
+
+.search-modal .result-item {
+    padding: 10px 12px;
+    border-bottom: 1px solid rgba(231, 220, 205, 0.4);
+    cursor: pointer;
+    transition: background-color 0.2s ease;
+}
+
+.search-modal .result-item:last-child {
+    border-bottom: none;
+}
+
+.search-modal .result-item:hover {
+    background: var(--color-primary-soft);
+}
+
+.search-modal .shop-name {
+    font-weight: 600;
+    margin-bottom: 2px;
+}
+
+.search-modal .shop-address,
+.search-modal .shop-distance {
+    font-size: 0.85rem;
+    color: var(--color-text-soft);
+}
+
+/* Dark mode support */
+.dark-mode .search-modal {
+    background: var(--app-surface);
+    color: var(--app-text-main);
+}
+
+.dark-mode .search-modal-header {
+    border-bottom-color: var(--app-border-subtle);
+}
+
+.dark-mode .search-modal .search-bar {
+    background: var(--app-surface-muted);
+    border-color: var(--app-border-subtle);
+}
+
+.dark-mode .search-modal .search-results {
+    background: var(--app-surface);
+    border-color: var(--app-border-subtle);
+}
+
+.dark-mode .search-modal .result-item {
+    border-bottom-color: var(--app-border-subtle);
+}
+
+.dark-mode .search-modal .result-item:hover {
+    background: var(--app-primary-soft);
+}
+
 a {
     color: inherit;
 }

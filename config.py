@@ -6,8 +6,10 @@ load_dotenv()
 
 class Settings:
     # 基本設定
-    PROJECT_NAME: str = "SNS Backend"
+    PROJECT_NAME: str = "ラーメンSNS"
     VERSION: str = "1.0.0"
+    # 本番用の公開URL（例: https://ramen.example.com）※環境変数で上書き推奨
+    BASE_URL: str = os.getenv("BASE_URL", "http://localhost:8080")
     API_V1_STR: str = "/api/v1"
     ENVIRONMENT: str = os.getenv("ENVIRONMENT", "development")
     
