@@ -5,6 +5,7 @@
 const API = {
     defaultTimeout: 10000,
     _escapeElement: document.createElement('textarea'),
+    _userExistenceCache: new Map(),
 
     // Cookie管理
     getCookie(name) {
@@ -32,6 +33,52 @@ const API = {
         } catch (error) {
             console.error('Failed to parse user cookie', error);
             return null;
+        }
+    },
+
+    async checkUserExists(userId) {
+        const normalized = typeof userId === 'string' ? userId.trim() : '';
+        if (!normalized) {
+            return false;
+        }
+
+        const cacheKey = normalized.toLowerCase();
+        if (this._userExistenceCache.has(cacheKey)) {
+            return this._userExistenceCache.get(cacheKey);
+        }
+
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), this.defaultTimeout);
+
+        try {
+            const response = await fetch(`/api/v1/users/${encodeURIComponent(normalized)}`, {
+                method: 'GET',
+                headers: {
+                    Accept: 'application/json',
+                    ...this.getAuthHeader()
+                },
+                signal: controller.signal,
+                credentials: 'same-origin'
+            });
+
+            if (response.status === 404) {
+                this._userExistenceCache.set(cacheKey, false);
+                return false;
+            }
+
+            if (!response.ok) {
+                throw new Error(`HTTP error! status: ${response.status}`);
+            }
+
+            this._userExistenceCache.set(cacheKey, true);
+            return true;
+        } catch (error) {
+            if (error.name === 'AbortError') {
+                throw new Error('ユーザー情報の確認がタイムアウトしました');
+            }
+            throw error;
+        } finally {
+            clearTimeout(timeoutId);
         }
     },
 

@@ -73,20 +73,37 @@ def test_register_duplicate_email(test_client, test_db):
         "password": "password123"
     }
     test_client.post("/api/v1/auth/register", json=user_data1)
-    
+
     user_data2 = {
         "id": "user2",
         "email": "test@example.com",
         "password": "password123"
     }
-    
+
     response = test_client.post("/api/v1/auth/register", json=user_data2)
     data = response.json()
-    
+
     assert response.status_code == 422
     assert "detail" in data
     assert "email" in data["detail"]
     assert "このメールアドレスは既に登録されています" in data["detail"]["email"]
+
+
+def test_register_reserved_ai_user_id(test_client, test_db):
+    """AI用の予約済みユーザーIDでは登録できない"""
+    user_data = {
+        "id": "Jirok",
+        "email": "someone@example.com",
+        "password": "password123!",
+    }
+
+    response = test_client.post("/api/v1/auth/register", json=user_data)
+    data = response.json()
+
+    assert response.status_code == 422
+    assert "detail" in data and "id" in data["detail"]
+    assert "このユーザーIDは使用できません" in data["detail"]["id"]
+
 
 def test_login_success(test_client, test_db):
     """ログイン成功のテスト"""
