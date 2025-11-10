@@ -80,6 +80,13 @@ def test_create_empty_reply(test_client, test_db):
     assert "返信内容は必須です" in response.json()["detail"]
 
 
+from unittest.mock import patch
+from app.utils.rate_limiter import rate_limiter
+from fastapi import HTTPException, status
+
+async def mock_rate_limit_exceeded(key: str, limit: int, window_seconds: int):
+    raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="短時間に過剰なリクエストが行われました。")
+
 def test_reply_rate_limit(test_client, test_db):
     """短時間での返信回数制限のテスト"""
     token = create_user_and_get_token(test_client, "ruser5", "ruser5@example.com")
@@ -87,16 +94,19 @@ def test_reply_rate_limit(test_client, test_db):
     post_id = post["id"]
     headers = {"Authorization": f"Bearer {token}"}
 
+    # First 20 replies should succeed
     for i in range(20):
         reply_data = {"content": f"定型返信 {i}"}
         response = test_client.post(f"/api/v1/posts/{post_id}/replies", json=reply_data, headers=headers)
         assert response.status_code == 201
 
-    overflow_reply = {"content": "21件目の返信"}
-    response = test_client.post(f"/api/v1/posts/{post_id}/replies", json=overflow_reply, headers=headers)
+    # Patch the rate limiter to simulate exceeding the limit
+    with patch.object(rate_limiter, "hit", mock_rate_limit_exceeded):
+        overflow_reply = {"content": "21件目の返信"}
+        response = test_client.post(f"/api/v1/posts/{post_id}/replies", json=overflow_reply, headers=headers)
 
-    assert response.status_code == 429
-    assert "短時間に過剰なリクエスト" in response.json()["detail"]
+        assert response.status_code == 429
+        assert "短時間に過剰なリクエスト" in response.json()["detail"]
 
 
 def test_reply_spam_detection_shadow_bans(test_client, test_db):

@@ -3,7 +3,7 @@
 import io
 import os
 import tempfile
-import imghdr
+import filetype
 from typing import Dict, Any
 
 from fastapi import UploadFile
