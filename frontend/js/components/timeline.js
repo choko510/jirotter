@@ -18,7 +18,8 @@ const TimelineComponent = {
         autoRefreshInterval: null,
         lastRefreshTime: null,
         selectedShop: null,
-        manualRefreshTriggered: false
+        manualRefreshTriggered: false,
+        mentionFeedbackTimer: null
     },
 
     _initialized: false,
@@ -49,7 +50,16 @@ const TimelineComponent = {
                 }
             }
         });
-        
+
+        document.addEventListener('click', (e) => {
+            const mentionLink = e.target.closest('.timeline-mention-link');
+            if (mentionLink) {
+                e.preventDefault();
+                e.stopPropagation();
+                this.handleMentionNavigation(mentionLink);
+            }
+        });
+
         // ページの表示状態が変わったときに自動更新を再設定
         document.addEventListener('visibilitychange', () => {
             if (document.hidden) {
@@ -58,6 +68,114 @@ const TimelineComponent = {
                 this.setupAutoRefresh();
             }
         });
+    },
+
+    async handleMentionNavigation(mentionLink) {
+        if (!mentionLink) {
+            return;
+        }
+
+        const encodedHandle = mentionLink.getAttribute('data-handle');
+        if (!encodedHandle) {
+            return;
+        }
+
+        const handle = decodeURIComponent(encodedHandle);
+        if (!handle || mentionLink.dataset.checking === 'true') {
+            return;
+        }
+
+        this.setMentionLinkChecking(mentionLink, true);
+
+        try {
+            const exists = await API.checkUserExists(handle);
+            if (exists) {
+                router.navigate('profile', [handle]);
+            } else {
+                this.showMentionFeedback(`ユーザー @${handle} は見つかりませんでした`, true);
+            }
+        } catch (error) {
+            const message = (error && error.message) ? error.message : 'ユーザー情報の確認に失敗しました';
+            this.showMentionFeedback(message, true);
+        } finally {
+            this.setMentionLinkChecking(mentionLink, false);
+        }
+    },
+
+    setMentionLinkChecking(mentionLink, isChecking) {
+        if (!mentionLink) {
+            return;
+        }
+
+        if (isChecking) {
+            mentionLink.dataset.checking = 'true';
+            if (!mentionLink.dataset.originalPointerEvents) {
+                mentionLink.dataset.originalPointerEvents = mentionLink.style.pointerEvents || '';
+            }
+            if (!mentionLink.dataset.originalOpacity) {
+                mentionLink.dataset.originalOpacity = mentionLink.style.opacity || '';
+            }
+            mentionLink.style.pointerEvents = 'none';
+            mentionLink.style.opacity = '0.6';
+            mentionLink.classList.add('mention-checking');
+            mentionLink.setAttribute('aria-busy', 'true');
+        } else {
+            delete mentionLink.dataset.checking;
+            mentionLink.style.pointerEvents = mentionLink.dataset.originalPointerEvents || '';
+            mentionLink.style.opacity = mentionLink.dataset.originalOpacity || '';
+            delete mentionLink.dataset.originalPointerEvents;
+            delete mentionLink.dataset.originalOpacity;
+            mentionLink.classList.remove('mention-checking');
+            mentionLink.removeAttribute('aria-busy');
+        }
+    },
+
+    showMentionFeedback(message, isError = false) {
+        if (this.state.mentionFeedbackTimer) {
+            clearTimeout(this.state.mentionFeedbackTimer);
+            this.state.mentionFeedbackTimer = null;
+        }
+
+        let feedback = document.querySelector('.timeline-mention-feedback');
+        if (!feedback) {
+            feedback = document.createElement('div');
+            feedback.className = 'timeline-mention-feedback';
+            feedback.style.cssText = `
+                position: fixed;
+                bottom: 24px;
+                left: 50%;
+                transform: translateX(-50%);
+                padding: 12px 20px;
+                border-radius: 999px;
+                color: #fff;
+                font-size: 14px;
+                font-weight: 500;
+                box-shadow: 0 12px 28px rgba(0, 0, 0, 0.2);
+                z-index: 5000;
+                max-width: 90%;
+                text-align: center;
+                transition: opacity 0.25s ease;
+                opacity: 0;
+                pointer-events: none;
+            `;
+            document.body.appendChild(feedback);
+        }
+
+        feedback.textContent = message;
+        feedback.style.background = isError ? 'rgba(220, 53, 69, 0.95)' : 'rgba(25, 135, 84, 0.95)';
+        feedback.style.opacity = '1';
+        feedback.style.pointerEvents = 'auto';
+
+        this.state.mentionFeedbackTimer = setTimeout(() => {
+            feedback.style.opacity = '0';
+            feedback.style.pointerEvents = 'none';
+            this.state.mentionFeedbackTimer = setTimeout(() => {
+                if (feedback && feedback.parentNode) {
+                    feedback.parentNode.removeChild(feedback);
+                }
+                this.state.mentionFeedbackTimer = null;
+            }, 300);
+        }, 2500);
     },
 
     // 設定から自動更新の状態を取得
@@ -863,10 +981,37 @@ const TimelineComponent = {
                 const safeText = API.escapeHtml(part);
                 return `<a href="#" class="timeline-external-link" data-url="${encodedUrl}">${safeText}</a>`;
             }
-            return API.escapeHtml(part);
+            const safeText = API.escapeHtml(part);
+            return this.formatMentions(safeText);
         }).join('');
 
         return formatted.replace(/\n/g, '<br>');
+    },
+
+    formatMentions(text) {
+        if (!text) {
+            return '';
+        }
+
+        const mentionRegex = /@([A-Za-z0-9_]{1,30})/g;
+
+        return text.replace(mentionRegex, (match, handle, offset, str) => {
+            const prevChar = offset > 0 ? str[offset - 1] : '';
+            const nextChar = offset + match.length < str.length ? str[offset + match.length] : '';
+
+            if ((prevChar && /[A-Za-z0-9_]/.test(prevChar)) || (nextChar && /[A-Za-z0-9_]/.test(nextChar))) {
+                return match;
+            }
+
+            const trimmedHandle = handle.trim();
+            if (!trimmedHandle) {
+                return match;
+            }
+
+            const encodedHandle = encodeURIComponent(trimmedHandle);
+            const displayHandle = API.escapeHtml(trimmedHandle);
+            return `<a href="#" class="timeline-mention-link" data-handle="${encodedHandle}">@${displayHandle}</a>`;
+        });
     },
 
     showLoadingIndicator(show) {

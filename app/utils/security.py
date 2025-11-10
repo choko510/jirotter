@@ -3,15 +3,21 @@ import re
 import html
 from app.models import User
 
+RESERVED_USER_IDS = {"jirok"}
+
 def validate_registration_data(data: dict, db: Session) -> dict:
     """ユーザー登録データのバリデーション"""
     errors = {}
     
-    if not data.get('id'):
+    user_id = data.get('id')
+
+    if not user_id:
         errors['id'] = 'ユーザーIDは必須です'
-    elif len(data.get('id')) < 3:
+    elif user_id.lower() in RESERVED_USER_IDS:
+        errors['id'] = 'このユーザーIDは使用できません'
+    elif len(user_id) < 3:
         errors['id'] = 'ユーザーIDは3文字以上で入力してください'
-    elif not re.match(r'^[a-zA-Z0-9_]+$', data.get('id')):
+    elif not re.match(r'^[a-zA-Z0-9_]+$', user_id):
         errors['id'] = 'ユーザーIDは英数字とアンダースコア(_)のみで入力してください'
     
     if not data.get('email'):
@@ -38,7 +44,7 @@ def validate_registration_data(data: dict, db: Session) -> dict:
             errors['password'] = 'パスワードには英字、数字、記号のうち少なくとも2種類を含めてください'
     
     # 既存ユーザーのチェック
-    if db.query(User).filter(User.id == data.get('id')).first():
+    if user_id and db.query(User).filter(User.id == user_id).first():
         errors['id'] = 'このユーザーIDは既に使用されています'
     
     if db.query(User).filter(User.email == data.get('email')).first():

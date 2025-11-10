@@ -1,7 +1,8 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query, File, UploadFile, Form
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc, func, or_
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Set
+import re
 import shutil
 import os
 import time
@@ -18,6 +19,11 @@ from app.utils.scoring import award_points, ensure_user_can_contribute
 from app.utils.rate_limiter import rate_limiter
 from app.utils.spam_detector import spam_detector
 from app.utils.moderation_tasks import schedule_post_moderation
+from app.utils.ai_responder import (
+    AI_USER_ID,
+    ensure_ai_responder_user,
+    generate_ai_reply,
+)
 
 router = APIRouter(tags=["posts"])
 
@@ -27,6 +33,8 @@ UPLOAD_DIR = "uploads"
 VIDEO_DIR = os.path.join(UPLOAD_DIR, "videos")
 os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(VIDEO_DIR, exist_ok=True)
+
+MENTION_PATTERN = re.compile(r"@([A-Za-z0-9_]{1,30})")
 
 @router.post("/posts", response_model=PostResponse, status_code=status.HTTP_201_CREATED)
 async def create_post(
@@ -58,6 +66,42 @@ async def create_post(
     is_shadow_banned = spam_result.is_spam
     shadow_ban_reason = " / ".join(spam_result.reasons) if spam_result.reasons else None
     spam_score = spam_result.score  # スパムスコアを保存
+
+    mentioned_handles: Set[str] = set()
+    ai_responder_user: Optional[User] = None
+    if sanitized_content:
+        mentioned_handles = {
+            match.group(1)
+            for match in MENTION_PATTERN.finditer(sanitized_content)
+        }
+
+    if mentioned_handles:
+        unique_handles = list(mentioned_handles)
+        existing_users = db.query(User).filter(User.id.in_(unique_handles)).all()
+        found_ids = {user.id.lower() for user in existing_users}
+        ai_mentioned = any(handle.lower() == AI_USER_ID for handle in mentioned_handles)
+
+        if ai_mentioned:
+            ai_responder_user = next(
+                (user for user in existing_users if user.id.lower() == AI_USER_ID),
+                None,
+            )
+            if ai_responder_user is None:
+                ai_responder_user = ensure_ai_responder_user(db)
+                if ai_responder_user:
+                    found_ids.add(ai_responder_user.id.lower())
+
+        missing_handles = sorted(
+            handle
+            for handle in mentioned_handles
+            if handle.lower() not in found_ids
+        )
+        if missing_handles:
+            missing_labels = ", ".join(f"@{handle}" for handle in missing_handles)
+            raise HTTPException(
+                status_code=status.HTTP_400_BAD_REQUEST,
+                detail=f"メンションしたユーザーが存在しません: {missing_labels}",
+            )
     
     # 店舗IDのバリデーション
     if shop_id is not None:
@@ -196,6 +240,19 @@ async def create_post(
                     "shop_id": shop_id,
                 },
             )
+
+        if ai_responder_user and not post.is_shadow_banned:
+            ai_reply_content = await generate_ai_reply(
+                sanitized_content,
+                current_user.id,
+            )
+            if ai_reply_content:
+                ai_reply = Reply(
+                    content=ai_reply_content[:200],
+                    user_id=ai_responder_user.id,
+                    post_id=post.id,
+                )
+                db.add(ai_reply)
 
         db.commit()
         db.refresh(post)
