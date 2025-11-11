@@ -1,12 +1,12 @@
 from __future__ import annotations
 
-from datetime import datetime
+from datetime import datetime, timezone
 from typing import Dict, Optional, Tuple
 
 from fastapi import HTTPException, status
 from sqlalchemy.orm import Session
 
-from app.models import User, UserPointLog
+from app.models import User, UserPointLog, JST
 from app.utils.achievements import evaluate_new_titles, serialize_title_record
 
 
@@ -147,8 +147,10 @@ def _calculate_progress(points: int, current_rank: Dict[str, object], next_rank:
 
 
 def compute_effective_account_status(user: User, now: Optional[datetime] = None) -> str:
-    """手動設定や期限付きの制限を考慮してアカウント状態を算出する"""
-    now = now or datetime.utcnow()
+    """手動設定や期限付きの制限を考慮してアカウント状態を算出する
+    全体仕様に合わせて JST (Asia/Tokyo) 前提で評価する。
+    """
+    now = now or datetime.now(JST)
     
     # 前回の状態を保存
     previous_status = getattr(user, '_previous_account_status', None)
@@ -337,7 +339,7 @@ def ensure_user_can_contribute(user: User) -> None:
             detail="認証が必要です",
         )
 
-    now = datetime.utcnow()
+    now = datetime.now(JST)
     status_value = compute_effective_account_status(user, now=now)
 
     if status_value == "banned":
@@ -365,7 +367,7 @@ def get_status_message(user: User) -> str:
     snapshot = get_rank_snapshot(user)
     status = snapshot["account_status"]
     message = STATUS_MESSAGES.get(status, STATUS_MESSAGES["active"])
-    now = datetime.utcnow()
+    now = datetime.now(JST)
 
     if status == "warning":
         diff = user.internal_score - STATUS_THRESHOLDS["restricted"]

@@ -36,7 +36,8 @@ class UserResponse(BaseModel):
     id: str
     # ニックネーム（任意・重複可）。nullの場合はフロント側でidをフォールバック表示する想定。
     username: Optional[str] = None
-    email: EmailStr
+    # テスト・ローカル用途向けに特殊ドメインを許容するため、EmailStr ではなく str として扱う
+    email: str
     created_at: datetime
     bio: Optional[str] = None
     profile_image_url: Optional[str] = None

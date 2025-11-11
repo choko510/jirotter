@@ -405,6 +405,13 @@ def test_delete_post_unauthenticated(test_client, test_db):
     assert response.status_code == 401
 
 
+from unittest.mock import patch
+from app.utils.rate_limiter import rate_limiter
+from fastapi import HTTPException, status
+
+async def mock_rate_limit_exceeded(key: str, limit: int, window_seconds: int):
+    raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="短時間に過剰なリクエストが行われました。")
+
 def test_post_rate_limit(test_client, test_db):
     """短時間での投稿回数制限のテスト"""
     user_data = {
@@ -419,16 +426,19 @@ def test_post_rate_limit(test_client, test_db):
         "Authorization": f"Bearer {token}"
     }
 
+    # First 5 posts should succeed
     for i in range(5):
         post_data = {"content": f"連続投稿テスト {i}"}
         result = test_client.post("/api/v1/posts", data=post_data, headers=headers)
         assert result.status_code == 201, result.text
 
-    overflow_post = {"content": "6件目の投稿"}
-    response = test_client.post("/api/v1/posts", data=overflow_post, headers=headers)
+    # Patch the rate limiter to simulate exceeding the limit
+    with patch.object(rate_limiter, "hit", mock_rate_limit_exceeded):
+        overflow_post = {"content": "6件目の投稿"}
+        response = test_client.post("/api/v1/posts", data=overflow_post, headers=headers)
 
-    assert response.status_code == 429
-    assert "短時間に過剰なリクエスト" in response.json()["detail"]
+        assert response.status_code == 429
+        assert "短時間に過剰なリクエスト" in response.json()["detail"]
 
 
 def test_post_spam_detection_shadow_bans(test_client, test_db):

@@ -3,6 +3,25 @@ from sqlalchemy.orm import relationship
 from datetime import datetime, timezone
 from database import Base
 
+# JST (Asia/Tokyo) タイムゾーン
+try:
+    # Python 3.9+ (zoneinfo 利用可能な場合)
+    from zoneinfo import ZoneInfo
+    JST = ZoneInfo("Asia/Tokyo")
+except Exception:
+    # フォールバック（固定UTC+9）
+    from datetime import timedelta, tzinfo
+
+    class JSTFixed(tzinfo):
+        def utcoffset(self, dt):
+            return timedelta(hours=9)
+        def tzname(self, dt):
+            return "Asia/Tokyo"
+        def dst(self, dt):
+            return timedelta(0)
+
+    JST = JSTFixed()
+
 class User(Base):
     """ユーザーモデル"""
     __tablename__ = 'users'
@@ -12,7 +31,7 @@ class User(Base):
     username = Column(String(80), unique=False, nullable=True)
     email = Column(String(120), unique=True, nullable=False)
     password_hash = Column(String(128), nullable=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(JST))
     bio = Column(Text, nullable=True)
     profile_image_url = Column(String(255), nullable=True)
     points = Column(Integer, default=0, nullable=False)
@@ -71,7 +90,7 @@ class Post(Base):
     video_url = Column(String(255), nullable=True)  # 動画URL
     video_duration = Column(Float, nullable=True)  # 動画再生時間（秒）
     shop_id = Column(Integer, ForeignKey('ramen_shops.id'), nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(JST))
     is_shadow_banned = Column(Boolean, nullable=False, default=False, index=True)
     shadow_ban_reason = Column(Text, nullable=True)
     spam_score = Column(Float, nullable=True, default=0.0)  # スパム検出スコア
@@ -104,7 +123,7 @@ class Follow(Base):
 
     follower_id = Column(String(80), ForeignKey('users.id'), primary_key=True)
     followed_id = Column(String(80), ForeignKey('users.id'), primary_key=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(JST))
 
 class Like(Base):
     """いいねモデル"""
@@ -113,7 +132,7 @@ class Like(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(String(80), ForeignKey('users.id'), nullable=False)
     post_id = Column(Integer, ForeignKey('posts.id'), nullable=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(JST))
 
 class Reply(Base):
     """返信モデル"""
@@ -123,7 +142,7 @@ class Reply(Base):
     content = Column(Text, nullable=False)
     user_id = Column(String(80), ForeignKey('users.id'), nullable=False)
     post_id = Column(Integer, ForeignKey('posts.id'), nullable=False)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(JST))
     is_shadow_banned = Column(Boolean, nullable=False, default=False, index=True)
     shadow_ban_reason = Column(Text, nullable=True)
 
@@ -152,7 +171,7 @@ class RamenShop(Base):
     latitude = Column(Float, nullable=False, index=True)
     longitude = Column(Float, nullable=False, index=True)
     wait_time = Column(Integer, default=0)  # 待ち時間（分）
-    last_update = Column(DateTime, default=lambda: datetime.now(timezone.utc))  # 最終更新時間
+    last_update = Column(DateTime, default=lambda: datetime.now(JST))  # 最終更新時間
 
 
 class RamenShopSubmission(Base):
@@ -166,7 +185,7 @@ class RamenShopSubmission(Base):
     proposed_changes = Column(JSON, nullable=False, default=dict)
     note = Column(Text, nullable=True)
     status = Column(String(20), nullable=False, default='pending')
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(JST))
     reviewed_at = Column(DateTime, nullable=True)
     reviewer_id = Column(String(80), ForeignKey('users.id'), nullable=True)
     review_comment = Column(Text, nullable=True)
@@ -189,7 +208,7 @@ class Visit(Base):
     wait_time_minutes = Column(Integer)  # 待ち時間（分）
     taste_rating = Column(Integer)  # 味の評価（1-5）
     flavor_notes = Column(Text)  # 味に関するメモ
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(JST))
     
     # Relationships
     user = relationship('User', backref='visits')
@@ -204,7 +223,7 @@ class Report(Base):
     reporter_id = Column(String(80), ForeignKey('users.id'), nullable=False)
     reason = Column(String(255), nullable=False)
     description = Column(Text)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(JST))
     
     # Relationships
     post = relationship('Post', backref='reports')
@@ -221,7 +240,7 @@ class UserPointLog(Base):
     event_type = Column(String(50), nullable=False)
     reason = Column(String(255), nullable=False)
     context = Column(JSON, nullable=True)
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), index=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(JST), index=True)
 
 
 class UserTitle(Base):
@@ -241,7 +260,7 @@ class UserTitle(Base):
     icon = Column(String(16), nullable=True)
     theme_color = Column(String(20), nullable=False, default='#f97316')
     prestige = Column(Integer, nullable=False, default=0)
-    earned_at = Column(DateTime, default=lambda: datetime.now(timezone.utc), nullable=False)
+    earned_at = Column(DateTime, default=lambda: datetime.now(JST), nullable=False)
 
 
 class Checkin(Base):
@@ -254,7 +273,7 @@ class Checkin(Base):
     id = Column(Integer, primary_key=True)
     user_id = Column(String(80), ForeignKey('users.id'), nullable=False)
     shop_id = Column(Integer, ForeignKey('ramen_shops.id'), nullable=False, index=True)
-    checkin_date = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc), index=True)
+    checkin_date = Column(DateTime, nullable=False, default=lambda: datetime.now(JST), index=True)
     
     # 位置情報
     latitude = Column(Float, nullable=True)  # GPSまたはEXIFから取得
@@ -309,7 +328,7 @@ class CheckinVerification(Base):
     result = Column(String(20), nullable=False)  # 'success', 'failed', 'warning'
     score = Column(Integer, nullable=True)  # 検証スコア
     message = Column(Text, nullable=True)  # 検証メッセージ
-    created_at = Column(DateTime, default=lambda: datetime.now(timezone.utc))
+    created_at = Column(DateTime, default=lambda: datetime.now(JST))
     
     # Relationships
     checkin = relationship('Checkin', backref='verifications')
@@ -327,8 +346,8 @@ class ShopEditLock(Base):
     id = Column(Integer, primary_key=True)
     shop_id = Column(Integer, ForeignKey('ramen_shops.id'), nullable=False)
     user_id = Column(String(80), ForeignKey('users.id'), nullable=False)
-    locked_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
-    last_heartbeat = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    locked_at = Column(DateTime, nullable=False, default=lambda: datetime.now(JST))
+    last_heartbeat = Column(DateTime, nullable=False, default=lambda: datetime.now(JST))
     expires_at = Column(DateTime, nullable=False)
 
     shop = relationship('RamenShop', backref='edit_locks')
@@ -350,7 +369,7 @@ class ShopChangeHistory(Base):
     field_name = Column(String(50), nullable=False)
     old_value = Column(Text, nullable=True)
     new_value = Column(Text, nullable=True)
-    changed_at = Column(DateTime, nullable=False, default=lambda: datetime.now(timezone.utc))
+    changed_at = Column(DateTime, nullable=False, default=lambda: datetime.now(JST))
     change_type = Column(String(20), nullable=False, default='update')  # 'create', 'update', 'delete'
 
     shop = relationship('RamenShop', backref='change_history')

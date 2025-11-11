@@ -5,6 +5,7 @@ import os
 import importlib
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+from app.models import JST
 from difflib import SequenceMatcher
 from typing import List, Optional, Tuple, Set
 
@@ -460,8 +461,8 @@ class SpamDetector:
 
     def _check_burst_posts(self, db: Session, user_id: str, reasons: List[str]) -> float:
         try:
-            # created_at が存在する前提。なければ例外を握りつぶす
-            window_start = datetime.utcnow() - timedelta(minutes=self.cfg.burst_window_min)
+            # created_at は JST（tz-aware）で保存されている前提
+            window_start = datetime.now(JST) - timedelta(minutes=self.cfg.burst_window_min)
             count_posts = db.query(Post).filter(Post.user_id == user_id, Post.created_at >= window_start).count()
             count_replies = db.query(Reply).filter(Reply.user_id == user_id, Reply.created_at >= window_start).count()
             total = count_posts + count_replies

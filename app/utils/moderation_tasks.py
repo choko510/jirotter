@@ -63,13 +63,10 @@ async def _moderate_post(post_id: int, session_factory: sessionmaker) -> None:
 
         # モデレーションレベルに応じたAI分析設定
         if moderation_level == "high":
-            temperature = 0.2
             confidence_threshold = 0.7
         elif moderation_level == "medium":
-            temperature = 0.25
             confidence_threshold = 0.75
         else:  # low
-            temperature = 0.3
             confidence_threshold = 0.8
         
         analysis = await content_moderator.analyze_content(
