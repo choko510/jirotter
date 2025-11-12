@@ -450,6 +450,20 @@ const API = {
         }
     },
 
+    // 返信削除
+    async deleteReply(replyId) {
+        try {
+            await this.request(`/api/v1/replies/${replyId}`, {
+                method: 'DELETE',
+                parseJson: true
+            });
+            return { success: true };
+        } catch (error) {
+            console.error('返信削除に失敗しました:', error);
+            return { success: false, error: error.message };
+        }
+    },
+
     // いいねする
     async likePost(postId) {
         try {

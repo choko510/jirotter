@@ -810,8 +810,8 @@ const CommentComponent = {
             return;
         }
 
-        commentsList.innerHTML = this.state.comments.map(comment => `
-            <div class="comment-item">
+       commentsList.innerHTML = this.state.comments.map(comment => `
+           <div class="comment-item" data-comment-id="${comment.id}">
                 <div class="comment-header">
                     <div class="comment-avatar"><img src="${API.escapeHtml(comment.author_profile_image_url || 'assets/baseicon.png')}" alt="${API.escapeHtml(comment.author_username)}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;"></div>
                     <div class="comment-user-info">
@@ -825,19 +825,77 @@ const CommentComponent = {
                     <div class="comment-content" id="comment-content-${comment.id}">${API.escapeHtmlWithLineBreaks(comment.content)}</div>
                     ${this.isLongText(comment.content) ? `<button class="show-more-btn" onclick="CommentComponent.toggleText('comment', ${comment.id})">続きを見る</button>` : ''}
                 </div>
-                ${this.createCommentImageHTML(comment)}
-                <div class="comment-actions">
-                    <button class="comment-action-btn" onclick="CommentComponent.handleCommentLike(${comment.id})">
-                        <i class="fas fa-heart ${comment.is_liked_by_current_user ? 'liked' : ''}" id="comment-like-icon-${comment.id}"></i> 
-                        <span id="comment-like-count-${comment.id}">${comment.likes_count || 0}</span>
-                    </button>
-                    <button class="comment-action-btn" onclick="CommentComponent.shareComment(${comment.id})">
-                        <i class="fas fa-share"></i> 共有
-                    </button>
-                </div>
-            </div>
-        `).join('');
-    },
+               ${this.createCommentImageHTML(comment)}
+               <div class="comment-actions">
+                   <button class="comment-action-btn" onclick="CommentComponent.handleCommentLike(${comment.id})">
+                       <i class="fas fa-heart ${comment.is_liked_by_current_user ? 'liked' : ''}" id="comment-like-icon-${comment.id}"></i>
+                       <span id="comment-like-count-${comment.id}">${comment.likes_count || 0}</span>
+                   </button>
+                   <button class="comment-action-btn" onclick="CommentComponent.shareComment(${comment.id})">
+                       <i class="fas fa-share"></i> 共有
+                   </button>
+                   ${this.renderDeleteButton(comment)}
+               </div>
+           </div>
+       `).join('');
+   },
+
+   // 削除ボタンの表示制御
+   renderDeleteButton(comment) {
+       const token = API.getCookie('authToken');
+       if (!token) return '';
+
+       // ログインユーザー情報が全体どこかで管理されている前提
+       // API.getCurrentUser() があればそれを利用し、なければサーバー側で検証されるため常に表示しても良いが、
+       // ここでは安全側に「コメント投稿者のみ」表示する想定で user_id を比較
+       const currentUserId = API.getCurrentUserId ? API.getCurrentUserId() : null;
+
+       if (currentUserId && String(currentUserId) === String(comment.user_id)) {
+           return `
+               <button class="comment-action-btn" onclick="CommentComponent.confirmAndDeleteReply(${comment.id})">
+                   <i class="fas fa-trash-alt"></i> 削除
+               </button>
+           `;
+       }
+
+       return '';
+   },
+
+   // 返信削除処理
+   async confirmAndDeleteReply(commentId) {
+       if (!confirm('この返信を削除しますか？')) {
+           return;
+       }
+
+       const token = API.getCookie('authToken');
+       if (!token) {
+           alert('削除するにはログインしてください');
+           router.navigate('auth', ['login']);
+           return;
+       }
+
+       try {
+           const result = await API.deleteReply(commentId);
+
+           if (!result.success) {
+               alert(`削除に失敗しました: ${result.error}`);
+               return;
+           }
+
+           // ローカル状態から削除
+           this.state.comments = this.state.comments.filter(c => c.id !== commentId);
+
+           // DOMから削除
+           const item = document.querySelector(`.comment-item[data-comment-id="${commentId}"]`);
+           if (item) {
+               item.remove();
+           }
+
+       } catch (error) {
+           console.error('返信削除中にエラーが発生しました:', error);
+           alert('返信の削除に失敗しました。時間をおいて再度お試しください。');
+       }
+   },
 
     // 長いテキストかどうかを判定
     isLongText(text) {
