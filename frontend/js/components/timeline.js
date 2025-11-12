@@ -1096,31 +1096,48 @@ const TimelineComponent = {
             'image/jpg',
             'image/png',
             'image/gif',
-            'image/webp'
+            'image/webp',
+            'image/heic',
+            'image/heif'
         ];
-        
-        // ファイルサイズ上限（5MB）
-        const maxSizeInBytes = 5 * 1024 * 1024;
-        
+
+        // ファイルサイズ上限（20MB）
+        const maxSizeInBytes = 20 * 1024 * 1024;
+
         // MIMEタイプチェック
-        if (!allowedMimeTypes.includes(file.type)) {
-            return {
-                isValid: false,
-                error: '対応している画像形式はJPEG、PNG、GIF、WebPのみです'
-            };
+        // HEIC/HEIF はブラウザ実装によって file.type が空/未知となる場合があるため、
+        // MIME が取得できる場合のみ厳密チェックし、未定義の場合は拡張子で判定する。
+        const fileName = file.name.toLowerCase();
+
+        if (file.type) {
+            if (!allowedMimeTypes.includes(file.type)) {
+                return {
+                    isValid: false,
+                    error: '対応している画像形式はJPEG、PNG、GIF、WebP、HEICのみです'
+                };
+            }
+        } else {
+            // MIMEが空の場合、拡張子で許可判定（主にHEIC/HEIF想定）
+            const allowedExtensions = ['.jpg', '.jpeg', '.png', '.gif', '.webp', '.heic', '.heif'];
+            const hasAllowedExt = allowedExtensions.some(ext => fileName.endsWith(ext));
+            if (!hasAllowedExt) {
+                return {
+                    isValid: false,
+                    error: '対応している画像形式はJPEG、PNG、GIF、WebP、HEICのみです'
+                };
+            }
         }
-        
+
         // ファイルサイズチェック
         if (file.size > maxSizeInBytes) {
             return {
                 isValid: false,
-                error: '画像サイズは5MB以下にしてください'
+                error: '画像サイズは20MB以下にしてください'
             };
         }
         
         // ファイル名チェック（危険な拡張子を排除）
         const dangerousExtensions = ['.php', '.js', '.exe', '.bat', '.cmd', '.sh', '.py', '.pl', '.rb'];
-        const fileName = file.name.toLowerCase();
         
         for (const ext of dangerousExtensions) {
             if (fileName.endsWith(ext)) {
@@ -1186,9 +1203,9 @@ const TimelineComponent = {
     },
 
     // 最寄りのラーメン店を取得
-    async getNearbyShops(lat, lng, radius = 30) {
+    async getNearbyShops(lat, lng) {
         try {
-            const data = await API.request(`/api/v1/ramen/nearby?latitude=${lat}&longitude=${lng}&radius_km=${radius}`, {
+            const data = await API.request(`/api/v1/ramen/nearby?latitude=${lat}&longitude=${lng}&radius_km=30`, {
                 includeAuth: false
             });
             return data.shops || [];

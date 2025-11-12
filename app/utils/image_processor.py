@@ -44,6 +44,27 @@ def process_image(image: UploadFile, user_id: str) -> Tuple[Optional[str], Optio
         try:
             # PILで画像を開く
             with Image.open(temp_file_path) as img:
+                # EXIFからGPS情報を除去（位置情報をサーバー側で削除）
+                try:
+                    exif = img.getexif()
+                    if exif:
+                        from PIL.ExifTags import TAGS
+
+                        gps_tag_id = None
+                        for tag_id, tag_name in TAGS.items():
+                            if tag_name == "GPSInfo":
+                                gps_tag_id = tag_id
+                                break
+
+                        if gps_tag_id is not None and gps_tag_id in exif:
+                            del exif[gps_tag_id]
+
+                        # PillowのWebP保存では EXIF をそのまま保存しないケースも多いが、
+                        # 念のため他形式に拡張されてもGPSは含まれないようにクリーンなEXIFを用意
+                        img.info["exif"] = exif.tobytes()
+                except Exception as exif_err:
+                    # EXIF処理に失敗してもアップロード自体は継続（安全側でログのみ）
+                    print(f"EXIF削除処理エラー: {exif_err}")
                 # RGBモードに変換（必要な場合）
                 if img.mode in ('RGBA', 'LA', 'P'):
                     # 透明度を持つ画像は白背景で合成

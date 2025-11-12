@@ -14,20 +14,26 @@ from PIL.ExifTags import TAGS
 def validate_image_file(image: UploadFile) -> Dict[str, Any]:
     """アップロードされた画像ファイルの安全性を検証する."""
 
+    # 対応拡張子/形式:
+    # - JPEG, PNG, GIF, WebP
+    # - HEIC/HEIF (Pillow側でサポートされている環境を前提)
     allowed_mime_types = [
         "image/jpeg",
         "image/jpg",
         "image/png",
         "image/gif",
         "image/webp",
+        "image/heic",
+        "image/heif",
     ]
 
-    max_size_in_bytes = 5 * 1024 * 1024
+    # サイズ上限を20MBに設定（サーバー側での最終防衛ライン）
+    max_size_in_bytes = 20 * 1024 * 1024
 
     if not image.filename:
         return {"is_valid": False, "error": "ファイル名がありません"}
 
-    allowed_extensions = [".jpg", ".jpeg", ".png", ".gif", ".webp"]
+    allowed_extensions = [".jpg", ".jpeg", ".png", ".gif", ".webp", ".heic", ".heif"]
     file_extension = os.path.splitext(image.filename)[1].lower()
 
     if file_extension not in allowed_extensions:
@@ -51,8 +57,24 @@ def validate_image_file(image: UploadFile) -> Dict[str, Any]:
         if image.filename.lower().endswith(ext):
             return {"is_valid": False, "error": "このファイル形式は許可されていません"}
 
-    if hasattr(image, "size") and image.size and image.size > max_size_in_bytes:
-        return {"is_valid": False, "error": "画像サイズは5MB以下にしてください"}
+    # FastAPIのUploadFileは size 属性を持たない場合があるため、実際のストリームサイズを計測してチェックする
+    try:
+        current_position = image.file.tell()
+        image.file.seek(0)
+        file_content = image.file.read()
+        image.file.seek(current_position)
+
+        if len(file_content) > max_size_in_bytes:
+            return {
+                "is_valid": False,
+                "error": "画像サイズは20MB以下にしてください",
+            }
+    except Exception:
+        # サイズ取得に失敗した場合も、安全側でエラーにする
+        return {
+            "is_valid": False,
+            "error": "画像サイズの検証に失敗しました。もう一度お試しください。",
+        }
 
     try:
         file_position = image.file.tell()
@@ -68,15 +90,21 @@ def validate_image_file(image: UploadFile) -> Dict[str, Any]:
             image_type = imghdr.what(temp_file_path)
 
             if image_type:
-                detected_mime = f"image/{image_type}"
+                # imghdr は HEIC/HEIF を判定できない場合が多いため、既知形式のみ厳密チェック
                 if image_type == "jpg":
                     detected_mime = "image/jpeg"
+                else:
+                    detected_mime = f"image/{image_type}"
 
                 if detected_mime not in allowed_mime_types:
                     return {
                         "is_valid": False,
                         "error": f"ファイルの内容が対応している画像形式ではありません: {detected_mime}",
                     }
+            else:
+                # imghdr で判定できない場合（HEIC など）は、この時点では弾かず
+                # 後続の Pillow(Open) による検証で最終判断する
+                pass
         finally:
             os.unlink(temp_file_path)
     except Exception as exc:  # pragma: no cover - ログ用
@@ -172,23 +200,16 @@ def validate_image_aspect_ratio(img: Image.Image) -> Dict[str, Any]:
 
 
 def validate_image_exif(img: Image.Image) -> Dict[str, Any]:
+    """
+    以前はGPS情報を含む画像を拒否していたが、
+    現在はサーバー側で投稿保存前にGPS情報を削除する方針に変更。
+    ここでは EXIF の取得可否のみ確認し、常に許可とする。
+    """
     try:
-        exif_data = img.getexif()
-        if exif_data:
-            gps_info = {}
-            for tag_id, value in exif_data.items():
-                tag = TAGS.get(tag_id, tag_id)
-                if tag == "GPSInfo":
-                    gps_info = value
-                    break
-
-            if gps_info:
-                return {
-                    "is_valid": False,
-                    "error": "位置情報(GPS)が含まれている画像はアップロードできません",
-                }
+        _ = img.getexif()
     except Exception as exc:
         print(f"EXIF検証エラー: {exc}")
+        # 画像として開けていればEXIF取得失敗のみで拒否はしない
 
     return {"is_valid": True, "error": None}
 
