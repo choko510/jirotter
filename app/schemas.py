@@ -36,7 +36,8 @@ class UserResponse(BaseModel):
     id: str
     # ニックネーム（任意・重複可）。nullの場合はフロント側でidをフォールバック表示する想定。
     username: Optional[str] = None
-    email: EmailStr
+    # テスト・ローカル用途向けに特殊ドメインを許容するため、EmailStr ではなく str として扱う
+    email: str
     created_at: datetime
     bio: Optional[str] = None
     profile_image_url: Optional[str] = None
@@ -223,17 +224,17 @@ class UserRankingResponse(BaseModel):
     last_updated: datetime
     title_catalog: List[UserTitleSummary] = Field(default_factory=list)
 
-class ReportCreate(BaseModel):
+# 通報スキーマ（posts用）
+class PostReportCreate(BaseModel):
     reason: str = Field(..., min_length=1, max_length=255)
     description: Optional[str] = Field(None, max_length=2000)
 
 
-class ReportResponse(BaseModel):
+class PostReportResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
     id: int
-    post_id: Optional[int] = None
-    # NOTE: ユーザー通報で user_id を使う場合はモデルに合わせて Optional[str] などで拡張
+    post_id: int
     reporter_id: str
     reason: str
     description: Optional[str] = None

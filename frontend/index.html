@@ -174,27 +174,6 @@
     <!-- サイドバーオーバーレイ（モバイル） -->
     <div class="mobile-menu" id="sidebarOverlay" onclick="Utils.closeSidebarOnOverlay(event)"></div>
 
-    <!-- モバイル検索 -->
-    <div class="mobile-search" id="mobileSearch">
-        <div class="mobile-search-header">
-            <button class="mobile-search-back" onclick="closeMobileSearch()">←</button>
-            <input type="text" class="mobile-search-input" placeholder="店舗を検索..." id="mobileSearchInput">
-        </div>
-        <div class="mobile-search-content">
-            <div class="filters" style="margin-bottom: 20px;">
-                <button class="filter-btn" data-filter="prefecture">都道府県</button>
-                <button class="filter-btn" data-filter="category">種類</button>
-                <button class="filter-btn" data-filter="period">期間</button>
-            </div>
-            <div class="search-results">
-                <div class="results-header">過去1週間</div>
-                <div id="mobileShopList">
-                    <!-- 店舗リストがここに表示される -->
-                </div>
-            </div>
-        </div>
-    </div>
-
     <!-- コンポーネント用スクリプト -->
     <script src="js/router.js"></script>
     <script src="js/components/timeline.js"></script>

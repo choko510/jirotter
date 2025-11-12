@@ -13,6 +13,7 @@ from app.models import (
     User,
     UserPointLog,
     UserTitle,
+    JST,
 )
 
 
@@ -242,7 +243,7 @@ def evaluate_new_titles(db: Session, user: User) -> List[UserTitle]:
                 icon=definition.get("icon"),
                 theme_color=str(definition.get("theme_color", "#f97316")),
                 prestige=int(definition.get("prestige", 0)),
-                earned_at=datetime.now(timezone.utc),
+                earned_at=datetime.now(JST),
             )
             user.titles.append(title)
             db.add(title)

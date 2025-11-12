@@ -1,5 +1,5 @@
-from datetime import datetime, timedelta
-from typing import Optional
+from datetime import datetime, timedelta, timezone
+from typing import Optional, List
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from sqlalchemy import func, or_
@@ -150,7 +150,7 @@ async def get_admin_overview(
         db.query(func.count(User.id)).filter(User.account_status == "restricted").scalar() or 0
     )
     banned_users = db.query(func.count(User.id)).filter(User.account_status == "banned").scalar() or 0
-    one_week_ago = datetime.utcnow() - timedelta(days=7)
+    one_week_ago = datetime.now(timezone.utc) - timedelta(days=7)
     new_users_last_week = (
         db.query(func.count(User.id)).filter(User.created_at >= one_week_ago).scalar() or 0
     )
@@ -181,7 +181,7 @@ async def get_admin_overview(
 async def list_users(
     search: Optional[str] = Query(None, description="ユーザーID・名前・メールでの検索"),
     status_filter: Optional[str] = Query(
-        None, regex="^(active|warning|restricted|banned)$", description="アカウント状態のフィルタ"
+        None, pattern="^(active|warning|restricted|banned)$", description="アカウント状態のフィルタ"
     ),
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
@@ -244,7 +244,7 @@ async def update_user_moderation(
             detail="自分自身の管理者権限は取り消せません",
         )
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     updated = False
 
     if payload.revert_account_status_override:
@@ -372,7 +372,7 @@ async def acquire_shop_lock(
     - 既に他ユーザーがロックしている場合は成功=Falseを返す
     - 自分のロックが存在する場合は有効期限を延長
     """
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
 
     existing = (
         db.query(ShopEditLock)
@@ -478,7 +478,7 @@ async def update_shop_lock_heartbeat(
             detail="有効なロックが見つかりません",
         )
 
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     lock.last_heartbeat = now
     lock.expires_at = now + timedelta(minutes=5)
     db.commit()
@@ -552,7 +552,7 @@ async def update_shop(
         .filter(ShopEditLock.shop_id == shop_id)
         .first()
     )
-    now = datetime.utcnow()
+    now = datetime.now(timezone.utc)
     if lock and lock.expires_at > now and lock.user_id != admin_user.id:
         locked_by = lock.user.username if lock.user and lock.user.username else lock.user_id
         raise HTTPException(

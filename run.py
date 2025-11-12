@@ -2,7 +2,6 @@ import uvicorn
 
 if __name__ == "__main__":
     import argparse
-    import uvicorn
 
     parser = argparse.ArgumentParser(description="Run FastAPI server")
     parser.add_argument("--host", type=str, default="localhost", help="Server host (default: localhost)")

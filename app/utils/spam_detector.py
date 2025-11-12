@@ -2,14 +2,22 @@ import re
 import math
 import unicodedata
 import os
+import importlib
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+from app.models import JST
 from difflib import SequenceMatcher
 from typing import List, Optional, Tuple, Set
 
 from sqlalchemy.orm import Session
 
 from app.models import Post, Reply
+
+JACONV_AVAILABLE = importlib.util.find_spec("jaconv") is not None
+if JACONV_AVAILABLE:
+    import jaconv  # type: ignore
+else:  # pragma: no cover - 環境依存
+    jaconv = None  # type: ignore
 
 
 # -----------------------------
@@ -145,7 +153,9 @@ class SpamDetector:
 
     def _convert_kana(self, text: str) -> str:
         """カタカナとひらがなの相互変換を行う"""
-        import jaconv
+        if not JACONV_AVAILABLE or jaconv is None:
+            return text
+
         # カタカナをひらがなに変換
         hiragana = jaconv.kata2hira(text)
         # ひらがなをカタカナに変換
@@ -325,14 +335,13 @@ class SpamDetector:
         # テキストを正規化（カタカナとひらがなの変換も考慮）
         normalized_text = self._normalize(text)
         
-        # カタカナをひらがなに変換したテキストでもチェック
-        import jaconv
-        hiragana_text = jaconv.kata2hira(normalized_text)
-        
-        # 元のテキストとひらがな変換テキストの両方でチェック
         texts_to_check = [normalized_text]
-        if hiragana_text != normalized_text:
-            texts_to_check.append(hiragana_text)
+
+        # カタカナをひらがなに変換したテキストでもチェック
+        if JACONV_AVAILABLE and jaconv is not None:
+            hiragana_text = jaconv.kata2hira(normalized_text)
+            if hiragana_text != normalized_text:
+                texts_to_check.append(hiragana_text)
         
         for check_text in texts_to_check:
             if self.badwords_pattern.search(check_text):
@@ -452,8 +461,8 @@ class SpamDetector:
 
     def _check_burst_posts(self, db: Session, user_id: str, reasons: List[str]) -> float:
         try:
-            # created_at が存在する前提。なければ例外を握りつぶす
-            window_start = datetime.utcnow() - timedelta(minutes=self.cfg.burst_window_min)
+            # created_at は JST（tz-aware）で保存されている前提
+            window_start = datetime.now(JST) - timedelta(minutes=self.cfg.burst_window_min)
             count_posts = db.query(Post).filter(Post.user_id == user_id, Post.created_at >= window_start).count()
             count_replies = db.query(Reply).filter(Reply.user_id == user_id, Reply.created_at >= window_start).count()
             total = count_posts + count_replies

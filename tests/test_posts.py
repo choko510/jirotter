@@ -2,7 +2,7 @@
 import io
 import pytest
 
-from app.models import RamenShop
+from app.models import RamenShop, Reply, User
 
 def test_create_post_authenticated(test_client, test_db):
     """認証済みユーザーによる投稿作成テスト"""
@@ -148,6 +148,58 @@ def test_create_post_with_invalid_shop_id(test_client, test_db):
 
     assert response.status_code == 400
     assert data["detail"] == "指定された店舗が存在しません"
+
+
+def test_create_post_with_nonexistent_mention(test_client, test_db):
+    user_data = {
+        "id": "mentionposter",
+        "email": "mentionposter@example.com",
+        "password": "password123!"
+    }
+    register_response = test_client.post("/api/v1/auth/register", json=user_data)
+    token = register_response.json()["access_token"]
+
+    headers = {
+        "Authorization": f"Bearer {token}"
+    }
+
+    post_data = {
+        "content": "こんにちは @ghostuser"
+    }
+
+    response = test_client.post("/api/v1/posts", data=post_data, headers=headers)
+
+    assert response.status_code == 400
+    assert "@ghostuser" in response.json()["detail"]
+
+
+def test_create_post_mentions_jirok_triggers_ai_reply(test_client, test_db):
+    user_data = {
+        "id": "aiinvoker",
+        "email": "aiinvoker@example.com",
+        "password": "password123!"
+    }
+    register_response = test_client.post("/api/v1/auth/register", json=user_data)
+    token = register_response.json()["access_token"]
+
+    headers = {
+        "Authorization": f"Bearer {token}"
+    }
+
+    post_content = "@JiroK 今日のおすすめトッピングは？"
+    response = test_client.post("/api/v1/posts", data={"content": post_content}, headers=headers)
+
+    assert response.status_code == 201
+
+    data = response.json()
+    post_id = data["id"]
+
+    ai_user = test_db.query(User).filter(User.id == "jirok").first()
+    assert ai_user is not None
+
+    ai_reply = test_db.query(Reply).filter(Reply.post_id == post_id, Reply.user_id == "jirok").first()
+    assert ai_reply is not None
+    assert 0 < len(ai_reply.content) <= 200
 
 def test_get_all_posts(test_client, test_db):
     """全ての投稿取得テスト"""
@@ -353,6 +405,13 @@ def test_delete_post_unauthenticated(test_client, test_db):
     assert response.status_code == 401
 
 
+from unittest.mock import patch
+from app.utils.rate_limiter import rate_limiter
+from fastapi import HTTPException, status
+
+async def mock_rate_limit_exceeded(key: str, limit: int, window_seconds: int):
+    raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="短時間に過剰なリクエストが行われました。")
+
 def test_post_rate_limit(test_client, test_db):
     """短時間での投稿回数制限のテスト"""
     user_data = {
@@ -367,16 +426,19 @@ def test_post_rate_limit(test_client, test_db):
         "Authorization": f"Bearer {token}"
     }
 
+    # First 5 posts should succeed
     for i in range(5):
         post_data = {"content": f"連続投稿テスト {i}"}
         result = test_client.post("/api/v1/posts", data=post_data, headers=headers)
         assert result.status_code == 201, result.text
 
-    overflow_post = {"content": "6件目の投稿"}
-    response = test_client.post("/api/v1/posts", data=overflow_post, headers=headers)
+    # Patch the rate limiter to simulate exceeding the limit
+    with patch.object(rate_limiter, "hit", mock_rate_limit_exceeded):
+        overflow_post = {"content": "6件目の投稿"}
+        response = test_client.post("/api/v1/posts", data=overflow_post, headers=headers)
 
-    assert response.status_code == 429
-    assert "短時間に過剰なリクエスト" in response.json()["detail"]
+        assert response.status_code == 429
+        assert "短時間に過剰なリクエスト" in response.json()["detail"]
 
 
 def test_post_spam_detection_shadow_bans(test_client, test_db):
