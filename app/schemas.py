@@ -395,6 +395,44 @@ class RamenShopsResponse(BaseModel):
     total: int
 
 
+class ShopReviewBase(BaseModel):
+    rating: int = Field(..., ge=1, le=5)
+    comment: str = Field(..., min_length=1, max_length=1000)
+
+    @field_validator('comment')
+    @classmethod
+    def validate_comment(cls, value: str) -> str:
+        cleaned = value.strip()
+        if not cleaned:
+            raise ValueError('レビュー本文は必須です')
+        return cleaned
+
+
+class ShopReviewCreate(ShopReviewBase):
+    pass
+
+
+class ShopReviewResponse(ShopReviewBase):
+    model_config = ConfigDict(from_attributes=True)
+
+    id: int
+    shop_id: int
+    user_id: str
+    created_at: datetime
+    author_username: Optional[str] = None
+    author_profile_image_url: Optional[str] = None
+    moderation_status: str
+
+    @field_serializer('comment')
+    def serialize_comment(self, value: str) -> str:
+        return escape_html(value)
+
+
+class ShopReviewListResponse(BaseModel):
+    reviews: List[ShopReviewResponse]
+    total: int
+
+
 class AdminShopSummary(BaseModel):
     id: int
     name: str
