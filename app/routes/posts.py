@@ -174,10 +174,10 @@ async def create_post(
                 detail="動画の長さが不正です"
             )
 
-        if processed_video_duration > 15:
+        if processed_video_duration > 10:
             raise HTTPException(
                 status_code=status.HTTP_400_BAD_REQUEST,
-                detail="動画は15秒以内にしてください"
+                detail="動画は10秒以内にしてください"
             )
 
         original_filename = os.path.basename(video.filename) if video.filename else "video.mp4"

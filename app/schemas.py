@@ -431,6 +431,9 @@ class ShopReviewResponse(ShopReviewBase):
 class ShopReviewListResponse(BaseModel):
     reviews: List[ShopReviewResponse]
     total: int
+    average_rating: Optional[float] = None
+    rating_distribution: Dict[str, int] = Field(default_factory=dict)
+    user_review_id: Optional[int] = None
 
 
 class AdminShopSummary(BaseModel):

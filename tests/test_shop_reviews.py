@@ -1,5 +1,7 @@
 from unittest.mock import AsyncMock, patch
 
+import pytest
+
 from app.models import RamenShop
 
 
@@ -56,6 +58,9 @@ def test_create_shop_review_awards_points(test_client, test_db):
     list_data = list_response.json()
     assert list_data["total"] == 1
     assert list_data["reviews"][0]["comment"] == payload["comment"]
+    assert list_data["average_rating"] == 5.0
+    assert list_data["rating_distribution"]["5"] == 1
+    assert list_data["user_review_id"] is None
 
 
 def test_duplicate_review_rejected(test_client, test_db):
@@ -100,3 +105,43 @@ def test_review_blocked_by_moderation(test_client, test_db):
 
     list_response = test_client.get(f"/api/v1/shops/{shop.id}/reviews")
     assert list_response.json()["total"] == 0
+
+
+def test_review_list_includes_stats_and_user_flag(test_client, test_db):
+    shop = create_shop(test_db)
+    user1, headers1 = create_user_and_headers(test_client, "stats1")
+    _, headers2 = create_user_and_headers(test_client, "stats2")
+
+    first_payload = {"rating": 5, "comment": "一番好きなお店"}
+    second_payload = {"rating": 3, "comment": "スープは濃いめ"}
+
+    assert (
+        test_client.post(
+            f"/api/v1/shops/{shop.id}/reviews",
+            json=first_payload,
+            headers=headers1,
+        ).status_code
+        == 201
+    )
+    assert (
+        test_client.post(
+            f"/api/v1/shops/{shop.id}/reviews",
+            json=second_payload,
+            headers=headers2,
+        ).status_code
+        == 201
+    )
+
+    response = test_client.get(
+        f"/api/v1/shops/{shop.id}/reviews",
+        headers=headers1,
+    )
+    assert response.status_code == 200
+
+    data = response.json()
+    assert data["total"] == 2
+    assert pytest.approx(data["average_rating"], rel=1e-3) == 4.0
+    assert data["rating_distribution"]["5"] == 1
+    assert data["rating_distribution"]["3"] == 1
+    assert data["user_review_id"] is not None
+    assert any(review["user_id"] == user1 for review in data["reviews"])

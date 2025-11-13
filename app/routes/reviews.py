@@ -1,10 +1,13 @@
+from typing import Optional
+
 from fastapi import APIRouter, Depends, HTTPException, Query, status
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from database import get_db
 from app.models import RamenShop, ShopReview, User
 from app.schemas import ShopReviewCreate, ShopReviewResponse, ShopReviewListResponse
-from app.utils.auth import get_current_active_user
+from app.utils.auth import get_current_active_user, get_current_user_optional
 from app.utils.scoring import ensure_user_can_contribute, award_points
 from app.utils.rate_limiter import rate_limiter
 from app.utils.content_moderator import content_moderator
@@ -96,6 +99,7 @@ async def list_shop_reviews(
     limit: int = Query(20, ge=1, le=100),
     offset: int = Query(0, ge=0),
     db: Session = Depends(get_db),
+    current_user: Optional[User] = Depends(get_current_user_optional),
 ):
     """店舗レビュー一覧を取得する"""
     shop = db.query(RamenShop).filter(RamenShop.id == shop_id).first()
@@ -105,16 +109,54 @@ async def list_shop_reviews(
             detail="指定された店舗が存在しません",
         )
 
+    base_filter = (
+        ShopReview.shop_id == shop_id,
+        ShopReview.moderation_status == "approved",
+    )
+
     query = (
         db.query(ShopReview)
-        .filter(
-            ShopReview.shop_id == shop_id,
-            ShopReview.moderation_status == "approved",
-        )
+        .filter(*base_filter)
         .order_by(ShopReview.created_at.desc())
     )
 
     total = query.count()
     reviews = query.offset(offset).limit(limit).all()
 
-    return ShopReviewListResponse(reviews=reviews, total=total)
+    average_rating: Optional[float] = None
+    rating_distribution = {str(rating): 0 for rating in range(1, 6)}
+
+    if total > 0:
+        _, avg_value = (
+            db.query(func.count(ShopReview.id), func.avg(ShopReview.rating))
+            .filter(*base_filter)
+            .first()
+        )
+        average_rating = float(avg_value) if avg_value is not None else None
+
+        rating_rows = (
+            db.query(ShopReview.rating, func.count(ShopReview.id))
+            .filter(*base_filter)
+            .group_by(ShopReview.rating)
+            .all()
+        )
+        for rating_value, rating_count in rating_rows:
+            rating_distribution[str(rating_value)] = rating_count
+
+    user_review_id: Optional[int] = None
+    if current_user:
+        user_review = (
+            db.query(ShopReview.id)
+            .filter(*base_filter, ShopReview.user_id == current_user.id)
+            .first()
+        )
+        if user_review:
+            user_review_id = user_review[0]
+
+    return ShopReviewListResponse(
+        reviews=reviews,
+        total=total,
+        average_rating=average_rating,
+        rating_distribution=rating_distribution,
+        user_review_id=user_review_id,
+    )

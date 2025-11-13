@@ -849,6 +849,237 @@ body {
     font-size: 16px;
 }
 
+.shop-reviews-section {
+    margin-top: 32px;
+    padding-top: 24px;
+    border-top: 1px solid rgba(231, 220, 205, 0.7);
+}
+
+.shop-reviews-header {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.shop-reviews-section h2 {
+    font-size: 20px;
+    margin: 0;
+}
+
+.review-stats {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 16px;
+    background: var(--color-surface);
+    border: 1px solid rgba(231, 220, 205, 0.7);
+    border-radius: 16px;
+    padding: 16px;
+}
+
+.average-rating {
+    min-width: 140px;
+}
+
+.average-rating-value {
+    font-size: 40px;
+    font-weight: bold;
+    color: var(--color-primary);
+    line-height: 1;
+}
+
+.average-rating-label {
+    color: var(--color-muted);
+    font-size: 14px;
+}
+
+.rating-breakdown {
+    flex: 1;
+    min-width: 220px;
+}
+
+.rating-row {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    margin-bottom: 6px;
+}
+
+.rating-row:last-child {
+    margin-bottom: 0;
+}
+
+.rating-label {
+    font-weight: bold;
+    width: 20px;
+}
+
+.rating-bar {
+    flex: 1;
+    height: 8px;
+    background: rgba(231, 220, 205, 0.5);
+    border-radius: 999px;
+    overflow: hidden;
+}
+
+.rating-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--color-primary), var(--color-accent));
+}
+
+.rating-count {
+    width: 32px;
+    text-align: right;
+    font-weight: 500;
+}
+
+.no-reviews,
+.no-reviews-hint {
+    text-align: center;
+    color: var(--color-muted);
+}
+
+.shop-review-list {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+    margin-bottom: 20px;
+}
+
+.review-card {
+    background: var(--color-surface);
+    border: 1px solid rgba(231, 220, 205, 0.7);
+    border-radius: 16px;
+    padding: 16px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+.review-card-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    margin-bottom: 12px;
+}
+
+.review-author {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.review-avatar {
+    width: 48px;
+    height: 48px;
+    border-radius: 50%;
+    overflow: hidden;
+    border: 2px solid rgba(231, 220, 205, 0.7);
+}
+
+.review-avatar img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+}
+
+.review-author-name {
+    font-weight: bold;
+    margin-bottom: 4px;
+}
+
+.review-date {
+    color: var(--color-muted);
+    font-size: 14px;
+}
+
+.review-rating {
+    color: var(--color-primary);
+    font-size: 16px;
+}
+
+.review-rating i {
+    margin-left: 2px;
+}
+
+.review-comment {
+    margin: 0;
+    line-height: 1.6;
+    white-space: pre-wrap;
+}
+
+.review-form-card {
+    background: var(--color-surface);
+    border: 1px solid rgba(231, 220, 205, 0.7);
+    border-radius: 16px;
+    padding: 20px;
+    box-shadow: 0 4px 12px rgba(0, 0, 0, 0.04);
+}
+
+.review-form-card h3 {
+    margin-top: 0;
+}
+
+.review-form-card .form-row {
+    margin-bottom: 16px;
+}
+
+.review-input-label {
+    font-weight: 600;
+    margin-bottom: 6px;
+    display: block;
+}
+
+.review-form-card select,
+.review-form-card textarea {
+    width: 100%;
+    border-radius: 12px;
+    border: 1px solid rgba(231, 220, 205, 0.7);
+    padding: 12px;
+    font-size: 16px;
+    background: var(--color-surface);
+}
+
+.review-form-card textarea {
+    resize: vertical;
+}
+
+.review-form-feedback {
+    min-height: 20px;
+    margin: 8px 0;
+    font-size: 14px;
+}
+
+.review-form-hint {
+    margin: 8px 0 0;
+    color: var(--color-muted);
+    font-size: 13px;
+}
+
+.review-form-guest {
+    text-align: center;
+}
+
+.review-form-disabled {
+    background: rgba(231, 220, 205, 0.2);
+}
+
+.review-form-disabled .review-form-hint {
+    margin-top: 4px;
+}
+
+.review-form-card .action-button {
+    width: 100%;
+    margin-top: 8px;
+}
+
+.error-text {
+    color: var(--color-danger);
+}
+
+.success-text {
+    color: #2e7d32;
+}
+
 /* ---------------------------------------
    Loading and error states
 --------------------------------------- */
@@ -1006,6 +1237,48 @@ html.dark-mode,
 .dark-mode .shop-posts-section h2 {
     color: rgba(231, 220, 205, 0.7);
     border-bottom-color: var(--color-text);
+}
+
+.dark-mode .shop-reviews-section {
+    border-top-color: var(--app-border-subtle);
+}
+
+.dark-mode .review-stats,
+.dark-mode .review-card,
+.dark-mode .review-form-card {
+    background: var(--app-surface);
+    border-color: var(--app-border-subtle);
+    box-shadow: none;
+}
+
+.dark-mode .review-form-disabled {
+    background: rgba(255, 255, 255, 0.05);
+}
+
+.dark-mode .rating-bar {
+    background: rgba(255, 255, 255, 0.1);
+}
+
+.dark-mode .review-date,
+.dark-mode .review-form-hint,
+.dark-mode .no-reviews,
+.dark-mode .no-reviews-hint {
+    color: rgba(231, 220, 205, 0.6);
+}
+
+.dark-mode .review-avatar {
+    border-color: var(--app-border-subtle);
+}
+
+.dark-mode .review-form-card select,
+.dark-mode .review-form-card textarea {
+    background: var(--app-bg);
+    border-color: var(--app-border-subtle);
+    color: var(--app-text-main);
+}
+
+.dark-mode .review-form-card textarea::placeholder {
+    color: var(--app-text-muted);
 }
 
 .dark-mode .no-posts {
