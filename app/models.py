@@ -50,6 +50,7 @@ class User(Base):
     posts = relationship('Post', backref='author', lazy=True, cascade='all, delete-orphan')
     likes = relationship('Like', backref='user', lazy=True, cascade='all, delete-orphan')
     replies = relationship('Reply', backref='author', lazy=True, cascade='all, delete-orphan')
+    shop_reviews = relationship('ShopReview', back_populates='author', lazy=True, cascade='all, delete-orphan')
     point_logs = relationship('UserPointLog', backref='user', lazy=True, cascade='all, delete-orphan')
     titles = relationship('UserTitle', backref='user', lazy=True, cascade='all, delete-orphan')
 
@@ -172,6 +173,39 @@ class RamenShop(Base):
     longitude = Column(Float, nullable=False, index=True)
     wait_time = Column(Integer, default=0)  # 待ち時間（分）
     last_update = Column(DateTime, default=lambda: datetime.now(JST))  # 最終更新時間
+
+    reviews = relationship('ShopReview', back_populates='shop', cascade='all, delete-orphan')
+
+
+class ShopReview(Base):
+    """店舗レビュー"""
+    __tablename__ = 'shop_reviews'
+    __table_args__ = (
+        Index('ix_shop_reviews_shop_id', 'shop_id'),
+        Index('ix_shop_reviews_user_id', 'user_id'),
+        UniqueConstraint('shop_id', 'user_id', name='uq_shop_reviews_user_shop'),
+    )
+
+    id = Column(Integer, primary_key=True)
+    shop_id = Column(Integer, ForeignKey('ramen_shops.id'), nullable=False)
+    user_id = Column(String(80), ForeignKey('users.id'), nullable=False)
+    rating = Column(Integer, nullable=False)
+    comment = Column(Text, nullable=False)
+    created_at = Column(DateTime, default=lambda: datetime.now(JST))
+    moderation_status = Column(String(20), nullable=False, default='approved')
+    moderation_reason = Column(Text, nullable=True)
+    moderation_confidence = Column(Float, nullable=True)
+
+    author = relationship('User', back_populates='shop_reviews')
+    shop = relationship('RamenShop', back_populates='reviews')
+
+    @property
+    def author_username(self):
+        return self.author.username or self.author.id if self.author else None
+
+    @property
+    def author_profile_image_url(self):
+        return self.author.profile_image_url if self.author else None
 
 
 class RamenShopSubmission(Base):

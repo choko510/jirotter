@@ -286,6 +286,44 @@ const API = {
         }
     },
 
+    async getShopReviews(shopId, { limit = 20, offset = 0 } = {}) {
+        try {
+            const params = new URLSearchParams({
+                limit: String(limit),
+                offset: String(offset)
+            });
+            const data = await this.request(
+                `/api/v1/shops/${shopId}/reviews?${params.toString()}`,
+                { includeAuth: true }
+            );
+            return {
+                success: true,
+                reviews: data.reviews ?? [],
+                total: data.total ?? 0,
+                average_rating: typeof data.average_rating === 'number' ? data.average_rating : null,
+                rating_distribution: data.rating_distribution ?? {},
+                user_review_id: data.user_review_id ?? null
+            };
+        } catch (error) {
+            console.error('店舗レビューの取得に失敗しました:', error);
+            return { success: false, error: error.message };
+        }
+    },
+
+    async createShopReview(shopId, payload) {
+        try {
+            const data = await this.request(`/api/v1/shops/${shopId}/reviews`, {
+                method: 'POST',
+                body: payload,
+                includeAuth: true
+            });
+            return { success: true, review: data };
+        } catch (error) {
+            console.error('店舗レビューの投稿に失敗しました:', error);
+            return { success: false, error: error.message };
+        }
+    },
+
     // 店舗IDで投稿を取得
     async getPostsByShopId(shopId) {
         try {

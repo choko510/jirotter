@@ -76,6 +76,7 @@ POINT_RULES: Dict[str, Dict[str, object]] = {
     "video_post": {"points": 22, "internal": 2, "reason": "動画付き投稿"},
     "new_follower": {"points": 20, "internal": 1, "reason": "フォロワー獲得"},
     "shop_submission_approved": {"points": 28, "internal": 3, "reason": "店舗情報の改善"},
+    "shop_review": {"points": 16, "internal": 1, "reason": "店舗レビュー投稿"},
 }
 
 

@@ -26,6 +26,7 @@ from app.routes.checkin import router as checkin_router
 from app.routes.stamps import router as stamps_router
 from app.routes.visits import router as visits_router
 from app.routes.shop_submissions import router as shop_submissions_router
+from app.routes.reviews import router as shop_reviews_router
 from app.routes.admin import router as admin_router
 from app.routes.shop_editor_ws import router as shop_editor_ws_router
 from app.models import User
@@ -319,6 +320,7 @@ def create_app():
     app.include_router(stamps_router, prefix=settings.API_V1_STR)
     app.include_router(visits_router, prefix=settings.API_V1_STR)
     app.include_router(shop_submissions_router, prefix=settings.API_V1_STR)
+    app.include_router(shop_reviews_router, prefix=settings.API_V1_STR)
     app.include_router(admin_router, prefix=settings.API_V1_STR)
 
     def render_html(filename: str) -> HTMLResponse:

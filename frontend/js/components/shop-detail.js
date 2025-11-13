@@ -2,6 +2,7 @@
 const ShopDetailComponent = {
     // 店舗詳細データ
     shopData: null,
+    reviewStats: null,
     
     // レンダリング
     async render(params) {
@@ -137,14 +138,29 @@ const ShopDetailComponent = {
                         <div class="loading">投稿を読み込み中...</div>
                     </div>
                 </div>
+
+                <div class="shop-reviews-section">
+                    <div class="shop-reviews-header">
+                        <h2>みんなのレビュー</h2>
+                        <div id="shopReviewStats" class="review-stats"></div>
+                    </div>
+                    <div id="shopReviewList" class="shop-review-list">
+                        <div class="loading">レビューを読み込み中...</div>
+                    </div>
+                    <div id="shopReviewFormContainer" class="shop-review-form"></div>
+                </div>
             </div>
         `;
-        
+
         // 地図を初期化
         this.initializeMap();
-        
+
         // 店舗関連の投稿を読み込み
         this.loadShopPosts();
+
+        // レビューUIを初期化
+        this.renderReviewForm();
+        this.loadShopReviews();
     },
     
     // 地図の初期化
@@ -256,10 +272,256 @@ const ShopDetailComponent = {
             jiro: { name: '直系二郎', color: 'var(--color-primary)', textColor: 'white', markerText: '直', keywords: ['ラーメン二郎'] },
             other: { name: 'その他', color: '#95a5a6', textColor: 'white', keywords: [] }
         };
-        
+
         return BRAND_CONFIG[brand] || BRAND_CONFIG.other;
     },
-    
+
+    async loadShopReviews() {
+        if (!this.shopData) return;
+
+        const reviewList = document.getElementById('shopReviewList');
+        if (reviewList) {
+            reviewList.innerHTML = '<div class="loading">レビューを読み込み中...</div>';
+        }
+
+        try {
+            const result = await API.getShopReviews(this.shopData.id, { limit: 20 });
+            if (!result.success) {
+                throw new Error(result.error || 'レビューの取得に失敗しました');
+            }
+
+            this.reviewStats = result;
+            this.renderReviewStats(result);
+            this.renderReviewList(result.reviews);
+            this.renderReviewForm({ userReviewId: result.user_review_id });
+        } catch (error) {
+            console.error('店舗レビューの読み込みに失敗しました:', error);
+            if (reviewList) {
+                reviewList.innerHTML = `
+                    <div class="error">
+                        <p>${this.escapeHtml(error.message || 'レビューの取得に失敗しました')}</p>
+                    </div>
+                `;
+            }
+            const stats = document.getElementById('shopReviewStats');
+            if (stats) {
+                stats.innerHTML = '';
+            }
+        }
+    },
+
+    renderReviewStats(data) {
+        const statsContainer = document.getElementById('shopReviewStats');
+        if (!statsContainer) return;
+
+        if (!data || !data.total) {
+            statsContainer.innerHTML = '<p class="no-reviews-hint">この店舗のレビューはまだありません</p>';
+            return;
+        }
+
+        const averageLabel = typeof data.average_rating === 'number'
+            ? data.average_rating.toFixed(1)
+            : '–';
+
+        const breakdownHtml = [5, 4, 3, 2, 1].map((rating) => {
+            const count = (data.rating_distribution && data.rating_distribution[String(rating)]) || 0;
+            const percentage = data.total ? Math.round((count / data.total) * 100) : 0;
+            return `
+                <div class="rating-row">
+                    <span class="rating-label">${rating}</span>
+                    <div class="rating-bar">
+                        <div class="rating-bar-fill" style="width: ${percentage}%"></div>
+                    </div>
+                    <span class="rating-count">${count}</span>
+                </div>
+            `;
+        }).join('');
+
+        statsContainer.innerHTML = `
+            <div class="average-rating" aria-label="平均評価 ${averageLabel}">
+                <div class="average-rating-value">${averageLabel}</div>
+                <div class="average-rating-label">平均評価 (${data.total}件)</div>
+            </div>
+            <div class="rating-breakdown">${breakdownHtml}</div>
+        `;
+    },
+
+    renderReviewList(reviews = []) {
+        const reviewList = document.getElementById('shopReviewList');
+        if (!reviewList) return;
+
+        if (!reviews.length) {
+            reviewList.innerHTML = `
+                <div class="no-reviews">
+                    <i class="fas fa-pen"></i>
+                    <p>最初のレビューを書いてこの店を応援しましょう</p>
+                </div>
+            `;
+            return;
+        }
+
+        reviewList.innerHTML = reviews.map((review) => this.createReviewCard(review)).join('');
+    },
+
+    createReviewCard(review) {
+        const avatarUrl = review.author_profile_image_url || 'assets/baseicon.png';
+        const username = review.author_username || review.user_id;
+        return `
+            <article class="review-card">
+                <header class="review-card-header">
+                    <div class="review-author">
+                        <div class="review-avatar">
+                            <img src="${API.escapeHtml(avatarUrl)}" alt="${this.escapeHtml(username)}のアイコン">
+                        </div>
+                        <div>
+                            <div class="review-author-name">${this.escapeHtml(username)}</div>
+                            <div class="review-date">${this.formatReviewDate(review.created_at)}</div>
+                        </div>
+                    </div>
+                    <div class="review-rating" aria-label="評価 ${review.rating} / 5">
+                        ${this.renderStars(review.rating)}
+                    </div>
+                </header>
+                <p class="review-comment">${this.escapeHtml(review.comment)}</p>
+            </article>
+        `;
+    },
+
+    renderStars(rating = 0) {
+        const stars = [];
+        for (let i = 1; i <= 5; i += 1) {
+            const filled = i <= rating;
+            stars.push(`<i class="${filled ? 'fas' : 'far'} fa-star"></i>`);
+        }
+        return stars.join('');
+    },
+
+    formatReviewDate(dateString) {
+        if (!dateString) return '';
+        try {
+            const date = new Date(dateString);
+            return new Intl.DateTimeFormat('ja-JP', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            }).format(date);
+        } catch (error) {
+            return dateString;
+        }
+    },
+
+    renderReviewForm(info = {}) {
+        const container = document.getElementById('shopReviewFormContainer');
+        if (!container) return;
+
+        const currentUser = API.getCurrentUser();
+        if (!currentUser) {
+            container.innerHTML = `
+                <div class="review-form-card review-form-guest">
+                    <p>ログインして店舗レビューを投稿しましょう。</p>
+                    <button type="button" class="action-button primary" onclick="router.navigate('auth', ['login'])">
+                        ログイン / 新規登録
+                    </button>
+                </div>
+            `;
+            return;
+        }
+
+        if (info.userReviewId) {
+            container.innerHTML = `
+                <div class="review-form-card review-form-disabled">
+                    <p>この店舗には既にレビューを投稿済みです。</p>
+                    <p class="review-form-hint">レビューは1店舗につき1件のみ投稿できます。</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = `
+            <form id="shopReviewForm" class="review-form-card">
+                <h3>レビューを投稿</h3>
+                <div class="form-row">
+                    <label class="review-input-label" for="shopReviewRating">評価</label>
+                    <select id="shopReviewRating" required>
+                        <option value="5">★★★★★ とにかく最高</option>
+                        <option value="4">★★★★☆ かなり満足</option>
+                        <option value="3">★★★☆☆ 普通</option>
+                        <option value="2">★★☆☆☆ 改善の余地あり</option>
+                        <option value="1">★☆☆☆☆ 期待外れ</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <label class="review-input-label" for="shopReviewComment">レビュー本文</label>
+                    <textarea id="shopReviewComment" rows="4" maxlength="1000" placeholder="味・雰囲気・おすすめの食べ方などを共有してください" required></textarea>
+                </div>
+                <div class="review-form-feedback" id="shopReviewFormFeedback" aria-live="polite"></div>
+                <button type="submit" class="action-button primary">レビューを投稿</button>
+                <p class="review-form-hint">AIによるモデレーションで安全なコミュニティを保ちます。</p>
+            </form>
+        `;
+
+        const form = document.getElementById('shopReviewForm');
+        if (form) {
+            form.addEventListener('submit', (event) => this.handleReviewSubmit(event));
+        }
+    },
+
+    async handleReviewSubmit(event) {
+        event.preventDefault();
+        if (!this.shopData) return;
+
+        const form = event.target;
+        const ratingEl = document.getElementById('shopReviewRating');
+        const commentEl = document.getElementById('shopReviewComment');
+        const feedbackEl = document.getElementById('shopReviewFormFeedback');
+        const submitButton = form.querySelector('button[type="submit"]');
+
+        const rating = Number(ratingEl.value);
+        const comment = commentEl.value.trim();
+
+        if (!comment) {
+            if (feedbackEl) {
+                feedbackEl.textContent = 'レビュー本文を入力してください。';
+                feedbackEl.classList.add('error-text');
+            }
+            return;
+        }
+
+        if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.textContent = '投稿中...';
+        }
+        if (feedbackEl) {
+            feedbackEl.textContent = '';
+            feedbackEl.classList.remove('error-text', 'success-text');
+        }
+
+        try {
+            const result = await API.createShopReview(this.shopData.id, { rating, comment });
+            if (!result.success) {
+                throw new Error(result.error || 'レビューの投稿に失敗しました');
+            }
+
+            if (feedbackEl) {
+                feedbackEl.textContent = 'レビューを投稿しました。反映まで数秒かかる場合があります。';
+                feedbackEl.classList.add('success-text');
+            }
+            form.reset();
+            await this.loadShopReviews();
+        } catch (error) {
+            console.error('レビュー投稿に失敗しました:', error);
+            if (feedbackEl) {
+                feedbackEl.textContent = error.message || 'レビューの投稿に失敗しました';
+                feedbackEl.classList.add('error-text');
+            }
+        } finally {
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.textContent = 'レビューを投稿';
+            }
+        }
+    },
+
     // 店舗関連の投稿を読み込み
     async loadShopPosts() {
         try {
