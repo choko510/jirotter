@@ -16,41 +16,29 @@ RANK_DEFINITIONS = [
         "name": "啜りし者",
         "min_points": 0,
         "badge_color": "#9CA3AF",
-        "description": "初めての一杯を記録し始めた初心者。すべてはここから始まる"
+        "description": "初めての一杯を記録し始めた初心者。すべてはここから始まる。"
     },
     {
         "name": "スープの底を覗く者",
         "min_points": 150,
         "badge_color": "#60A5FA",
-        "description": "街の人気店を巡り、スープの深淵を覗き始めた探求者"
+        "description": "街の人気店を巡り、スープの深淵を覗き始めた探求者。"
     },
     {
-        "name": "ヤサイマシの求道者",
+        "name": "天地返し中毒者",
         "min_points": 300,
-        "badge_color": "#4ADE80",
-        "description": "盛りを極めるために日々限界へ挑み続ける者。ヤサイの山は心の修行場。"
-    },
-    {
-        "name": "趣味は天地返し",
-        "min_points": 500,
         "badge_color": "#FBBF24",
         "description": "天地返しの快感に取り憑かれ、麺とスープを一体化させる者"
     },
     {
-        "name": "麺線の美学者",
-        "min_points": 750,
-        "badge_color": "#38BDF8",
-        "description": "麺の太さ、茹で加減、絡み方。その全てを語れる繊細な美食家。"
-    },
-    {
         "name": "呪文詠唱 ニンニクヤサイアブラ",
-        "min_points": 1000,
+        "min_points": 500,
         "badge_color": "#C084FC",
         "description": "唱えれば己を覚醒させる禁断のコールを会得した者"
     },
     {
         "name": "真のジロリアン",
-        "min_points": 1500,
+        "min_points": 1000,
         "badge_color": "#34D399",
         "description": "味、量、雰囲気…二郎の全てを理解した者"
     },
@@ -62,39 +50,39 @@ RANK_DEFINITIONS = [
     },
     {
         "name": "人間やめますか",
-        "min_points": 2500,
+        "min_points": 5000,
         "badge_color": "#F97316",
         "description": "常識を捨て、二郎と共に生きることを選んだ伝説のジロリアン"
     },
     {
-        "name": "二郎に愛された者",
-        "min_points": 3000,
-        "badge_color": "#EAB308",
-        "description": "通いすぎて顔を覚えられ、店員から一目置かれる存在となった伝説の常連。"
-    },
-    {
-        "name": "ラーメンを超えし者",
-        "min_points": 4000,
-        "badge_color": "#D946EF",
-        "description": "もはやラーメンではない、芸術として二郎を捉える悟りの境地。"
-    },
-    {
         "name": "私は完璧で究極のジロリアン",
-        "min_points": 5000,
+        "min_points": 10000,
         "badge_color": "#EF4444",
         "description": "すべてのジロリアンを見守る、神の領域に到達した究極の存在。"
     },
     {
-    "name": "神豚の加護を受けし者",
-    "min_points": 7500,
-    "badge_color": "#DC2626",
-    "description": "二郎の神に選ばれし者。その一杯には宇宙すら宿る。全ジロリアンの憧れ。"
+        "name": "二郎の歴史を刻むもの",
+        "min_points": 20000,
+        "badge_color": "#0044FF",
+        "description": "その名を聞くだけで列が伸びる。二郎界の頂点に最も近い者。"
     },
     {
-        "name": "二郎の歴史を刻むもの",
-        "min_points": 10000,
+        "name": "万象を二郎へ帰す者",
+        "min_points": 30000,
         "badge_color": "#F43F5E",
-        "description": "その名を聞くだけで列が伸びる。二郎界の頂点に最も近い者。"
+        "description": "食・文化・哲学・雑踏……この世界に存在する万物を、二郎という一つの原理に還元して捉える域へ到達した者。その視点はすでに人間では理解し得ない、万象帰一の境地。"
+    },
+    {
+        "name": "二郎法則の外側に立つ者",
+        "min_points": 40000,
+        "badge_color": "#7F1D1D",
+        "description": "二郎を生む宇宙すら、その法則すら、この存在の前では一つの揺らぎにすぎない。原初を超え、創造を超え、因果の外側から二郎という現象そのものを“観測”する唯一の存在。ジロリアンという概念を超え、二郎という体系を超え、あらゆる物語の外側に立つ終極点。"
+    },
+    {
+        "name": "二郎法則の外側に立つ者",
+        "min_points": 50000,
+        "badge_color": "#A306FE",
+        "description": "二郎を生む宇宙すら、その法則すら、この存在の前では一つの揺らぎにすぎない。原初を超え、創造を超え、因果の外側から二郎という現象そのものを“観測”する唯一の存在。ジロリアンという概念を超え、二郎という体系を超え、あらゆる物語の外側に立つ終極点。"
     },
 ]
 
@@ -106,7 +94,6 @@ POINT_RULES: Dict[str, Dict[str, object]] = {
     "video_post": {"points": 22, "internal": 2, "reason": "動画付き投稿"},
     "new_follower": {"points": 20, "internal": 1, "reason": "フォロワー獲得"},
     "shop_submission_approved": {"points": 28, "internal": 3, "reason": "店舗情報の改善"},
-    "shop_review": {"points": 16, "internal": 1, "reason": "店舗レビュー投稿"},
 }
 
 

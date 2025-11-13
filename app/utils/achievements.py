@@ -26,6 +26,8 @@ METRIC_LABELS: Dict[str, str] = {
     "posts": "投稿数",
     "followers": "フォロワー数",
     "contribution_actions": "総アクション数",
+    # レビュー系称号用メトリクス
+    "reviews": "総レビュー数",
 }
 
 
@@ -129,6 +131,17 @@ TITLE_DEFINITIONS: List[Dict[str, object]] = [
         "progress_label": "総アクション数",
         "prestige": 70,
     },
+    {
+        "key": "reviewer_extraordinaire",
+        "name": "レビューの達人",
+        "description": "10店舗でレビューを達成しました。",
+        "category": "community",
+        "icon": "📝",
+        "theme_color": "#14B822",
+        "criteria": {"reviews": 10},
+        "progress_label": "総レビュー数",
+        "prestige": 70,
+    },
 ]
 
 
@@ -161,6 +174,21 @@ def _build_user_metrics(db: Session, user: User) -> Dict[str, int]:
 
     contribution_actions = checkins + posts + waittime_reports
 
+    # レビュー数: UserPointLog 等ではなく Review モデル側で管理されている想定
+    # 「10店舗でレビューを達成」の達成条件評価のため、レビュー合計数を集計する。
+    # Review モデルが存在しない環境ではインポートエラーとなるため、その場合は 0 として扱う。
+    try:
+        from app.models import Review  # 遅延インポートで循環依存を回避
+    except ImportError:  # pragma: no cover - Review 未導入環境向けフォールバック
+        reviews = 0
+    else:
+        reviews = (
+            db.query(func.count(Review.id))
+            .filter(Review.user_id == user_id)
+            .scalar()
+            or 0
+        )
+
     return {
         "points": user.points or 0,
         "checkins": int(checkins),
@@ -170,6 +198,7 @@ def _build_user_metrics(db: Session, user: User) -> Dict[str, int]:
         "image_posts": int(image_posts),
         "video_posts": int(video_posts),
         "contribution_actions": int(contribution_actions),
+        "reviews": int(reviews),
     }
 
 

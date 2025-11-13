@@ -1,4 +1,4 @@
-nstampRallyContent// ラーメン店詳細ページコンポーネント
+// ラーメン店詳細ページコンポーネント
 const ShopDetailComponent = {
     // 店舗詳細データ
     shopData: null,
