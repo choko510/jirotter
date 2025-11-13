@@ -130,6 +130,23 @@ async def _moderate_post(post_id: int, session_factory: sessionmaker) -> None:
         db.close()
 
 
+async def schedule_task(coro) -> None:
+    """
+    任意の非同期処理をバックグラウンドで実行するためのユーティリティ。
+    - 通常時: asyncio.create_task で現在のイベントループ上にスケジュール
+    - テスト環境などイベントループ未存在時: 新規イベントループで実行
+    """
+    try:
+        loop = asyncio.get_running_loop()
+        loop.create_task(coro)
+    except RuntimeError:
+        # 実行中のイベントループが無い場合（同期コンテキストなど）は新規ループで実行
+        try:
+            asyncio.run(coro)
+        except Exception as exc:  # noqa: BLE001
+            print(f"schedule_task 実行中にエラーが発生しました: {exc}")
+
+
 async def schedule_post_moderation(post_id: int, db_session: Session) -> None:
     """イベントループ上で投稿の自動審査を非同期に実行する"""
     bind = db_session.get_bind()

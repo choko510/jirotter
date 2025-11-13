@@ -536,6 +536,27 @@ const CheckinComponent = {
         }
         
         Utils.showNotification(`${checkinData.shop_name}にチェックインしました！`, 'success');
+
+        // スタンプラリー画面表示中であれば、その場で内容を更新する
+        try {
+            const activeView = document.querySelector('.view-switch-btn.active');
+            if (activeView && activeView.dataset.view === 'list') {
+                // チェックイン済みリストを再取得してStampRallyComponentの状態を更新
+                if (window.StampRallyComponent && typeof StampRallyComponent.loadCheckins === 'function') {
+                    StampRallyComponent.loadCheckins()
+                        .then(checkins => {
+                            StampRallyComponent.state.checkins = checkins || [];
+                            // UIを再描画（stampRallyContentのみ）
+                            StampRallyComponent.updateUI();
+                        })
+                        .catch(err => {
+                            console.error('スタンプラリー更新エラー:', err);
+                        });
+                }
+            }
+        } catch (e) {
+            console.error('スタンプラリーUI更新処理でエラーが発生しました:', e);
+        }
     },
 
     // チェックインエラー表示

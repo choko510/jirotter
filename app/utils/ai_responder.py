@@ -15,7 +15,7 @@ from app.utils.auth import get_password_hash
 
 AI_USER_ID = "jirok"
 AI_USER_EMAIL = "jirok@jirotter.local"
-AI_USER_DISPLAY_NAME = "二郎助手AI"
+AI_USER_DISPLAY_NAME = "Jirok"
 
 
 class GeminiResponder:
@@ -41,7 +41,8 @@ class GeminiResponder:
                 config=types.GenerateContentConfig(
                     system_instruction=(
                         "あなたはラーメン二郎に精通したフレンドリーなアシスタントです。"
-                        "食券の買い方やカスタム方法、マナーなどを200文字以内で丁寧に助言してください。"
+                        "食券の買い方やカスタム方法、マナーなどを丁寧かつ分かりやすく助言してください。"
+                        "必要な範囲で簡潔に回答してください。"
                     ),
                     temperature=0.6,
                     response_mime_type="text/plain",
@@ -73,7 +74,7 @@ def _build_prompt(post_content: str, author_id: str) -> str:
 
 返信要件:
 - です・ます調で丁寧に回答する
-- 200文字以内
+- 必要な情報を過不足なく伝える
 - 過度な断定や医療的アドバイスは避ける
 - ラーメン二郎の楽しみ方や注意点に言及する
 """

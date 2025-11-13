@@ -241,18 +241,53 @@ async def create_post(
                 },
             )
 
+        # AIレスポンダーへのメンションがあり、投稿がシャドウバンされていない場合は
+        # 返信生成をバックグラウンドで行う（投稿処理をブロックしない）
         if ai_responder_user and not post.is_shadow_banned:
-            ai_reply_content = await generate_ai_reply(
-                sanitized_content,
-                current_user.id,
-            )
-            if ai_reply_content:
-                ai_reply = Reply(
-                    content=ai_reply_content[:200],
-                    user_id=ai_responder_user.id,
-                    post_id=post.id,
+            from app.utils.moderation_tasks import schedule_task
+
+            async def _generate_and_save_ai_reply(post_id: int, content: str, author_id: str):
+                from database import SessionLocal
+                from app.models import Reply as ReplyModel
+                from app.utils.ai_responder import (
+                    ensure_ai_responder_user as _ensure_ai_user,
+                    generate_ai_reply as _generate_ai_reply,
                 )
-                db.add(ai_reply)
+
+                db_session = SessionLocal()
+                try:
+                    ai_user = _ensure_ai_user(db_session)
+                    if not ai_user:
+                        return
+
+                    ai_reply_content = await _generate_ai_reply(content, author_id)
+                    if not ai_reply_content:
+                        return
+
+                    ai_reply = ReplyModel(
+                        content=ai_reply_content,  # 200文字制限なし
+                        user_id=ai_user.id,
+                        post_id=post_id,
+                    )
+                    db_session.add(ai_reply)
+                    db_session.commit()
+                except Exception as e:
+                    db_session.rollback()
+                    print(f"AI返信バックグラウンド処理中にエラーが発生しました: {e}")
+                finally:
+                    db_session.close()
+
+            try:
+                schedule_task(
+                    _generate_and_save_ai_reply(
+                        post.id,
+                        sanitized_content,
+                        current_user.id,
+                    )
+                )
+            except Exception as e:
+                # AI返信生成は付加的機能のため、失敗しても投稿処理自体は継続
+                print(f"AI返信バックグラウンドスケジュールに失敗しました: {e}")
 
         db.commit()
         db.refresh(post)

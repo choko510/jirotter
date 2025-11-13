@@ -1844,7 +1844,6 @@ const ProfileComponent = {
 
         modal.appendChild(createFormGroup('username', 'ニックネーム（任意・重複可／表示名）', 'input', this.state.user.username || ''));
         modal.appendChild(createFormGroup('bio', '自己紹介', 'textarea', this.state.user.bio || ''));
-        modal.appendChild(createFormGroup('profileImageUrl', 'アイコンURL', 'input', this.state.user.profile_image_url || ''));
 
         const fileGroup = document.createElement('div');
         fileGroup.className = 'form-group';
@@ -1926,11 +1925,12 @@ const ProfileComponent = {
     async handleUpdateProfile(closeModal) {
         const usernameInput = document.getElementById('username');
         const username = usernameInput ? usernameInput.value : null;
-        const bio = document.getElementById('bio').value;
-        const profileImageUrlInput = document.getElementById('profileImageUrl');
+        const bioInput = document.getElementById('bio');
+        const bio = bioInput ? bioInput.value : '';
+
         const fileInput = document.getElementById('profileImageFile');
 
-        let profileImageUrl = profileImageUrlInput ? profileImageUrlInput.value.trim() : '';
+        let profileImageUrl = this.state.user.profile_image_url || '';
 
         if (fileInput && fileInput.files && fileInput.files[0]) {
             const uploadResult = await API.uploadProfileIcon(fileInput.files[0]);

@@ -750,6 +750,8 @@ const TimelineComponent = {
             </style>
             
             ${isLoggedIn ? `
+            <div class="timeline-container" id="timelineContainer">
+            
             <div class="post-input-area">
                 <div class="post-input-wrapper">
                     <div class="post-avatar"><img src="${currentUserIconSrc}" alt="User Icon" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;"></div>
@@ -778,7 +780,7 @@ const TimelineComponent = {
             </div>
             `}
 
-            <div class="timeline-container" id="timelineContainer">
+            
                 <div class="pull-to-refresh-indicator" id="pullToRefreshIndicator">引っ張って更新</div>
                 <div class="timeline" id="timeline"></div>
             </div>

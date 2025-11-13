@@ -722,57 +722,55 @@ const MapComponent = {
             }
             
             @media (max-width: 768px) {
-                .map-container {
-                    height: calc(100vh - 100px);
-                    width: 100vw;
-                    max-width: 100%;
-                }
-                
-                .map-header {
-                    padding: 12px 16px;
-                }
-                
-                .map-title {
-                    font-size: 18px;
-                }
-                
-                .map-controls {
-                    gap: 8px;
-                }
-                
-                .brand-filters {
-                    padding: 8px 12px;
-                }
-                
-                .filter-buttons {
-                    gap: 6px;
-                }
-                
-                .map-filter-btn {
-                    padding: 6px 12px;
-                    font-size: 12px;
-                }
-                
-                .filter-actions {
-                    flex-wrap: wrap;
-                }
-                
-                .filter-action-btn {
-                    font-size: 11px;
-                    padding: 3px 8px;
-                }
-                
-                .map-legend {
-                    bottom: 10px;
-                    right: 10px;
-                    padding: 8px;
-                    font-size: 11px;
-                }
-                
-                .legend-item {
-                    font-size: 11px;
-                }
-            }
+                            .map-container {
+                                height: calc(100vh - 100px);
+                                width: 100vw;
+                                max-width: 100%;
+                            }
+                            
+                            .map-header {
+                                padding: 12px 16px;
+                            }
+                            
+                            .map-title {
+                                font-size: 18px;
+                            }
+                            
+                            .map-controls {
+                                gap: 8px;
+                            }
+                            
+                            .brand-filters {
+                                padding: 8px 12px;
+                            }
+                            
+                            .filter-buttons {
+                                gap: 6px;
+                            }
+                            
+                            .map-filter-btn {
+                                padding: 6px 12px;
+                                font-size: 12px;
+                            }
+                            
+                            .filter-actions {
+                                flex-wrap: wrap;
+                            }
+                            
+                            .filter-action-btn {
+                                font-size: 11px;
+                                padding: 3px 8px;
+                            }
+                            
+                            /* スマホ環境では凡例を非表示にする */
+                            .map-legend {
+                                display: none !important;
+                            }
+                            
+                            .legend-item {
+                                font-size: 11px;
+                            }
+                        }
 
             /* Dark Mode Overrides */
             .dark-mode .map-header,
@@ -994,13 +992,17 @@ const MapComponent = {
 
             @media (max-width: 768px) {
                 .shop-detail-panel {
-                    width: 100%;
-                    top: 40%; /* Start from 40% from the top */
-                    bottom: 0; /* Go all the way to the bottom */
+                    position: fixed;
+                    top: 0;
                     left: 0;
+                    right: 0;
+                    bottom: 0;
+                    width: 100%;
+                    height: 100%;
                     transform: translateY(100%);
-                    border-top: 1px solid #e0e0e0;
+                    border: none;
                     visibility: hidden;
+                    z-index: 2000; /* マップや凡例より前面に表示 */
                 }
 
                 .shop-detail-panel.show {
@@ -1009,8 +1011,7 @@ const MapComponent = {
                 }
 
                 .dark-mode .shop-detail-panel {
-                    border-top: 1px solid #333;
-                    border-right: none;
+                    border: none;
                 }
             }
 
@@ -2526,8 +2527,21 @@ const MapComponent = {
                         </div>
                     </div>
                     ${actionsHtml}
+                    <div class="shop-reviews-section">
+                        <div class="shop-reviews-header">
+                            <h2>みんなのレビュー</h2>
+                            <div id="shopReviewStats" class="review-stats"></div>
+                        </div>
+                        <div id="shopReviewList" class="shop-review-list">
+                            <div class="loading">レビューを読み込み中...</div>
+                        </div>
+                        <div id="shopReviewFormContainer" class="shop-review-form"></div>
+                    </div>
                 </div>
             `;
+
+            // 詳細表示後にレビュー情報を読み込み
+            this.loadShopReviewsForMap(shopId);
         } catch (error) {
             console.error('店舗詳細の取得に失敗しました:', error);
             panel.innerHTML = `<div class="error" style="padding: 20px; text-align: center;">店舗情報の取得に失敗しました</div>`;

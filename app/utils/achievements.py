@@ -109,7 +109,7 @@ TITLE_DEFINITIONS: List[Dict[str, object]] = [
     },
     {
         "key": "ramen_legend",
-        "name": "真のジロリアン",
+        "name": "ジロリアンとしての活動",
         "description": "累計ポイントが600ptに到達。あなたの活動が皆を導いています。",
         "category": "milestone",
         "icon": "🏆",
