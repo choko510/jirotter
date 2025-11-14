@@ -13,6 +13,9 @@ import os
 import time
 import random
 import string
+import base64
+from pathlib import Path
+import threading
 import user_agents
 
 from app.routes.auth import router as auth_router
@@ -31,6 +34,47 @@ from app.routes.admin import router as admin_router
 from app.routes.shop_editor_ws import router as shop_editor_ws_router
 from app.models import User
 from app.utils.auth import verify_token
+
+FRONTEND_DIR = Path(__file__).resolve().parent.parent / "frontend"
+JS_DIR = FRONTEND_DIR / "js"
+
+
+class JavaScriptObfuscator:
+    """Simple runtime obfuscator that wraps JS code with base64 decoding."""
+
+    def __init__(self):
+        self._cache: dict[str, tuple[float, str]] = {}
+        self._lock = threading.Lock()
+
+    def obfuscate(self, file_path: Path) -> str:
+        """Return an obfuscated version of the given JS file."""
+        if not file_path.exists() or not file_path.is_file():
+            raise FileNotFoundError(str(file_path))
+
+        mtime = file_path.stat().st_mtime
+        cache_key = str(file_path)
+        with self._lock:
+            cached = self._cache.get(cache_key)
+            if cached and cached[0] == mtime:
+                return cached[1]
+
+        with file_path.open("r", encoding="utf-8") as f:
+            raw_content = f.read()
+
+        encoded = base64.b64encode(raw_content.encode("utf-8")).decode("ascii")
+        obfuscated = (
+            "(()=>{const s='"
+            + encoded
+            + "';const run=() => (0,eval)(atob(s));run();})();"
+        )
+
+        with self._lock:
+            self._cache[cache_key] = (mtime, obfuscated)
+
+        return obfuscated
+
+
+js_obfuscator = JavaScriptObfuscator()
 
 class CacheBustingMiddleware(BaseHTTPMiddleware):
     """Debugモード時に静的ファイルにランダムパラメーターを追加してキャッシュを防ぐミドルウェア"""
@@ -283,10 +327,8 @@ def create_app():
         max_age=600,
     )
     
-    # 静的ファイルの提供設定
+    # 静的ファイルの提供設定（JSは専用エンドポイントで難読化）
     if settings.DEBUG:
-        # Debugモード時はキャッシュを無効化
-        app.mount("/js", StaticFiles(directory="frontend/js", html=True), name="js")
         app.mount("/css", StaticFiles(directory="frontend/css", html=True), name="css")
         app.mount("/uploads", StaticFiles(directory="uploads", html=True), name="uploads")
         app.mount("/assets", StaticFiles(directory="frontend/assets", html=True), name="assets")
@@ -295,15 +337,13 @@ def create_app():
         class StaticFilesWithCache(StaticFiles):
             def __init__(self, *args, **kwargs):
                 super().__init__(*args, **kwargs)
-            
+
             def file_response(self, *args, **kwargs):
                 response = super().file_response(*args, **kwargs)
                 if response:
-                    # 本番環境では適切なキャッシュヘッダーを設定
                     response.headers["Cache-Control"] = "public, max-age=31536000"  # 1年
                 return response
-        
-        app.mount("/js", StaticFilesWithCache(directory="frontend/js", html=True), name="js")
+
         app.mount("/css", StaticFilesWithCache(directory="frontend/css", html=True), name="css")
         app.mount("/uploads", StaticFilesWithCache(directory="uploads", html=True), name="uploads")
         app.mount("/assets", StaticFilesWithCache(directory="frontend/assets", html=True), name="assets")
@@ -322,6 +362,13 @@ def create_app():
     app.include_router(shop_submissions_router, prefix=settings.API_V1_STR)
     app.include_router(shop_reviews_router, prefix=settings.API_V1_STR)
     app.include_router(admin_router, prefix=settings.API_V1_STR)
+
+    def _no_cache_headers() -> dict[str, str]:
+        return {
+            "Cache-Control": "no-cache, no-store, must-revalidate",
+            "Pragma": "no-cache",
+            "Expires": "0",
+        }
 
     def render_html(filename: str) -> HTMLResponse:
         """
@@ -357,13 +404,35 @@ def create_app():
 
         headers = {}
         if settings.DEVELOPMENT:
-            headers = {
-                "Cache-Control": "no-cache, no-store, must-revalidate",
-                "Pragma": "no-cache",
-                "Expires": "0",
-            }
+            headers = _no_cache_headers()
 
         return HTMLResponse(content=content, headers=headers)
+
+    @app.get("/js/{file_path:path}", response_class=Response)
+    async def serve_obfuscated_js(file_path: str):
+        """JavaScriptファイルを読み込み、難読化した上で返却する。"""
+        safe_root = JS_DIR.resolve()
+        requested_path = (safe_root / file_path).resolve()
+
+        try:
+            requested_path.relative_to(safe_root)
+        except ValueError:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ファイルが見つかりません")
+
+        if not requested_path.is_file():
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ファイルが見つかりません")
+
+        try:
+            obfuscated = js_obfuscator.obfuscate(requested_path)
+        except FileNotFoundError:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ファイルが見つかりません")
+
+        if settings.DEBUG or settings.DEVELOPMENT:
+            headers = _no_cache_headers()
+        else:
+            headers = {"Cache-Control": "public, max-age=31536000"}
+
+        return Response(content=obfuscated, media_type="application/javascript", headers=headers)
 
     @app.get("/", response_class=HTMLResponse)
     async def read_index():
