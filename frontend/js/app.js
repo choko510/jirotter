@@ -547,17 +547,19 @@ const API = {
     },
 
     // ユーザー登録
-    async register(id, email, password) {
+    async register(id, email, password, turnstileToken = null) {
         try {
             // 登録前にCSRFトークンを取得
             await this.getCsrfToken();
-            
-            // リクエストボディをJSON文字列に変換
-            const requestBody = JSON.stringify({ id, email, password });
-            
+
+            const payload = { id, email, password };
+            if (turnstileToken) {
+                payload.turnstile_token = turnstileToken;
+            }
+
             const data = await this.request('/api/v1/auth/register', {
                 method: 'POST',
-                body: requestBody,
+                body: JSON.stringify(payload),
                 includeAuth: false,
                 credentials: 'include',  // クッキーを含める
                 headers: {
@@ -572,17 +574,19 @@ const API = {
     },
 
     // ログイン
-    async login(id, password) {
+    async login(id, password, turnstileToken = null) {
         try {
             // ログイン前にCSRFトークンを取得
             await this.getCsrfToken();
-            
-            // リクエストボディをJSON文字列に変換
-            const requestBody = JSON.stringify({ id, password });
-            
+
+            const payload = { id, password };
+            if (turnstileToken) {
+                payload.turnstile_token = turnstileToken;
+            }
+
             const data = await this.request('/api/v1/auth/login', {
                 method: 'POST',
-                body: requestBody,
+                body: JSON.stringify(payload),
                 includeAuth: false,
                 credentials: 'include',  // クッキーを含める
                 headers: {

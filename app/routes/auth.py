@@ -10,6 +10,8 @@ from app.schemas import UserCreate, UserLogin, UserResponse, Token, EmailVerific
 from app.utils.auth import create_access_token, get_current_user, get_current_active_user, get_current_user_optional
 from app.utils.security import validate_registration_data, validate_login_data
 from app.utils.rate_limiter import rate_limiter
+from app.utils.turnstile import verify_turnstile_token
+from config import settings
 
 router = APIRouter(tags=["auth"])
 
@@ -31,6 +33,32 @@ def skip_csrf_check(func):
         return await func(*args, **kwargs)
     return wrapper
 
+
+async def ensure_turnstile(request: Optional[Request], token: Optional[str], client_ip: Optional[str] = None):
+    """Cloudflare Turnstileの検証を行う"""
+    if not settings.TURNSTILE_ENABLED:
+        return
+
+    ip_address = client_ip
+    if not ip_address and request and request.client:
+        ip_address = request.client.host
+
+    is_valid = await verify_turnstile_token(token, ip_address)
+    if not is_valid:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="セキュリティチェックに失敗しました。もう一度お試しください。",
+        )
+
+
+@router.get("/auth/turnstile-config")
+async def get_turnstile_config():
+    """Turnstileの設定情報を返す"""
+    return {
+        "enabled": settings.TURNSTILE_ENABLED,
+        "site_key": settings.TURNSTILE_SITE_KEY if settings.TURNSTILE_ENABLED else None,
+    }
+
 @router.post("/auth/register", response_model=Token, status_code=status.HTTP_201_CREATED)
 @skip_csrf_check
 async def register(user_data: UserCreate, db: Session = Depends(get_db), request: Request = None):
@@ -40,6 +68,8 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db), request
     # 例: 3分間に10回まで
     client_ip = request.client.host if request and request.client else "unknown"
     await rate_limiter.hit(f"register:{client_ip}", limit=10, window_seconds=180)
+
+    await ensure_turnstile(request, user_data.turnstile_token, client_ip)
 
     # 簡易bot対策: hiddenフィールド（例: honeypot）値を検査
     # - 正常なフロントエンドはこのフィールドを空で送信する
@@ -120,6 +150,8 @@ async def login(login_data: UserLogin, db: Session = Depends(get_db), request: R
     # クライアント情報を取得
     client_ip = request.client.host if request and request.client else "unknown"
     user_agent = request.headers.get("user-agent", "") if request else ""
+
+    await ensure_turnstile(request, login_data.turnstile_token, client_ip)
     
     # ユーザー認証
     user = db.query(User).filter(User.id == login_data.id).first()

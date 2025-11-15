@@ -4,7 +4,15 @@ const AuthComponent = {
     state: {
         currentView: 'login', // 'login', 'register', or 'email-verification'
         isSubmitting: false,
-        pendingLoginData: null // メールアドレス確認が必要な場合のログインデータを保持
+        pendingLoginData: null, // メールアドレス確認が必要な場合のログインデータを保持
+        turnstile: {
+            enabled: false,
+            siteKey: null,
+            widgetId: null,
+            token: null,
+            configLoaded: false,
+            scriptPromise: null
+        }
     },
 
     // レンダリング
@@ -60,6 +68,20 @@ const AuthComponent = {
                     display: flex;
                     flex-direction: column;
                     gap: 8px;
+                }
+
+                .turnstile-wrapper {
+                    display: none;
+                }
+
+                .turnstile-wrapper.active {
+                    display: block;
+                }
+
+                .turnstile-container {
+                    min-height: 70px;
+                    display: flex;
+                    justify-content: center;
                 }
 
                 .form-label {
@@ -198,6 +220,9 @@ const AuthComponent = {
                         <label class="form-label">パスワード</label>
                         <input type="password" class="form-input" id="password" placeholder="パスワードを入力" required>
                     </div>
+                    <div class="form-group turnstile-wrapper" id="turnstileWrapper">
+                        <div id="turnstile-container" class="turnstile-container"></div>
+                    </div>
                     <button type="submit" class="auth-btn" id="authSubmitBtn">
                         ${this.state.isSubmitting ? '処理中...' : (view === 'login' ? 'ログイン' : '登録')}
                     </button>
@@ -214,6 +239,159 @@ const AuthComponent = {
 
         // フォームにフォーカス
         document.getElementById('id')?.focus();
+        this.setupTurnstileWidget().catch(error => console.error('Turnstile setup failed', error));
+    },
+
+    async fetchTurnstileConfig() {
+        if (this.state.turnstile.configLoaded) {
+            return this.state.turnstile;
+        }
+
+        try {
+            const config = await API.request('/api/v1/auth/turnstile-config', {
+                method: 'GET',
+                includeAuth: false,
+                credentials: 'same-origin'
+            });
+            this.state.turnstile.enabled = Boolean(config?.enabled && config?.site_key);
+            this.state.turnstile.siteKey = config?.site_key || null;
+            this.state.turnstile.configLoaded = true;
+        } catch (error) {
+            console.error('Failed to fetch Turnstile config', error);
+            this.state.turnstile.enabled = false;
+            this.state.turnstile.siteKey = null;
+        }
+
+        return this.state.turnstile;
+    },
+
+    loadTurnstileScript() {
+        if (window.turnstile) {
+            return Promise.resolve();
+        }
+
+        if (this.state.turnstile.scriptPromise) {
+            return this.state.turnstile.scriptPromise;
+        }
+
+        const promise = new Promise((resolve, reject) => {
+            let script = document.getElementById('cf-turnstile-script');
+            if (!script) {
+                script = document.createElement('script');
+                script.id = 'cf-turnstile-script';
+                script.src = 'https://challenges.cloudflare.com/turnstile/v0/api.js?render=explicit';
+                script.async = true;
+                script.defer = true;
+                script.onload = () => {
+                    script.dataset.loaded = 'true';
+                    resolve();
+                };
+                script.onerror = () => reject(new Error('Failed to load Turnstile script'));
+                document.head.appendChild(script);
+                return;
+            }
+
+            if (script.dataset.loaded === 'true') {
+                resolve();
+                return;
+            }
+
+            const handleLoad = () => {
+                script.removeEventListener('load', handleLoad);
+                script.removeEventListener('error', handleError);
+                script.dataset.loaded = 'true';
+                resolve();
+            };
+            const handleError = () => {
+                script.removeEventListener('load', handleLoad);
+                script.removeEventListener('error', handleError);
+                reject(new Error('Failed to load Turnstile script'));
+            };
+
+            script.addEventListener('load', handleLoad);
+            script.addEventListener('error', handleError);
+        });
+
+        this.state.turnstile.scriptPromise = promise.finally(() => {
+            this.state.turnstile.scriptPromise = null;
+        });
+
+        return this.state.turnstile.scriptPromise;
+    },
+
+    async setupTurnstileWidget() {
+        const container = document.getElementById('turnstile-container');
+        if (!container || this.state.currentView === 'email-verification') {
+            return;
+        }
+
+        const wrapper = document.getElementById('turnstileWrapper');
+        const configState = await this.fetchTurnstileConfig();
+        const shouldEnable = Boolean(configState.enabled && configState.siteKey);
+
+        if (wrapper) {
+            wrapper.classList.toggle('active', shouldEnable);
+        }
+
+        if (!shouldEnable) {
+            this.state.turnstile.widgetId = null;
+            this.state.turnstile.token = null;
+            return;
+        }
+
+        try {
+            await this.loadTurnstileScript();
+        } catch (error) {
+            console.error('Failed to load Turnstile script', error);
+            return;
+        }
+
+        if (!window.turnstile || typeof window.turnstile.render !== 'function') {
+            return;
+        }
+
+        this.state.turnstile.token = null;
+
+        if (this.state.turnstile.widgetId !== null) {
+            try {
+                if (typeof window.turnstile.remove === 'function') {
+                    window.turnstile.remove(this.state.turnstile.widgetId);
+                } else if (typeof window.turnstile.reset === 'function') {
+                    window.turnstile.reset(this.state.turnstile.widgetId);
+                }
+            } catch (error) {
+                console.warn('Failed to reset existing Turnstile widget', error);
+            }
+            this.state.turnstile.widgetId = null;
+        }
+
+        this.state.turnstile.widgetId = window.turnstile.render(container, {
+            sitekey: configState.siteKey,
+            callback: (token) => {
+                this.state.turnstile.token = token;
+            },
+            'expired-callback': () => {
+                this.state.turnstile.token = null;
+            },
+            'error-callback': () => {
+                this.state.turnstile.token = null;
+                this.showMessage('セキュリティチェックでエラーが発生しました。再度お試しください。', 'error');
+            }
+        });
+    },
+
+    resetTurnstileWidget() {
+        if (!this.state.turnstile.enabled) {
+            return;
+        }
+        this.state.turnstile.token = null;
+        if (window.turnstile && this.state.turnstile.widgetId !== null && typeof window.turnstile.reset === 'function') {
+            try {
+                window.turnstile.reset(this.state.turnstile.widgetId);
+            } catch (error) {
+                console.warn('Failed to reset Turnstile widget', error);
+            }
+        }
     },
 
     // メールアドレス確認画面のレンダリング
@@ -408,19 +586,26 @@ const AuthComponent = {
         
         const userId = document.getElementById('id').value.trim();
         const password = document.getElementById('password').value.trim();
-        
+
         if (!userId || !password) {
             this.showMessage('すべての項目を入力してください', 'error');
             return;
         }
-        
+
+        const requiresTurnstile = Boolean(this.state.turnstile.enabled);
+        const turnstileToken = this.state.turnstile.token;
+        if (requiresTurnstile && !turnstileToken) {
+            this.showMessage('セキュリティチェックを完了してください。', 'error');
+            return;
+        }
+
         this.state.isSubmitting = true;
         document.getElementById('authSubmitBtn').disabled = true;
-        
+
         try {
             let result;
             if (this.state.currentView === 'login') {
-                result = await API.login(userId, password);
+                result = await API.login(userId, password, turnstileToken);
             } else {
                 const email = document.getElementById('email').value.trim();
                 if (!email) {
@@ -441,10 +626,13 @@ const AuthComponent = {
                 // バックエンドのUserCreateは現状usernameを受け取らないため、
                 // 将来的に拡張する場合はここでpayload.usernameを追加。
                 // if (rawUsername) payload.username = rawUsername;
+                if (turnstileToken) {
+                    payload.turnstile_token = turnstileToken;
+                }
 
                 result = await API.registerWithPayload
                     ? await API.registerWithPayload(payload)
-                    : await API.register(userId, email, password);
+                    : await API.register(userId, email, password, turnstileToken);
             }
             
             if (result.success) {
@@ -483,6 +671,7 @@ const AuthComponent = {
         } finally {
             this.state.isSubmitting = false;
             document.getElementById('authSubmitBtn').disabled = false;
+            this.resetTurnstileWidget();
         }
     },
 

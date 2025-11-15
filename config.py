@@ -27,7 +27,16 @@ class Settings:
     
     # AI設定
     GOOGLE_API_KEY: str = os.getenv("GOOGLE_API_KEY", "")
-    
+
+    # Cloudflare Turnstile
+    TURNSTILE_SITE_KEY: str = os.getenv("TURNSTILE_SITE_KEY", "")
+    TURNSTILE_SECRET_KEY: str = os.getenv("TURNSTILE_SECRET_KEY", "")
+    TURNSTILE_VERIFY_URL: str = os.getenv(
+        "TURNSTILE_VERIFY_URL",
+        "https://challenges.cloudflare.com/turnstile/v0/siteverify",
+    )
+    TURNSTILE_ENABLED: bool = bool(TURNSTILE_SITE_KEY and TURNSTILE_SECRET_KEY)
+
     # テスト設定
     TESTING: bool = os.getenv("TESTING", False)
     TEST_DATABASE_URL: str = os.getenv("TEST_DATABASE_URL", "sqlite:///./test_sns.db")
