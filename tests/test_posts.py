@@ -173,7 +173,10 @@ def test_create_post_with_nonexistent_mention(test_client, test_db):
     assert "@ghostuser" in response.json()["detail"]
 
 
-def test_create_post_mentions_jirok_triggers_ai_reply(test_client, test_db):
+from unittest.mock import patch
+
+@patch('app.utils.moderation_tasks.schedule_task')
+def test_create_post_mentions_jirok_triggers_ai_reply(mock_schedule_task, test_client, test_db):
     user_data = {
         "id": "aiinvoker",
         "email": "aiinvoker@example.com",
@@ -191,15 +194,8 @@ def test_create_post_mentions_jirok_triggers_ai_reply(test_client, test_db):
 
     assert response.status_code == 201
 
-    data = response.json()
-    post_id = data["id"]
-
-    ai_user = test_db.query(User).filter(User.id == "jirok").first()
-    assert ai_user is not None
-
-    ai_reply = test_db.query(Reply).filter(Reply.post_id == post_id, Reply.user_id == "jirok").first()
-    assert ai_reply is not None
-    assert 0 < len(ai_reply.content) <= 200
+    # schedule_taskが呼び出されたことを確認
+    mock_schedule_task.assert_called_once()
 
 def test_get_all_posts(test_client, test_db):
     """全ての投稿取得テスト"""

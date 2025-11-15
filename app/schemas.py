@@ -36,6 +36,7 @@ class EmailVerificationRequest(BaseModel):
     id: str
     password: str
     email: EmailStr
+    turnstile_token: Optional[str] = None
     
     @field_validator('id')
     @classmethod

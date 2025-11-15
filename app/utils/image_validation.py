@@ -3,7 +3,7 @@
 import io
 import os
 import tempfile
-import imghdr
+import filetype
 from typing import Dict, Any
 
 from fastapi import UploadFile
@@ -87,26 +87,18 @@ def validate_image_file(image: UploadFile) -> Dict[str, Any]:
             temp_file_path = temp_file.name
 
         try:
-            image_type = imghdr.what(temp_file_path)
-
-            if image_type:
-                # imghdr は HEIC/HEIF を判定できない場合が多いため、既知形式のみ厳密チェック
-                if image_type == "jpg":
-                    detected_mime = "image/jpeg"
-                else:
-                    detected_mime = f"image/{image_type}"
-
-                if detected_mime not in allowed_mime_types:
+            kind = filetype.guess(file_header)
+            if kind is not None:
+                if kind.mime not in allowed_mime_types:
                     return {
                         "is_valid": False,
-                        "error": f"ファイルの内容が対応している画像形式ではありません: {detected_mime}",
+                        "error": f"ファイルの内容が対応している画像形式ではありません: {kind.mime}",
                     }
             else:
-                # imghdr で判定できない場合（HEIC など）は、この時点では弾かず
-                # 後続の Pillow(Open) による検証で最終判断する
+                # filetype で判定できない場合は、Pillow での検証に任せる
                 pass
-        finally:
-            os.unlink(temp_file_path)
+        except Exception as exc:  # pragma: no cover - ログ用
+            print(f"画像形式検出エラー: {exc}")
     except Exception as exc:  # pragma: no cover - ログ用
         print(f"画像形式検出エラー: {exc}")
 

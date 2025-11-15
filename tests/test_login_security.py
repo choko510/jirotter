@@ -3,12 +3,15 @@
 """
 import pytest
 from fastapi.testclient import TestClient
+from unittest.mock import patch, AsyncMock
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from database import get_db, Base
 from app.models import User, UserLoginHistory
-from app.main import app
+from app import create_app
 from app.utils.auth import get_password_hash
+
+app = create_app()
 
 # テスト用データベース設定
 SQLALCHEMY_DATABASE_URL = "sqlite:///./test_login_security.db"
@@ -33,9 +36,15 @@ def client():
 
 @pytest.fixture
 def test_user(client):
-    """テスト用ユーザーを作成"""
+    """テスト用ユーザーを作成し、テスト後にクリーンアップする"""
     db = TestingSessionLocal()
     try:
+        # 既存のテストユーザーと関連データを削除
+        db.query(UserLoginHistory).filter(UserLoginHistory.user_id == "testuser").delete()
+        db.query(User).filter(User.id == "testuser").delete()
+        db.commit()
+
+        # 新しいテストユーザーを作成
         user = User(
             id="testuser",
             email="test@example.com",
@@ -44,8 +53,12 @@ def test_user(client):
         db.add(user)
         db.commit()
         db.refresh(user)
-        return user
+        yield user
     finally:
+        # テスト後にクリーンアップ
+        db.query(UserLoginHistory).filter(UserLoginHistory.user_id == "testuser").delete()
+        db.query(User).filter(User.id == "testuser").delete()
+        db.commit()
         db.close()
 
 def test_normal_login(client, test_user):
@@ -102,7 +115,10 @@ def test_login_with_different_user_agent_requires_email_verification(client, tes
     assert data.get("requires_email_verification") is True
     assert data.get("message") is not None
 
-def test_email_verification_success(client, test_user):
+from unittest.mock import patch
+
+@patch('app.routes.auth.ensure_turnstile', new_callable=AsyncMock)
+def test_email_verification_success(mock_ensure_turnstile, client, test_user):
     """メールアドレス確認が成功するテスト"""
     # 最初のログインでメール確認が必要になる状態にする
     client.post("/api/v1/auth/login", json={

@@ -148,7 +148,11 @@ async def login(login_data: UserLogin, db: Session = Depends(get_db), request: R
         )
     
     # クライアント情報を取得
-    client_ip = request.client.host if request and request.client else "unknown"
+    x_forwarded_for = request.headers.get("x-forwarded-for")
+    if x_forwarded_for:
+        client_ip = x_forwarded_for.split(",")[0].strip()
+    else:
+        client_ip = request.client.host if request and request.client else "unknown"
     user_agent = request.headers.get("user-agent", "") if request else ""
 
     await ensure_turnstile(request, login_data.turnstile_token, client_ip)
@@ -263,6 +267,9 @@ async def verify_email_for_login(
     request: Request = None
 ):
     """メールアドレス確認によるログイン完了エンドポイント"""
+    client_ip = request.client.host if request and request.client else "unknown"
+    await ensure_turnstile(request, verification_data.turnstile_token, client_ip)
+
     # ユーザー認証
     user = db.query(User).filter(User.id == verification_data.id).first()
     
@@ -281,7 +288,11 @@ async def verify_email_for_login(
         )
     
     # クライアント情報を取得
-    client_ip = request.client.host if request and request.client else "unknown"
+    x_forwarded_for = request.headers.get("x-forwarded-for")
+    if x_forwarded_for:
+        client_ip = x_forwarded_for.split(",")[0].strip()
+    else:
+        client_ip = request.client.host if request and request.client else "unknown"
     user_agent = request.headers.get("user-agent", "") if request else ""
     
     # ログイン履歴を記録（既に記録されている可能性があるが、確実に記録するため）

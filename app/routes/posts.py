@@ -278,7 +278,7 @@ async def create_post(
                     db_session.close()
 
             try:
-                schedule_task(
+                await schedule_task(
                     _generate_and_save_ai_reply(
                         post.id,
                         sanitized_content,
