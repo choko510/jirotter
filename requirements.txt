@@ -5,12 +5,10 @@ python-jose[cryptography]
 passlib[bcrypt]
 python-multipart
 python-dotenv
-pytest
 alembic
 pydantic[email]
 aiohttp
 google-genai
-pytest-playwright
 Pillow
 user-agents
 httpx
@@ -18,3 +16,7 @@ starlette-csrf
 itsdangerous
 pytest-asyncio
 jaconv
+filetype
+# テスト用
+pytest
+pytest-playwright
