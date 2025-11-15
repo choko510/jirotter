@@ -88,6 +88,7 @@ RANK_DEFINITIONS = [
 
 
 POINT_RULES: Dict[str, Dict[str, object]] = {
+    "shop_review": {"points": 16, "internal": 2, "reason": "店舗レビューの投稿"},
     "checkin": {"points": 15, "internal": 1, "reason": "チェックインボーナス"},
     "waittime_report": {"points": 12, "internal": 2, "reason": "待ち時間の共有"},
     "image_post": {"points": 18, "internal": 1, "reason": "写真付き投稿"},
