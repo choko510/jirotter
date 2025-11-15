@@ -40,32 +40,90 @@ JS_DIR = FRONTEND_DIR / "js"
 
 
 class JavaScriptObfuscator:
-    """Simple runtime obfuscator that wraps JS code with base64 decoding."""
+    """
+    JS を Base64 で埋め込んで、クライアント側で復号して実行する難読化器。
+
+    - UTF-8 セーフ（日本語コメント・文字列 OK）
+    - ブラウザでは eval ではなく <script> 挿入で実行
+    - Node 等ではフォールバックとして eval を使用
+    """
 
     def __init__(self):
-        self._cache: dict[str, tuple[float, str]] = {}
+        self._cache: Dict[str, Tuple[float, str]] = {}
         self._lock = threading.Lock()
 
     def obfuscate(self, file_path: Path) -> str:
-        """Return an obfuscated version of the given JS file."""
         if not file_path.exists() or not file_path.is_file():
             raise FileNotFoundError(str(file_path))
 
         mtime = file_path.stat().st_mtime
         cache_key = str(file_path)
+
+        # mtime ベースのキャッシュ
         with self._lock:
             cached = self._cache.get(cache_key)
             if cached and cached[0] == mtime:
                 return cached[1]
 
-        with file_path.open("r", encoding="utf-8") as f:
-            raw_content = f.read()
+        # 元コード読み込み（UTF-8）
+        source = file_path.read_text(encoding="utf-8")
 
-        encoded = base64.b64encode(raw_content.encode("utf-8")).decode("ascii")
+        # UTF-8 バイト列 → Base64（ASCII のみになる）
+        utf8_bytes = source.encode("utf-8")
+        encoded = base64.b64encode(utf8_bytes).decode("ascii")
+
+        # JS ラッパ生成
+        # Base64 は [A-Za-z0-9+/=] だけなので ' で囲んでも安全
         obfuscated = (
-            "(()=>{const s='"
-            + encoded
-            + "';const run=() => (0,eval)(atob(s));run();})();"
+            "(function(){"
+            "const s='" + encoded + "';"
+            "function b64ToBytes(b){"
+            "  if (typeof atob === 'function') {"
+            "    const bin = atob(b);"
+            "    const len = bin.length;"
+            "    const out = new Uint8Array(len);"
+            "    for (let i = 0; i < len; i++) out[i] = bin.charCodeAt(i);"
+            "    return out;"
+            "  } else if (typeof Buffer !== 'undefined') {"
+            "    const buf = Buffer.from(b, 'base64');"
+            "    const out = new Uint8Array(buf.length);"
+            "    for (let i = 0; i < buf.length; i++) out[i] = buf[i];"
+            "    return out;"
+            "  }"
+            "  throw new Error('No base64 decoder available');"
+            "}"
+            "function decodeUtf8(bytes){"
+            "  if (typeof TextDecoder !== 'undefined') {"
+            "    return new TextDecoder('utf-8').decode(bytes);"
+            "  }"
+            "  let s = '';"
+            "  for (let i = 0; i < bytes.length; i++) s += String.fromCharCode(bytes[i]);"
+            "  try {"
+            "    return decodeURIComponent(escape(s));"
+            "  } catch (e) {"
+            "    return s;"
+            "  }"
+            "}"
+            "const code = decodeUtf8(b64ToBytes(s));"
+            "if (typeof document !== 'undefined' && document.createElement) {"
+            "  const script = document.createElement('script');"
+            "  script.type = 'text/javascript';"
+            "  script.text = code;"
+            "  const current = document.currentScript || (function(){"
+            "    const scripts = document.getElementsByTagName('script');"
+            "    return scripts[scripts.length - 1] || null;"
+            "  })();"
+            "  if (current && current.parentNode) {"
+            "    current.parentNode.insertBefore(script, current.nextSibling);"
+            "  } else if (document.head) {"
+            "    document.head.appendChild(script);"
+            "  } else {"
+            "    document.documentElement.appendChild(script);"
+            "  }"
+            "} else {"
+            "  (0,eval)(code);"
+            "}"
+            "})();"
         )
 
         with self._lock:

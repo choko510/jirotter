@@ -42,16 +42,6 @@ const ProfileComponent = {
                     color: var(--profile-text);
                 }
 
-                .dark-mode .profile-page {
-                    --profile-surface: #0f172a;
-                    --profile-surface-muted: #1e293b;
-                    --profile-border: #1f2a3e;
-                    --profile-text: #e2e8f0;
-                    --profile-muted: #94a3b8;
-                    --profile-accent: #60a5fa;
-                    --profile-accent-soft: rgba(96, 165, 250, 0.16);
-                    --profile-shadow: 0 24px 48px rgba(2, 6, 23, 0.6);
-                }
 
                 .profile-header {
                     display: flex;
@@ -738,24 +728,6 @@ const ProfileComponent = {
                     border: 1px solid rgba(239, 68, 68, 0.3);
                 }
 
-                /* Dark Mode Overrides */
-                .dark-mode .profile-action-button.is-edit {
-                    background: #e2e8f0;
-                    border-color: #e2e8f0;
-                    color: #0f172a;
-                }
-
-                .dark-mode .profile-edit-modal {
-                    background: #0f172a;
-                    box-shadow: 0 32px 70px rgba(2, 6, 23, 0.7);
-                }
-
-                .dark-mode .profile-edit-modal input,
-                .dark-mode .profile-edit-modal textarea {
-                    background: #1e293b;
-                    border-color: #334155;
-                    color: #e2e8f0;
-                }
 
                 .profile-edit-modal-overlay {
                     position: fixed;
@@ -2068,6 +2040,32 @@ const ProfileComponent = {
             });
         }
     },
+
+    // ネットワーク速度の判定
+    isSlowNetwork() {
+        const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+        
+        if (connection) {
+            // 接続タイプで判定
+            if (connection.type === 'cellular') {
+                // モバイルネットワークの場合
+                if (connection.effectiveType === 'slow-2g' ||
+                    connection.effectiveType === '2g' ||
+                    connection.effectiveType === '3g') {
+                    return true;
+                }
+            }
+            
+            // ダウンロード速度で判定
+            if (connection.downlink && connection.downlink < 1.5) {
+                return true; // 1.5Mbps未満は低速と判定
+            }
+        }
+        
+        return false;
+    },
+
+
 
     // ネットワーク速度の判定
     isSlowNetwork() {

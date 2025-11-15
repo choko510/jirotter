@@ -772,77 +772,6 @@ const MapComponent = {
                             }
                         }
 
-            /* Dark Mode Overrides */
-            .dark-mode .map-header,
-            .dark-mode .map-loading,
-            .dark-mode .map-error,
-            .dark-mode .map-legend {
-                background: #2a2a2a;
-                border-color: #333;
-            }
-
-            .dark-mode .map-search-input {
-                background: #1a1a1a;
-                border-color: #333;
-                color: #e0e0e0;
-            }
-            .dark-mode .map-search-input:focus {
-                background: #2a2a2a;
-            }
-            .dark-mode .map-search-btn {
-                color: #aaa;
-            }
-            .dark-mode .map-search-results {
-                background: #2a2a2a;
-                border-color: #333;
-            }
-            .dark-mode .search-result-item {
-                border-bottom-color: #333;
-            }
-            .dark-mode .search-result-item:hover {
-                background: #333;
-            }
-            .dark-mode .search-no-results, .dark-mode .search-error {
-                color: #aaa;
-            }
-            .dark-mode .search-result-brand {
-                background: rgba(212, 165, 116, 0.2);
-            }
-            .dark-mode .map-filter-btn {
-                background: #1a1a1a;
-                border-color: #333;
-                color: #e0e0e0;
-            }
-            .dark-mode .map-filter-btn:hover {
-                background: var(--color-primary);
-                border-color: var(--color-primary);
-                color: #1a1a1a;
-            }
-            .dark-mode .map-filter-btn.active {
-                background: var(--color-primary);
-                border-color: var(--color-primary);
-                color: #1a1a1a;
-            }
-
-            .dark-mode .brand-filters {
-                background: #2a2a2a;
-                border-bottom-color: #333;
-            }
-
-            .dark-mode .filter-title {
-                color: #e0e0e0;
-            }
-
-            .dark-mode .filter-action-btn {
-                background: #1a1a1a;
-                border-color: #333;
-                color: #e0e0e0;
-            }
-
-            .dark-mode .filter-action-btn:hover {
-                background: #333;
-            }
-
             /* Shop Detail Panel */
             .shop-detail-panel {
                 position: absolute;
@@ -865,10 +794,6 @@ const MapComponent = {
                 visibility: visible;
             }
 
-            .dark-mode .shop-detail-panel {
-                background: #2a2a2a;
-                border-right: 1px solid #333;
-            }
 
             .shop-info-card {
                 border: 1px solid #e0e0e0;
@@ -956,39 +881,6 @@ const MapComponent = {
                 color: var(--color-primary);
             }
 
-            .dark-mode .shop-info-card {
-                background: #1f1f1f;
-                border-color: #333;
-            }
-
-            .dark-mode .shop-details {
-                color: #e0e0e0;
-            }
-
-            .dark-mode .shop-meta-item {
-                background: rgba(255, 255, 255, 0.05);
-                border-color: rgba(255, 255, 255, 0.08);
-            }
-
-            .dark-mode .shop-meta-label {
-                color: #bbb;
-            }
-
-            .dark-mode .shop-meta-value {
-                color: white;
-            }
-
-            .dark-mode .shop-action-btn {
-                background: rgba(255, 255, 255, 0.08);
-                border-color: rgba(255, 255, 255, 0.12);
-                color: white;
-            }
-
-            .dark-mode .shop-action-btn:hover {
-                background: rgba(212, 165, 116, 0.2);
-                border-color: var(--color-primary);
-                color: var(--color-primary);
-            }
 
             @media (max-width: 768px) {
                 .shop-detail-panel {
@@ -1010,9 +902,6 @@ const MapComponent = {
                     visibility: visible;
                 }
 
-                .dark-mode .shop-detail-panel {
-                    border: none;
-                }
             }
 
             /* Marker Cluster Styles */
@@ -1296,12 +1185,14 @@ const MapComponent = {
             
             // マップを作成
             this.state.map = L.map('map', {
-                maxZoom: 18
+                maxZoom: 18,
+                minZoom: 4  // 縮小の最大値を設定（最小ズームレベル）
             }).setView([location.lat, location.lng], 13);
             
             L.maplibreGL({
                 style: 'https://tiles.openfreemap.org/styles/liberty',
-                maxZoom: 18
+                maxZoom: 18,
+                minZoom: 4  // 縮小の最大値を設定（最小ズームレベル）
             }).addTo(this.state.map)
             
             // マーカーをグループ化して管理
@@ -1605,25 +1496,25 @@ const MapComponent = {
         
         if (zoomLevel <= 6) {
             // 日本全土が見えるような非常に広い範囲
-            return 700;
+            return 600;
         } else if (zoomLevel <= 8) {
             // 広域（地方レベル）
-            return 350;
+            return 250;
         } else if(zoomLevel <=9){
             // 中域（県レベル）
-            return 150;
+            return 100;
         } else if (zoomLevel <= 10) {
             // 中域（県レベル）
-            return 80;
+            return 60;
         } else if (zoomLevel <= 12) {
             // やや広域（市レベル）
-            return 40;
+            return 30;
         } else if (zoomLevel <= 14) {
             // 標準（地域レベル）
-            return 30;
+            return 20;
         } else if (zoomLevel <= 16) {
             // やや狭域（近隣レベル）
-            return 20;
+            return 15;
         } else {
             // 狭域（詳細レベル）
             return 10;

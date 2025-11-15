@@ -181,32 +181,6 @@ const WaittimeComponent = {
                     }
                 }
 
-                /* Dark Mode Overrides */
-                .dark-mode .waittime-subtitle,
-                .dark-mode .waittime-details {
-                    color: rgba(255, 255, 255, 0.65);
-                }
-                .dark-mode .sort-btn {
-                    background: #2a2a2a;
-                    border-color: #333;
-                    color: #e0e0e0;
-                }
-                .dark-mode .sort-btn:hover {
-                    background: #333;
-                }
-                .dark-mode .sort-btn.active {
-                    background: var(--color-primary);
-                    border-color: var(--color-primary);
-                    color: #1f1208;
-                }
-                .dark-mode .waittime-card {
-                    background: #2a2a2a;
-                    border-color: #3a3126;
-                    box-shadow: none;
-                }
-                .dark-mode .waittime-card:hover {
-                    box-shadow: 0 12px 28px rgba(0, 0, 0, 0.45);
-                }
                 
                 /* 都道府県フィルター用スタイル */
                 .prefecture-filter-section {
@@ -260,27 +234,6 @@ const WaittimeComponent = {
                     box-shadow: var(--shadow-xs);
                 }
                 
-                .dark-mode .prefecture-filters {
-                    background: #2a2a2a;
-                    border-color: #3a3126;
-                    box-shadow: none;
-                }
-
-                .dark-mode .prefecture-filter-btn {
-                    background: #2a2a2a;
-                    border-color: #3a3126;
-                    color: rgba(255, 255, 255, 0.65);
-                }
-
-                .dark-mode .prefecture-filter-btn:hover {
-                    background: #342b1f;
-                }
-
-                .dark-mode .prefecture-filter-btn.active {
-                    background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
-                    border-color: transparent;
-                    color: #1f1208;
-                }
                 
                 /* もっと見るボタン用スタイル */
                 .load-more-container {
@@ -319,23 +272,6 @@ const WaittimeComponent = {
                     transform: none;
                 }
 
-                .dark-mode .load-more-btn {
-                    background: #2a2a2a;
-                    border-color: #3a3126;
-                    color: var(--color-primary);
-                    box-shadow: none;
-                }
-
-                .dark-mode .load-more-btn:hover {
-                    background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
-                    color: #1f1208;
-                }
-
-                .dark-mode .load-more-btn:disabled {
-                    background: #333;
-                    border-color: #3a3126;
-                    color: rgba(255, 255, 255, 0.4);
-                }
             </style>
             
             <div class="waittime-container">

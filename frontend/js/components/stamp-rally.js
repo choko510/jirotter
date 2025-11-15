@@ -501,101 +501,6 @@ const StampRallyComponent = {
                     font-size: 14px;
                 }
 
-                /* Dark Mode Overrides */
-                .dark-mode .stamp-rally-subtitle,
-                .dark-mode .stat-label,
-                .dark-mode .shop-address {
-                    color: #aaa;
-                }
-                
-                .dark-mode .stat-card {
-                    background: #2a2a2a;
-                }
-                
-                .dark-mode .shop-card {
-                    background: #2a2a2a;
-                    border-color: #333;
-                }
-
-                .dark-mode .shop-visit-image {
-                    background: #333;
-                }
-                
-                .dark-mode .shop-card-header {
-                    border-bottom-color: #333;
-                }
-                
-                .dark-mode .brand-filter-btn {
-                    background: #2a2a2a;
-                    border-color: #333;
-                    color: #e0e0e0;
-                }
-                
-                .dark-mode .brand-filter-btn:hover {
-                    background: #333;
-                }
-                
-                .dark-mode .checkin-status.unchecked {
-                    background: #333;
-                    color: #aaa;
-                }
-                
-                .dark-mode .detail-btn {
-                    color: var(--color-primary);
-                    border-color: var(--color-primary);
-                }
-                
-                .dark-mode .empty-state {
-                    color: #aaa;
-                }
-                
-                .dark-mode .empty-state h3 {
-                    color: #e0e0e0;
-                }
-
-                .dark-mode .view-switcher {
-                    border-color: var(--color-primary);
-                }
-
-                .dark-mode .view-switch-btn {
-                    color: var(--color-primary);
-                }
-
-                .dark-mode .view-switch-btn.active {
-                    background-color: var(--color-primary);
-                    color: #1a1a1a;
-                }
-
-                .dark-mode .progress-card {
-                    background: #2a2a2a;
-                    border-color: #333;
-                }
-
-                .dark-mode .progress-card h4 {
-                    color: #e0e0e0;
-                }
-
-                .dark-mode .progress-bar-container {
-                    background: #333;
-                }
-
-                .dark-mode .progress-card p {
-                    color: #aaa;
-                }
-
-                .dark-mode .region-progress-details {
-                    background: #2a2a2a;
-                    border-color: #333;
-                }
-
-                .dark-mode .region-progress-summary {
-                    background: #1f1f1f;
-                    color: #e0e0e0;
-                }
-
-                .dark-mode .region-progress-summary span:last-child {
-                    color: #aaa;
-                }
 
                 /* Visited Shops Styles */
                 .visited-accordion {
@@ -654,29 +559,6 @@ const StampRallyComponent = {
                     color: var(--color-primary);
                 }
 
-                /* Dark Mode for Visited Shops */
-                .dark-mode .prefecture-visited-details {
-                    background: #2a2a2a;
-                    border-color: #333;
-                }
-
-                .dark-mode .prefecture-visited-summary {
-                    background: #1f1f1f;
-                    color: #e0e0e0;
-                }
-
-                .dark-mode .prefecture-visited-summary span:last-child {
-                    color: #aaa;
-                }
-
-                .dark-mode .visited-shop-card {
-                    background: #2a2a2a;
-                    border-color: #333;
-                }
-
-                .dark-mode .shop-checkin-date {
-                    color: #aaa;
-                }
 
                 @media (max-width: 768px) {
                     .stamp-rally-container {

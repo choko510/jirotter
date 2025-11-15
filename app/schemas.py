@@ -30,6 +30,18 @@ class UserLogin(BaseModel):
             raise ValueError('ユーザーIDは英数字とアンダースコア(_)のみで入力してください')
         return v
 
+class EmailVerificationRequest(BaseModel):
+    id: str
+    password: str
+    email: EmailStr
+    
+    @field_validator('id')
+    @classmethod
+    def validate_username(cls, v):
+        if not re.match(r'^[a-zA-Z0-9_]+$', v):
+            raise ValueError('ユーザーIDは英数字とアンダースコア(_)のみで入力してください')
+        return v
+
 class UserResponse(BaseModel):
     model_config = ConfigDict(from_attributes=True)
 
@@ -137,9 +149,11 @@ class UserProfileResponse(UserResponse):
     titles: List[UserTitleSummary] = Field(default_factory=list)
 
 class Token(BaseModel):
-    access_token: str
+    access_token: Optional[str] = None
     token_type: str = "bearer"
-    user: UserResponse
+    user: Optional[UserResponse] = None
+    requires_email_verification: Optional[bool] = False
+    message: Optional[str] = None
 
 
 class AdminUserSummary(BaseModel):

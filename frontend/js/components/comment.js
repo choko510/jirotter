@@ -360,68 +360,6 @@ const CommentComponent = {
                     }
                 }
 
-                /* ダークモード対応 */
-                .dark-mode .comment-container {
-                    background: #1f1a14;
-                    color: #f5f0e9;
-                    border-color: #3a3126;
-                    box-shadow: none;
-                }
-
-                .dark-mode .comment-header {
-                    background: rgba(31, 26, 20, 0.92);
-                    border-bottom-color: #3a3126;
-                }
-
-                .dark-mode .comment-back {
-                    color: #f5f0e9;
-                }
-
-                .dark-mode .comment-back:hover {
-                    background: #342b1f;
-                }
-
-                .dark-mode .original-post,
-                .dark-mode .comment-input-section,
-                .dark-mode .comment-item {
-                    border-bottom-color: #3a3126;
-                }
-
-                .dark-mode .post-meta,
-                .dark-mode .comment-time,
-                .dark-mode .comment-action-btn {
-                    color: rgba(255, 255, 255, 0.65);
-                }
-
-                .dark-mode .comment-textarea {
-                    color: #f5f0e9;
-                }
-
-                .dark-mode .comment-textarea::placeholder {
-                    color: rgba(255, 255, 255, 0.4);
-                }
-
-                .dark-mode .comment-item:hover {
-                    background: #2a231a;
-                }
-
-                .dark-mode .comment-action-btn:hover {
-                    background: #333;
-                    color: var(--color-primary);
-                }
-
-                .dark-mode .post-engagement {
-                    border-top-color: #333;
-                }
-
-                .dark-mode .engagement-btn {
-                    color: rgba(255, 255, 255, 0.65);
-                }
-
-                .dark-mode .engagement-btn:hover {
-                    background: #333;
-                    color: var(--color-primary);
-                }
 
                 /* 画像モーダルスタイル */
                 .image-modal-overlay {

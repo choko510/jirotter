@@ -522,9 +522,6 @@ const TimelineComponent = {
                     opacity: 1;
                     font-weight: 600;
                 }
-                .dark-mode .pull-to-refresh-indicator {
-                    color: rgba(47, 37, 25, 0.45);
-                }
                 .post-card {
                     background: var(--color-surface);
                     border: 1px solid rgba(231, 220, 205, 0.7);
@@ -593,30 +590,6 @@ const TimelineComponent = {
                     background: var(--color-primary-hover);
                 }
 
-                /* Dark Mode Overrides */
-                .dark-mode .post-input-area,
-                .dark-mode .post-card {
-                    background: #2a2a2a;
-                    border-color: #3a3126;
-                    box-shadow: none;
-                }
-                .dark-mode .post-card:hover {
-                    background: #342b1f;
-                }
-                .dark-mode .post-meta,
-                .dark-mode .char-counter,
-                .dark-mode .engagement-btn {
-                    color: rgba(255, 255, 255, 0.65);
-                }
-                .dark-mode .tweet-btn:disabled {
-                    background: rgba(255, 255, 255, 0.12);
-                    color: rgba(255, 255, 255, 0.5);
-                }
-                .dark-mode .shop-reference { background: #3a3126; border-color: #4a3f32; }
-                .dark-mode .shop-reference:hover { background: #44392d; }
-                .dark-mode .shop-reference-content { color: var(--color-primary); }
-                .dark-mode .login-prompt-area { background: #2a2a2a; }
-                .dark-mode .login-prompt-text { color: rgba(255, 255, 255, 0.65); }
                 
                 /* 通報モーダルスタイル */
                 .report-modal-overlay {
@@ -728,25 +701,6 @@ const TimelineComponent = {
                     transition: background-color 0.2s ease, color 0.2s ease;
                 }
                 .cancel-btn:hover { background: var(--color-surface-muted); color: var(--color-primary); }
-                .dark-mode .report-modal {
-                    background: #2a2a2a;
-                    color: #e0e0e0;
-                }
-                .dark-mode .report-modal-header,
-                .dark-mode .report-modal-content,
-                .dark-mode .report-modal-actions {
-                    border-color: #333;
-                }
-                .dark-mode .report-reason select,
-                .dark-mode .report-description textarea {
-                    background: #333;
-                    border-color: #444;
-                    color: #e0e0e0;
-                }
-                .dark-mode .cancel-btn {
-                    border-color: #444;
-                    color: rgba(47, 37, 25, 0.45);
-                }
             </style>
             
             ${isLoggedIn ? `

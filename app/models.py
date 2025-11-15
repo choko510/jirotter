@@ -408,3 +408,21 @@ class ShopChangeHistory(Base):
 
     shop = relationship('RamenShop', backref='change_history')
     user = relationship('User', backref='shop_change_history')
+
+
+class UserLoginHistory(Base):
+    """ユーザーログイン履歴モデル"""
+    __tablename__ = 'user_login_history'
+    __table_args__ = (
+        Index('ix_user_login_history_user_id', 'user_id'),
+        Index('ix_user_login_history_created_at', 'created_at'),
+    )
+
+    id = Column(Integer, primary_key=True)
+    user_id = Column(String(80), ForeignKey('users.id'), nullable=False)
+    ip_address = Column(String(45), nullable=False)  # IPv6対応のため45文字
+    user_agent = Column(Text, nullable=True)
+    created_at = Column(DateTime, default=lambda: datetime.now(JST))
+    
+    # Relationships
+    user = relationship('User', backref='login_history')

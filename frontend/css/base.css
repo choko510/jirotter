@@ -40,49 +40,6 @@
     --app-primary-soft: var(--color-primary-soft);
 }
 
-/* Unified dark theme tokens
-   NOTE:
-   - All pages/components should rely on semantic tokens above instead of hard-coded #111 / #2a2a2a, etc.
-   - Existing scattered .dark-mode rules will be refactored gradually to these tokens.
-*/
-:root.dark-mode,
-.dark-mode :root {
-    color-scheme: dark;
-
-    /* Dark theme base palette */
-    --color-bg: #050608;               /* app background */
-    --color-canvas: #050608;
-    --color-surface: #0d1016;          /* main surfaces */
-    --color-surface-muted: #141821;    /* muted surfaces / cards */
-    --color-border: #262b36;
-    --color-text: #e5e7eb;             /* main text */
-    --color-text-soft: #9ca3af;        /* secondary text */
-    --color-muted: #9ca3af;
-
-    --color-primary: #d4a574;          /* keep brand color */
-    --color-primary-hover: #e1b986;
-    --color-primary-soft: rgba(212, 165, 116, 0.16);
-    --color-accent: #f2bf7b;
-    --color-danger: #f97373;
-    --color-warning: #fbbf24;
-
-    /* Shadows tuned for dark backgrounds */
-    --shadow-xs: 0 6px 16px rgba(0, 0, 0, 0.55);
-    --shadow-sm: 0 10px 26px rgba(0, 0, 0, 0.65);
-    --shadow-md: 0 16px 40px rgba(0, 0, 0, 0.75);
-    --shadow-lg: 0 24px 60px rgba(0, 0, 0, 0.85);
-
-    /* Semantic aliases */
-    --app-bg: var(--color-bg);
-    --app-surface: #0d1016;
-    --app-surface-muted: #141821;
-    --app-border-subtle: rgba(75, 85, 99, 0.6);
-    --app-text-main: var(--color-text);
-    --app-text-muted: var(--color-text-soft);
-    --app-text-soft: var(--color-text-soft);
-    --app-primary: var(--color-primary);
-    --app-primary-soft: var(--color-primary-soft);
-}
 
 * {
     box-sizing: border-box;
@@ -224,33 +181,6 @@ body {
     color: var(--color-text-soft);
 }
 
-/* Dark mode support */
-.dark-mode .search-modal {
-    background: var(--app-surface);
-    color: var(--app-text-main);
-}
-
-.dark-mode .search-modal-header {
-    border-bottom-color: var(--app-border-subtle);
-}
-
-.dark-mode .search-modal .search-bar {
-    background: var(--app-surface-muted);
-    border-color: var(--app-border-subtle);
-}
-
-.dark-mode .search-modal .search-results {
-    background: var(--app-surface);
-    border-color: var(--app-border-subtle);
-}
-
-.dark-mode .search-modal .result-item {
-    border-bottom-color: var(--app-border-subtle);
-}
-
-.dark-mode .search-modal .result-item:hover {
-    background: var(--app-primary-soft);
-}
 
 a {
     color: inherit;

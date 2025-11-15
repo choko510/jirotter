@@ -376,90 +376,6 @@ const RankingsComponent = {
                     text-align: center;
                 }
 
-                .dark-mode .ranking-page__header h1 {
-                    color: #f9fafb;
-                }
-
-                .dark-mode .ranking-page__meta {
-                    color: #9ca3af;
-                }
-
-                .dark-mode .ranking-refresh-button {
-                    background: #111827;
-                    border-color: #374151;
-                    color: #e5e7eb;
-                }
-
-                .dark-mode .ranking-refresh-button:hover {
-                    background: #1f2937;
-                }
-
-                .dark-mode .ranking-section {
-                    background: #111827;
-                    border-color: #1f2937;
-                    box-shadow: 0 18px 36px rgba(0, 0, 0, 0.4);
-                }
-
-                .dark-mode .ranking-section h2 {
-                    color: #f3f4f6;
-                }
-
-                .dark-mode .ranking-table thead {
-                    background: #1f2937;
-                    color: #9ca3af;
-                }
-
-                .dark-mode .ranking-table tbody tr:hover {
-                    background: rgba(59, 130, 246, 0.18);
-                }
-
-                .dark-mode .ranking-table tbody tr.is-current-user {
-                    background: rgba(59, 130, 246, 0.25);
-                }
-
-                .dark-mode .ranking-user-handle {
-                    color: #9ca3af;
-                }
-
-                .dark-mode .title-card {
-                    background: #1f2937;
-                    border-color: #374151;
-                }
-
-                .dark-mode .title-card--locked {
-                    background: #1f2937;
-                    opacity: 0.85;
-                }
-
-                .dark-mode .title-card__description {
-                    color: #d1d5db;
-                }
-
-                .dark-mode .title-card__requirements {
-                    color: #9ca3af;
-                }
-
-                .dark-mode .ranking-featured-title {
-                    background: rgba(243, 244, 246, 0.12);
-                    color: #e5e7eb;
-                }
-
-                .dark-mode .ranking-title-chip {
-                    background: rgba(243, 244, 246, 0.12);
-                    color: #e5e7eb;
-                }
-
-                .dark-mode .ranking-empty {
-                    background: rgba(31, 41, 55, 0.6);
-                    border-color: #374151;
-                    color: #9ca3af;
-                }
-
-                .dark-mode .ranking-error {
-                    background: rgba(127, 29, 29, 0.4);
-                    border-color: rgba(127, 29, 29, 0.6);
-                    color: #fecaca;
-                }
 
                 @media (max-width: 768px) {
                     .ranking-page {
@@ -522,7 +438,7 @@ const RankingsComponent = {
     async fetchRankings(limit = 50) {
         try {
             const data = await API.request(`/api/v1/users/rankings?limit=${limit}`);
-            this.state.topUsers = Array.isArray(data.top_users) ? data.top_users : [];
+            this.state.topUsers = Array.isArray(data.top_users) ? data.top_users.filter(user => user.points > 0) : [];
             this.state.you = data.you || null;
             this.state.totalUsers = data.total_users || 0;
             this.state.lastUpdated = data.last_updated || null;
@@ -575,7 +491,7 @@ const RankingsComponent = {
         const section = document.createElement('section');
         section.className = 'ranking-hero';
 
-        const topThree = this.state.topUsers.slice(0, 3);
+        const topThree = this.state.topUsers.filter(user => user.points > 0).slice(0, 3);
         if (topThree.length === 0) {
             const empty = document.createElement('div');
             empty.className = 'ranking-empty';
@@ -687,7 +603,7 @@ const RankingsComponent = {
         const currentUser = API.getCurrentUser();
         const currentUserId = currentUser ? currentUser.id : null;
 
-        this.state.topUsers.forEach(entry => {
+        this.state.topUsers.filter(user => user.points > 0).slice(0, 5).forEach(entry => {
             const row = document.createElement('tr');
             if (entry.id === currentUserId) {
                 row.classList.add('is-current-user');

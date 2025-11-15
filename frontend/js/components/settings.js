@@ -5,7 +5,6 @@ const SettingsComponent = {
         user: null,
         settings: {
             notifications: true,
-            theme: 'system', // 'light', 'dark', 'system'
             locationSharing: true,
             autoRefresh: true
         }
@@ -303,45 +302,6 @@ const SettingsComponent = {
                     }
                 }
 
-                /* Dark Mode Overrides */
-                .dark-mode .settings-subtitle,
-                .dark-mode .settings-item-desc,
-                .dark-mode .settings-value,
-                .dark-mode .settings-arrow,
-                .dark-mode .profile-handle {
-                    color: #aaa;
-                }
-                .dark-mode .settings-section {
-                    background: #2a2a2a;
-                    border-color: #333;
-                }
-                .dark-mode .settings-section-header {
-                    background: #1a1a1a;
-                    border-bottom-color: #333;
-                }
-                .dark-mode .settings-item {
-                    border-bottom-color: #333;
-                }
-                .dark-mode .settings-item:hover {
-                    background: #333;
-                }
-                .dark-mode .toggle-switch {
-                    background: #555;
-                }
-                .dark-mode .login-prompt {
-                    background: #2a2a2a;
-                    border-color: #333;
-                }
-                .dark-mode .login-prompt-desc {
-                    color: #aaa;
-                }
-                .dark-mode .danger-item {
-                    border-color: #5c1f1f;
-                }
-
-                .dark-mode .danger-item:hover {
-                    background: #5c1f1f;
-                }
             </style>
             
             <div class="settings-container">
@@ -416,17 +376,6 @@ const SettingsComponent = {
                 
                 <div class="settings-section">
                     <div class="settings-section-header">表示設定</div>
-                    <div class="settings-item">
-                        <div class="settings-item-left">
-                            <div class="settings-item-title">テーマ設定</div>
-                            <div class="settings-item-desc">アプリの表示テーマを選択</div>
-                        </div>
-                        <div class="settings-item-right" style="gap: 12px;">
-                            <label><input type="radio" name="theme" value="light" ${this.state.settings.theme === 'light' ? 'checked' : ''} onclick="SettingsComponent.setTheme('light')"> ライト</label>
-                            <label><input type="radio" name="theme" value="dark" ${this.state.settings.theme === 'dark' ? 'checked' : ''} onclick="SettingsComponent.setTheme('dark')"> ダーク</label>
-                            <label><input type="radio" name="theme" value="system" ${this.state.settings.theme === 'system' ? 'checked' : ''} onclick="SettingsComponent.setTheme('system')"> システム</label>
-                        </div>
-                    </div>
                     <div class="settings-item" onclick="SettingsComponent.showLanguageSettings()">
                         <div class="settings-item-left">
                             <div class="settings-item-title">言語</div>
@@ -486,14 +435,6 @@ const SettingsComponent = {
         }
     },
 
-    // テーマ設定
-    setTheme(theme) {
-        this.state.settings.theme = theme;
-        this.saveSettings();
-        if (window.Theme) {
-            window.Theme.apply();
-        }
-    },
 
     // 設定の保存
     saveSettings() {
@@ -703,39 +644,6 @@ const SettingsComponent = {
                     cursor: not-allowed;
                 }
                 
-                /* ダークモード対応 */
-                .dark-mode .delete-account-dialog {
-                    background: #2a2a2a;
-                    color: #fff;
-                }
-                
-                .dark-mode .dialog-header {
-                    border-bottom-color: #333;
-                }
-                
-                .dark-mode .dialog-header h3 {
-                    color: #fff;
-                }
-                
-                .dark-mode .close-button {
-                    color: #aaa;
-                }
-                
-                .dark-mode .confirmation-input input {
-                    background: #333;
-                    border-color: #444;
-                    color: #fff;
-                }
-                
-                .dark-mode .dialog-actions {
-                    border-top-color: #333;
-                }
-                
-                .dark-mode .cancel-button {
-                    background: #333;
-                    color: #fff;
-                    border-color: #444;
-                }
             </style>
         `;
         

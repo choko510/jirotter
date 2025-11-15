@@ -596,6 +596,31 @@ const API = {
         }
     },
 
+    // メールアドレス確認によるログイン
+    async verifyEmailForLogin(id, password, email) {
+        try {
+            // 確認前にCSRFトークンを取得
+            await this.getCsrfToken();
+            
+            // リクエストボディをJSON文字列に変換
+            const requestBody = JSON.stringify({ id, password, email });
+            
+            const data = await this.request('/api/v1/auth/verify-email', {
+                method: 'POST',
+                body: requestBody,
+                includeAuth: false,
+                credentials: 'include',  // クッキーを含める
+                headers: {
+                    'Content-Type': 'application/json'
+                }
+            });
+            return { success: true, token: data };
+        } catch (error) {
+            console.error('メールアドレス確認に失敗しました:', error);
+            return { success: false, error: error.message };
+        }
+    },
+
     // ユーザープロフィール取得
     async getUserProfile(userId) {
         try {
@@ -975,52 +1000,9 @@ window.toggleSidebar = Utils.toggleSidebar;
 window.closeSidebarOnOverlay = Utils.closeSidebarOnOverlay;
 window.closeBanNotification = Utils.closeBanNotification;
 
- // --- ダークモード対応 ---
-const Theme = {
-    apply() {
-        try {
-            const settings = JSON.parse(localStorage.getItem('appSettings'));
-            const theme = (settings && settings.theme) ? settings.theme : 'system';
-
-            const prefersDark = window.matchMedia &&
-                window.matchMedia('(prefers-color-scheme: dark)').matches;
-
-            const darkModeEnabled =
-                theme === 'dark' || (theme === 'system' && prefersDark);
-
-            if (darkModeEnabled) {
-                document.documentElement.classList.add('dark-mode');
-            } else {
-                document.documentElement.classList.remove('dark-mode');
-            }
-        } catch (e) {
-            console.error("Failed to apply theme", e);
-
-            if (window.matchMedia &&
-                window.matchMedia('(prefers-color-scheme: dark)').matches) {
-                document.documentElement.classList.add('dark-mode');
-            } else {
-                document.documentElement.classList.remove('dark-mode');
-            }
-        }
-    },
-    init() {
-        this.apply();
-        if (window.matchMedia) {
-            window
-                .matchMedia('(prefers-color-scheme: dark)')
-                .addEventListener('change', () => this.apply());
-        }
-    }
-};
- 
-// グローバルに公開
-window.Theme = Theme;
- 
 // アプリケーションの初期化
 document.addEventListener('DOMContentLoaded', function() {
-    Theme.init(); // テーマの初期化
-    Utils.updateUserProfileUI();
+   Utils.updateUserProfileUI();
     
     // Ban状態をチェックして通知を表示
     Utils.checkAndShowBanNotification();

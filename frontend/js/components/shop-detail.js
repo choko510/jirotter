@@ -58,17 +58,6 @@ const ShopDetailComponent = {
                 .show-more-btn:hover { text-decoration: underline; }
                 .post-image img { width: 100%; border-radius: 16px; margin-top: 12px; }
 
-                /* Dark Mode Overrides for posts */
-                .dark-mode .post-card {
-                    border-bottom-color: #333;
-                }
-                .dark-mode .post-card:hover {
-                    background: #2a2a2a;
-                }
-                .dark-mode .post-meta,
-                .dark-mode .engagement-btn {
-                    color: #aaa;
-                }
             </style>
             <div class="shop-detail-container">
                 <div class="shop-header">
@@ -656,14 +645,6 @@ shopDetailStyles.textContent = `
         background: #c19663;
     }
     
-    .dark-mode .checkin-btn {
-        background: var(--color-primary);
-        color: white;
-    }
-    
-    .dark-mode .checkin-btn:hover {
-        background: #c19663;
-    }
 `;
 document.head.appendChild(shopDetailStyles);
 

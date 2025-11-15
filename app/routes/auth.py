@@ -6,9 +6,10 @@ from functools import wraps
 
 from database import get_db
 from app.models import User
-from app.schemas import UserCreate, UserLogin, UserResponse, Token
+from app.schemas import UserCreate, UserLogin, UserResponse, Token, EmailVerificationRequest
 from app.utils.auth import create_access_token, get_current_user, get_current_active_user, get_current_user_optional
 from app.utils.security import validate_registration_data, validate_login_data
+from app.utils.rate_limiter import rate_limiter
 
 router = APIRouter(tags=["auth"])
 
@@ -29,7 +30,6 @@ def skip_csrf_check(func):
         
         return await func(*args, **kwargs)
     return wrapper
-from app.utils.rate_limiter import rate_limiter
 
 @router.post("/auth/register", response_model=Token, status_code=status.HTTP_201_CREATED)
 @skip_csrf_check
@@ -37,9 +37,9 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db), request
     """ユーザー登録エンドポイント"""
 
     # IPベースのレートリミット: 同一IPからの登録試行を短時間に連発させない
-    # 例: 3分間に30回まで
+    # 例: 3分間に10回まで
     client_ip = request.client.host if request and request.client else "unknown"
-    await rate_limiter.hit(f"register:{client_ip}", limit=30, window_seconds=180)
+    await rate_limiter.hit(f"register:{client_ip}", limit=10, window_seconds=180)
 
     # 簡易bot対策: hiddenフィールド（例: honeypot）値を検査
     # - 正常なフロントエンドはこのフィールドを空で送信する
@@ -101,7 +101,7 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db), request
 
 @router.post("/auth/login", response_model=Token)
 @skip_csrf_check
-async def login(login_data: UserLogin, db: Session = Depends(get_db)):
+async def login(login_data: UserLogin, db: Session = Depends(get_db), request: Request = None):
     """ログインエンドポイント"""
     # バリデーション
     validation_errors = validate_login_data(login_data.model_dump())
@@ -117,6 +117,10 @@ async def login(login_data: UserLogin, db: Session = Depends(get_db)):
             detail=error_message
         )
     
+    # クライアント情報を取得
+    client_ip = request.client.host if request and request.client else "unknown"
+    user_agent = request.headers.get("user-agent", "") if request else ""
+    
     # ユーザー認証
     user = db.query(User).filter(User.id == login_data.id).first()
     
@@ -126,6 +130,40 @@ async def login(login_data: UserLogin, db: Session = Depends(get_db)):
             detail="ユーザーIDまたはパスワードが正しくありません",
             headers={"WWW-Authenticate": "Bearer"},
         )
+    
+    # 前回のログイン情報を取得
+    from app.models import UserLoginHistory
+    last_login = db.query(UserLoginHistory).filter(
+        UserLoginHistory.user_id == user.id
+    ).order_by(UserLoginHistory.created_at.desc()).first()
+    
+    # IPアドレスとUserAgentの変更をチェック
+    requires_email_verification = False
+    if last_login:
+        ip_changed = last_login.ip_address != client_ip
+        user_agent_changed = last_login.user_agent != user_agent
+        
+        if ip_changed or user_agent_changed:
+            requires_email_verification = True
+    
+    # ログイン履歴を記録
+    login_history = UserLoginHistory(
+        user_id=user.id,
+        ip_address=client_ip,
+        user_agent=user_agent
+    )
+    db.add(login_history)
+    db.commit()
+    
+    # メールアドレス確認が必要な場合
+    if requires_email_verification:
+        return {
+            "access_token": None,
+            "token_type": "bearer",
+            "user": None,
+            "requires_email_verification": True,
+            "message": "前回のログインと環境が異なります。メールアドレスを入力してください。"
+        }
     
     # アクセストークンの発行
     access_token = create_access_token(data={"sub": user.id})
@@ -183,4 +221,61 @@ async def get_auth_status(current_user: Optional[User] = Depends(get_current_use
         "status_message": status_message,
         "is_banned": account_status == "banned",
         "ban_expires_at": current_user.ban_expires_at.isoformat() if current_user.ban_expires_at else None
+    }
+
+@router.post("/auth/verify-email", response_model=Token)
+@skip_csrf_check
+async def verify_email_for_login(
+    verification_data: EmailVerificationRequest,
+    db: Session = Depends(get_db),
+    request: Request = None
+):
+    """メールアドレス確認によるログイン完了エンドポイント"""
+    # ユーザー認証
+    user = db.query(User).filter(User.id == verification_data.id).first()
+    
+    if not user or not user.check_password(verification_data.password):
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="ユーザーIDまたはパスワードが正しくありません",
+            headers={"WWW-Authenticate": "Bearer"},
+        )
+    
+    # メールアドレスの一致確認
+    if user.email != verification_data.email:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="メールアドレスが一致しません",
+        )
+    
+    # クライアント情報を取得
+    client_ip = request.client.host if request and request.client else "unknown"
+    user_agent = request.headers.get("user-agent", "") if request else ""
+    
+    # ログイン履歴を記録（既に記録されている可能性があるが、確実に記録するため）
+    from app.models import UserLoginHistory
+    # 最新のログイン履歴が同じIP/UAでない場合のみ記録
+    last_login = db.query(UserLoginHistory).filter(
+        UserLoginHistory.user_id == user.id
+    ).order_by(UserLoginHistory.created_at.desc()).first()
+    
+    if not last_login or last_login.ip_address != client_ip or last_login.user_agent != user_agent:
+        login_history = UserLoginHistory(
+            user_id=user.id,
+            ip_address=client_ip,
+            user_agent=user_agent
+        )
+        db.add(login_history)
+        db.commit()
+    
+    # アクセストークンの発行
+    access_token = create_access_token(data={"sub": user.id})
+    
+    # ユーザーレスポンスの作成
+    user_response = UserResponse.model_validate(user)
+    
+    return {
+        "access_token": access_token,
+        "token_type": "bearer",
+        "user": user_response
     }
