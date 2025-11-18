@@ -16,7 +16,8 @@ const GuideComponent = {
         // タブを作成
         const tabs = [
             { id: 'usage', name: 'ご利用ガイド', icon: 'fas fa-book' },
-            { id: 'beginner', name: '初心者ガイド', icon: 'fas fa-graduation-cap' }
+            { id: 'beginner', name: '初心者ガイド', icon: 'fas fa-graduation-cap' },
+            { id: 'explanation', name: '説明', icon: 'fas fa-graduation-cap' }
         ];
         
         const tabButtons = document.createElement('div');
@@ -259,6 +260,86 @@ const GuideComponent = {
         return guideContent;
     },
 
+    async createExplanationGuide() {
+        const guideContent = document.createElement('div');
+        guideContent.className = 'guide-section';
+        guideContent.id = 'explanation-guide';
+        
+        // ヘッダー
+        const header = document.createElement('div');
+        header.className = 'guide-header';
+        header.innerHTML = `
+            <h2><i class="fas fa-graduation-cap"></i> 二郎の説明</h2>
+            <p>二郎ラーメンについて説明します</p>
+        `;
+        guideContent.appendChild(header);
+        
+        // セクション1: アプリの概要
+        const section1 = document.createElement('div');
+        section1.className = 'guide-section-block';
+        section1.innerHTML = `
+            <h3><i class="fas fa-info-circle"></i> ラーメン二郎とは</h3>
+
+            <ul>
+                <li>萌やしとキャベツとチャーシューからなる具</li>
+                <li>チャーシュー用の豚肉や豚骨にキャベツの芯やニンニク、背脂を煮込んで作られるスープ</li>
+                <li>平打ち麺</li>
+            </ul>
+            <p>からなるラーメンである。</p>
+        `;
+        guideContent.appendChild(section1);
+        
+        // セクション2: 主な機能
+        const section2 = document.createElement('div');
+        section2.className = 'guide-section-block';
+        section2.innerHTML = `
+            <h3><i class="fas fa-map-marked-alt"></i> サイズ</h3>
+            <p>基本的に</p>
+            <ul>
+                <li>通常サイズのラーメンを小</li>
+                <li>大盛りを大</li>
+            </ul>
+            <p>と呼称している</p>
+            <p>が中、並と呼称されるサイズはない。</p>
+        `;
+        guideContent.appendChild(section2);
+        
+        // セクション3: 料金と利用規約
+        const section3 = document.createElement('div');
+        section3.className = 'guide-section-block';
+        section3.innerHTML = `
+            <h3><i class="fas fa-file-contract"></i> 利用料金と規約</h3>
+            <ul>
+                <li>このアプリの利用は完全に無料です</li>
+                <li>広告収入で運営されています</li>
+                <li>ユーザー登録にはメールアドレスが必要です</li>
+                <li>不正利用や迷惑行為は厳しく対処します</li>
+                <li>投稿されたコンテンツの著作権はユーザーに帰属します</li>
+            </ul>
+        `;
+        guideContent.appendChild(section3);
+        
+        // セクション4: お問い合わせ
+        const section4 = document.createElement('div');
+        section4.className = 'guide-section-block';
+        section4.innerHTML = `
+            <h3><i class="fas fa-envelope"></i> お問い合わせ</h3>
+            <p>アプリに関するご意見やご要望、不具合報告などは以下の方法でお願いします。</p>
+            <ul>
+                <li>アプリ内のお問い合わせフォーム</li>
+                <li>Twitter: @ramen_sns_support</li>
+                <li>メール: support@ramen-sns.com</li>
+            </ul>
+            <div class="guide-note">
+                <i class="fas fa-lightbulb"></i>
+                <span>お問い合わせには通常2-3営業日でお返事いたします</span>
+            </div>
+        `;
+        guideContent.appendChild(section4);
+        
+        return guideContent;
+    },
+
     async switchTab(tabId) {
         // タブボタンのアクティブ状態を切り替え
         document.querySelectorAll('.guide-tab-button').forEach(btn => {
@@ -278,6 +359,8 @@ const GuideComponent = {
             contentArea.appendChild(await this.createUsageGuide());
         } else if (tabId === 'beginner') {
             contentArea.appendChild(await this.createBeginnerGuide());
+        } else if (tabId === 'explanation') {
+            contentArea.appendChild(await this.createExplanationGuide());
         }
     }
 };

@@ -141,40 +141,6 @@ const ProfileComponent = {
                     letter-spacing: 0.04em;
                 }
 
-                .rank-score-chip {
-                    display: inline-flex;
-                    align-items: center;
-                    gap: 8px;
-                    padding: 6px 12px;
-                    border-radius: 999px;
-                    background: var(--profile-accent-soft);
-                    color: var(--profile-accent);
-                    font-size: 12px;
-                    width: max-content;
-                    font-weight: 500;
-                }
-
-                .rank-score-chip strong {
-                    font-size: 16px;
-                    color: var(--profile-text);
-                }
-
-                .rank-status {
-                    font-size: 13px;
-                    line-height: 1.6;
-                    padding: 12px;
-                    border-radius: var(--profile-radius-medium);
-                    border: 1px solid var(--profile-border);
-                    background: var(--profile-surface-muted);
-                    color: var(--profile-muted);
-                }
-
-                .rank-status.rank-status--active {
-                    border-color: rgba(34, 197, 94, 0.32);
-                    color: #047857;
-                    background: rgba(34, 197, 94, 0.08);
-                }
-
                 .rank-status.rank-status--warning {
                     border-color: rgba(234, 179, 8, 0.28);
                     color: #92400e;
@@ -231,7 +197,7 @@ const ProfileComponent = {
                 }
 
                 .profile-featured-title__description {
-                    font-size: 13px;
+                    font-size: 12.3px;
                     color: var(--profile-muted);
                 }
 
@@ -926,6 +892,11 @@ const ProfileComponent = {
             const sanitizedStatusMessage = API.escapeHtml(status_message || '');
             const normalizedStatus = (account_status || 'active').toLowerCase();
             const statusClass = `rank-status rank-status--${normalizedStatus}`;
+            if (normalizedStatus != "active"){
+                isBAN = `<div class="${statusClass}">${sanitizedStatusMessage}</div>`;
+            }else{
+                isBAN = "";
+            }
             const sanitizedNextRankName = API.escapeHtml(next_rank_name || '');
             const nextRankLabel = next_rank_name
                 ? `次のランク「${sanitizedNextRankName}」まであと${points_to_next_rank ?? 0}pt`
@@ -943,11 +914,8 @@ const ProfileComponent = {
                     <div class="rank-progress-bar-fill" style="width:${progress}%; background:${badgeColor};"></div>
                 </div>
                 <div class="rank-progress-label">進捗 ${progressDisplay}% ・ ${nextRankLabel}</div>
-                <div class="rank-score-chip">
-                    <span>コミュニティスコア</span>
-                    <strong>${internal_score ?? 0}</strong>
-                </div>
-                <div class="${statusClass}">${sanitizedStatusMessage}</div>
+
+                ${isBAN}
             `;
             infoDiv.appendChild(rankCard);
 
@@ -1458,70 +1426,6 @@ const ProfileComponent = {
             }
         } catch (error) {
             content.innerHTML = `<div class="error">フォロー中の読み込みに失敗しました: ${error.message}</div>`;
-        }
-    },
-
-    async renderUserList(title, apiMethod) {
-        const content = document.getElementById('profileContent');
-        content.innerHTML = `<div class="loading">${title}を読み込み中...</div>`;
-
-        try {
-            // APIメソッドを直接呼び出すのではなく、APIオブジェクトのメソッドとして呼び出す
-            let result;
-            if (apiMethod === API.getFollowers) {
-                result = await API.getFollowers(this.state.user.id);
-            } else if (apiMethod === API.getFollowing) {
-                result = await API.getFollowing(this.state.user.id);
-            } else {
-                throw new Error('不明なAPIメソッド');
-            }
-            
-            content.innerHTML = ''; // Clear loading
-
-            if (result.success) {
-                if (result.users.length === 0) {
-                    const noUsersDiv = document.createElement('div');
-                    noUsersDiv.className = 'user-list-empty';
-                    noUsersDiv.textContent = `${title}はいません。`;
-                    content.appendChild(noUsersDiv);
-                    return;
-                }
-
-                const userList = document.createElement('div');
-                userList.className = 'user-list';
-                result.users.forEach(user => {
-                    const item = document.createElement('div');
-                    item.className = 'user-list-item';
-
-                    const avatar = document.createElement('div');
-                    avatar.className = 'user-list-avatar';
-                    const avatarImg = document.createElement('img');
-                    avatarImg.src = user.profile_image_url || 'assets/baseicon.png';
-                    avatarImg.alt = `${user.username}のアイコン`;
-                    avatar.appendChild(avatarImg);
-                    item.appendChild(avatar);
-
-                    const userInfo = document.createElement('div');
-                    userInfo.className = 'user-list-info';
-                    const nameDiv = document.createElement('div');
-                    nameDiv.className = 'user-list-name';
-                    nameDiv.textContent = user.username;
-                    userInfo.appendChild(nameDiv);
-
-                    const idDiv = document.createElement('div');
-                    idDiv.className = 'user-list-id';
-                    idDiv.textContent = `@${user.id}`;
-                    userInfo.appendChild(idDiv);
-
-                    item.appendChild(userInfo);
-                    userList.appendChild(item);
-                });
-                content.appendChild(userList);
-            } else {
-                throw new Error(result.error);
-            }
-        } catch (error) {
-            content.innerHTML = `<div class="error">${title}の読み込みに失敗しました: ${error.message}</div>`;
         }
     },
 
@@ -2067,27 +1971,4 @@ const ProfileComponent = {
 
 
 
-    // ネットワーク速度の判定
-    isSlowNetwork() {
-        const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-        
-        if (connection) {
-            // 接続タイプで判定
-            if (connection.type === 'cellular') {
-                // モバイルネットワークの場合
-                if (connection.effectiveType === 'slow-2g' ||
-                    connection.effectiveType === '2g' ||
-                    connection.effectiveType === '3g') {
-                    return true;
-                }
-            }
-            
-            // ダウンロード速度で判定
-            if (connection.downlink && connection.downlink < 1.5) {
-                return true; // 1.5Mbps未満は低速と判定
-            }
-        }
-        
-        return false;
-    }
 };

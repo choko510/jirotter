@@ -489,8 +489,6 @@ const SettingsComponent = {
 
     // アカウント削除ダイアログ表示
     showDeleteAccountDialog() {
-        const contentArea = document.getElementById('contentArea');
-        
         // ダイアログのHTMLを作成
         const dialogHtml = `
             <div class="delete-account-dialog-overlay" id="deleteAccountDialog">
@@ -650,7 +648,7 @@ const SettingsComponent = {
         // ダイアログを追加
         const dialogContainer = document.createElement('div');
         dialogContainer.innerHTML = dialogHtml;
-        contentArea.appendChild(dialogContainer.firstElementChild);
+        document.body.appendChild(dialogContainer.firstElementChild);
         
         // 入力フィールドのイベントリスナーを設定
         const confirmationInput = document.getElementById('deleteConfirmation');

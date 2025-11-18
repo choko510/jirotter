@@ -64,7 +64,7 @@ class ContentModerator:
                     system_instruction="あなたはコンテンツモデレーターとして、投稿内容の適切性を客観的に評価します。",
                     response_mime_type="application/json",
                     response_schema=ContentAnalysisResult,
-                    temperature=0.4,
+                    temperature=0.3,
                 )
             )
             
@@ -205,7 +205,7 @@ class ContentModerator:
                     system_instruction="あなたはコンテンツモデレーターとして、投稿内容の適切性を客観的に評価します。",
                     response_mime_type="application/json",
                     response_schema=ContentAnalysisResult,
-                    temperature=0.4,
+                    temperature=0.3,
                 ),
             )
 

@@ -156,16 +156,23 @@ class SpamDetector:
         if not JACONV_AVAILABLE or jaconv is None:
             return text
 
+        converted_variants = set()
+        converted_variants.add(text)
+        
         # カタカナをひらがなに変換
         hiragana = jaconv.kata2hira(text)
+        if hiragana != text:
+            converted_variants.add(hiragana)
+        
         # ひらがなをカタカナに変換
         katakana = jaconv.hira2kata(text)
+        if katakana != text:
+            converted_variants.add(katakana)
         
-        # 元のテキストと異なる場合は両方を返す
-        if hiragana != text:
-            return hiragana
-        elif katakana != text:
-            return katakana
+        # 最初の変換結果を返す（呼び出し元でsetに追加される）
+        for variant in converted_variants:
+            if variant != text:
+                return variant
         return text
 
     def _compile_badwords_pattern(self) -> re.Pattern:
@@ -174,8 +181,17 @@ class SpamDetector:
             return re.compile(r"(?!a)a")  # 空のパターン（マッチしない）
         
         # 特殊文字をエスケープして正規表現パターンを作成
-        escaped_words = [re.escape(word) for word in self.badwords]
-        pattern = r'\b(?:' + '|'.join(escaped_words) + r')\b'
+        # 英単語は単語境界(\b)を使用し、日本語は直接マッチングを使用
+        escaped_words = []
+        for word in sorted(self.badwords, key=len, reverse=True):
+            escaped_word = re.escape(word)
+            # 英単語（アルファベットのみ）の場合は単語境界を追加
+            if re.match(r'^[a-zA-Z]+$', word):
+                escaped_words.append(r'\b' + escaped_word + r'\b')
+            else:
+                escaped_words.append(escaped_word)
+        
+        pattern = r'(?:' + '|'.join(escaped_words) + r')'
         
         try:
             return re.compile(pattern, re.IGNORECASE)
@@ -190,7 +206,7 @@ class SpamDetector:
         
         for i in range(0, len(escaped_words), chunk_size):
             chunk = escaped_words[i:i + chunk_size]
-            chunk_pattern = r'\b(?:' + '|'.join(chunk) + r')\b'
+            chunk_pattern = r'(?:' + '|'.join(chunk) + r')'
             try:
                 patterns.append(re.compile(chunk_pattern, re.IGNORECASE))
             except re.error:
@@ -342,6 +358,11 @@ class SpamDetector:
             hiragana_text = jaconv.kata2hira(normalized_text)
             if hiragana_text != normalized_text:
                 texts_to_check.append(hiragana_text)
+            
+            # ひらがなをカタカナに変換したテキストでもチェック
+            katakana_text = jaconv.hira2kata(normalized_text)
+            if katakana_text != normalized_text:
+                texts_to_check.append(katakana_text)
         
         for check_text in texts_to_check:
             if self.badwords_pattern.search(check_text):
