@@ -7,7 +7,8 @@
     left: 0;
     right: 0;
     bottom: 0;
-    background: rgba(0, 0, 0, 0.45);
+    background: rgba(0, 0, 0, 0.35);
+    backdrop-filter: var(--blur-sm);
     display: flex;
     align-items: center;
     justify-content: center;
@@ -15,7 +16,9 @@
 }
 
 .checkin-modal {
-    background: var(--color-surface);
+    background: var(--glass-bg-strong);
+    backdrop-filter: var(--blur-lg);
+    border: 1px solid var(--glass-border);
     border-radius: var(--radius-lg);
     width: 90%;
     max-width: 520px;
@@ -23,7 +26,7 @@
     overflow: hidden;
     display: flex;
     flex-direction: column;
-    box-shadow: var(--shadow-md);
+    box-shadow: var(--shadow-lg), 0 0 0 1px rgba(255, 255, 255, 0.5) inset;
 }
 
 .checkin-modal-header {
@@ -66,7 +69,7 @@
     padding: 18px;
     flex: 1;
     overflow-y: auto;
-    background: var(--color-surface-muted);
+    background: rgba(251, 247, 241, 0.5);
 }
 
 /* チェックイン店舗情報 */
@@ -90,9 +93,10 @@
 .checkin-location-info {
     margin-bottom: 16px;
     padding: 12px;
-    background-color: var(--color-surface);
+    background-color: var(--glass-bg);
+    backdrop-filter: var(--blur-sm);
     border-radius: var(--radius-md);
-    border: 1px solid rgba(231, 220, 205, 0.8);
+    border: 1px solid var(--glass-border);
 }
 
 .checkin-location-info p {

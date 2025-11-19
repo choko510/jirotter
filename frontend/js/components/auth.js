@@ -19,15 +19,15 @@ const AuthComponent = {
     render(params = []) {
         const view = params[0] || 'login';
         this.state.currentView = view;
-        
+
         const contentArea = document.getElementById('contentArea');
-        
+
         // メールアドレス確認画面の場合
         if (view === 'email-verification') {
             this.renderEmailVerification();
             return;
         }
-        
+
         // 認証フォームのHTMLを生成
         contentArea.innerHTML = `
             <style>
@@ -35,10 +35,11 @@ const AuthComponent = {
                     max-width: 400px;
                     margin: 40px auto;
                     padding: 24px;
-                    background: var(--color-surface);
+                    background: var(--glass-bg);
+                    backdrop-filter: var(--blur-md);
+                    border: 1px solid var(--glass-border);
                     border-radius: var(--radius-lg);
-                    box-shadow: var(--shadow-sm);
-                    border: 1px solid rgba(231, 220, 205, 0.7);
+                    box-shadow: var(--shadow-md), 0 0 0 1px rgba(255, 255, 255, 0.4) inset;
                 }
 
                 .auth-header {
@@ -229,10 +230,10 @@ const AuthComponent = {
                 </form>
                 
                 <div class="auth-switch">
-                    ${view === 'login' ? 
-                        'アカウントをお持ちでないですか？ <span class="auth-link" onclick="AuthComponent.switchView(\'register\')">アカウント作成</span>' :
-                        'すでにアカウントをお持ちですか？ <span class="auth-link" onclick="AuthComponent.switchView(\'login\')">ログイン</span>'
-                    }
+                    ${view === 'login' ?
+                'アカウントをお持ちでないですか？ <span class="auth-link" onclick="AuthComponent.switchView(\'register\')">アカウント作成</span>' :
+                'すでにアカウントをお持ちですか？ <span class="auth-link" onclick="AuthComponent.switchView(\'login\')">ログイン</span>'
+            }
                 </div>
             </div>
         `;
@@ -397,17 +398,18 @@ const AuthComponent = {
     // メールアドレス確認画面のレンダリング
     renderEmailVerification() {
         const contentArea = document.getElementById('contentArea');
-        
+
         contentArea.innerHTML = `
             <style>
                 .auth-container {
                     max-width: 400px;
                     margin: 40px auto;
                     padding: 24px;
-                    background: var(--color-surface);
+                    background: var(--glass-bg);
+                    backdrop-filter: var(--blur-md);
+                    border: 1px solid var(--glass-border);
                     border-radius: var(--radius-lg);
-                    box-shadow: var(--shadow-sm);
-                    border: 1px solid rgba(231, 220, 205, 0.7);
+                    box-shadow: var(--shadow-md), 0 0 0 1px rgba(255, 255, 255, 0.4) inset;
                 }
 
                 .auth-header {
@@ -581,9 +583,9 @@ const AuthComponent = {
     // フォーム送信処理
     async handleSubmit(event) {
         event.preventDefault();
-        
+
         if (this.state.isSubmitting) return;
-        
+
         const userId = document.getElementById('id').value.trim();
         const password = document.getElementById('password').value.trim();
 
@@ -634,7 +636,7 @@ const AuthComponent = {
                     ? await API.registerWithPayload(payload)
                     : await API.register(userId, email, password, turnstileToken);
             }
-            
+
             if (result.success) {
                 // メールアドレス確認が必要な場合
                 if (result.token.requires_email_verification) {
@@ -645,14 +647,14 @@ const AuthComponent = {
                     }, 1000);
                     return;
                 }
-                
+
                 API.setCookie('authToken', result.token.access_token);
                 API.setCookie('user', JSON.stringify(result.token.user));
                 this.showMessage(`${this.state.currentView === 'login' ? 'ログイン' : '登録'}が完了しました！`, 'success');
-                
+
                 // ユーザープロフィールUIを更新
                 Utils.updateUserProfileUI();
-                
+
                 // タイムラインにリダイレクト
                 setTimeout(() => {
                     router.navigate('timeline');
@@ -678,40 +680,40 @@ const AuthComponent = {
     // メールアドレス確認処理
     async handleEmailVerification(event) {
         event.preventDefault();
-        
+
         if (this.state.isSubmitting) return;
-        
+
         const email = document.getElementById('email').value.trim();
-        
+
         if (!email) {
             this.showMessage('メールアドレスを入力してください', 'error');
             return;
         }
-        
+
         if (!this.state.pendingLoginData) {
             this.showMessage('ログイン情報が見つかりません。再度ログインしてください。', 'error');
             this.switchView('login');
             return;
         }
-        
+
         this.state.isSubmitting = true;
         document.getElementById('authSubmitBtn').disabled = true;
-        
+
         try {
             const result = await API.verifyEmailForLogin(
                 this.state.pendingLoginData.userId,
                 this.state.pendingLoginData.password,
                 email
             );
-            
+
             if (result.success) {
                 API.setCookie('authToken', result.token.access_token);
                 API.setCookie('user', JSON.stringify(result.token.user));
                 this.showMessage('ログインが完了しました！', 'success');
-                
+
                 // ユーザープロフィールUIを更新
                 Utils.updateUserProfileUI();
-                
+
                 // タイムラインにリダイレクト
                 setTimeout(() => {
                     router.navigate('timeline');
@@ -742,13 +744,13 @@ const AuthComponent = {
     showMessage(message, type = 'info') {
         const messageContainer = document.getElementById('authMessage');
         if (!messageContainer) return;
-        
+
         messageContainer.innerHTML = `
             <div class="auth-${type}">
                 ${message}
             </div>
         `;
-        
+
         // 5秒後にメッセージを非表示
         setTimeout(() => {
             messageContainer.innerHTML = '';

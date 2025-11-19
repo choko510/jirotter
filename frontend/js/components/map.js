@@ -4,7 +4,7 @@ const MapUtils = {
     determineBrand(shopName, brandConfig) {
         for (const [brandKey, config] of Object.entries(brandConfig)) {
             if (brandKey === 'other') continue;
-            
+
             for (const keyword of config.keywords) {
                 if (shopName.includes(keyword)) {
                     return brandKey;
@@ -17,18 +17,18 @@ const MapUtils = {
     // ブランドごとの店舗数をカウントする関数
     countShopsByBrand(shops, brandConfig, determineBrandFunc) {
         const counts = {};
-        
+
         // すべてのブランドを初期化
         for (const brandKey of Object.keys(brandConfig)) {
             counts[brandKey] = 0;
         }
-        
+
         // 店舗をブランドごとにカウント
         shops.forEach(shop => {
             const brand = determineBrandFunc(shop.name, brandConfig);
             counts[brand]++;
         });
-        
+
         return counts;
     },
 
@@ -38,16 +38,16 @@ const MapUtils = {
         const dLat = this.toRad(lat2 - lat1);
         const dLng = this.toRad(lng2 - lng1);
         const a =
-            Math.sin(dLat/2) * Math.sin(dLat/2) +
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
             Math.cos(this.toRad(lat1)) * Math.cos(this.toRad(lat2)) *
-            Math.sin(dLng/2) * Math.sin(dLng/2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         return R * c;
     },
 
     // 度数をラジアンに変換
     toRad(deg) {
-        return deg * (Math.PI/180);
+        return deg * (Math.PI / 180);
     }
 };
 
@@ -224,7 +224,7 @@ const MapComponent = {
     determineBrand(shopName) {
         for (const [brandKey, brandConfig] of Object.entries(this.BRAND_CONFIG)) {
             if (brandKey === 'other') continue;
-            
+
             for (const keyword of brandConfig.keywords) {
                 if (shopName.includes(keyword)) {
                     return brandKey;
@@ -242,13 +242,13 @@ const MapComponent = {
     // ブランドフィルターUIを生成する関数
     generateBrandFilterButtons() {
         let buttonsHtml = '';
-        
+
         for (const [brandKey, brandConfig] of Object.entries(this.BRAND_CONFIG)) {
             if (brandKey === 'other') continue; // 「その他」はフィルターに表示しない
-            
+
             const count = this.state.brandShopCounts[brandKey] || 0;
             // 店舗数が0でもフィルターは表示する（フィルター解除のため）
-            
+
             buttonsHtml += `
                 <button class="map-filter-btn"
                         data-brand="${brandKey}"
@@ -258,7 +258,7 @@ const MapComponent = {
                 </button>
             `;
         }
-        
+
         return buttonsHtml;
     },
 
@@ -363,16 +363,16 @@ const MapComponent = {
 
         // DocumentFragmentを使用してDOMを効率的に構築
         const fragment = document.createDocumentFragment();
-        
+
         // スタイル要素を作成
         const styleElement = document.createElement('style');
         styleElement.textContent = this.getMapStyles(mapHeight);
         fragment.appendChild(styleElement);
-        
+
         // コンテナ要素を作成
         const containerElement = this.getMapContainerElement();
         fragment.appendChild(containerElement);
-        
+
         // 一度にDOMに追加
         contentArea.innerHTML = '';
         contentArea.appendChild(fragment);
@@ -1035,11 +1035,11 @@ const MapComponent = {
     getMapContainerElement() {
         const container = document.createElement('div');
         container.className = 'map-container';
-        
+
         // ヘッダー要素
         const header = document.createElement('div');
         header.className = 'map-header';
-        
+
         // タイトルとトグルボタン
         const titleContainer = document.createElement('div');
         titleContainer.className = 'map-title-container';
@@ -1085,42 +1085,42 @@ const MapComponent = {
         const brandFilters = document.createElement('div');
         brandFilters.className = 'brand-filters';
         brandFilters.id = 'brandFilters';
-        
+
         const filterTitle = document.createElement('div');
         filterTitle.className = 'filter-title';
         filterTitle.textContent = 'ブランドで絞り込み:';
         brandFilters.appendChild(filterTitle);
-        
+
         const filterButtons = document.createElement('div');
         filterButtons.className = 'filter-buttons';
         filterButtons.id = 'filterButtons';
         brandFilters.appendChild(filterButtons);
-        
+
         const filterActions = document.createElement('div');
         filterActions.className = 'filter-actions';
-        
+
         const selectAllBtn = document.createElement('button');
         selectAllBtn.className = 'filter-action-btn';
         selectAllBtn.onclick = () => this.selectAllBrands();
         selectAllBtn.textContent = 'すべて選択';
-        
+
         const clearBtn = document.createElement('button');
         clearBtn.className = 'filter-action-btn';
         clearBtn.onclick = () => this.clearAllFilters();
         clearBtn.textContent = 'クリア';
-        
+
         filterActions.appendChild(selectAllBtn);
         filterActions.appendChild(clearBtn);
         brandFilters.appendChild(filterActions);
-        
+
         collapsibleContainer.appendChild(brandFilters);
         header.appendChild(collapsibleContainer);
         container.appendChild(header);
-        
+
         // コンテンツ
         const content = document.createElement('div');
         content.className = 'map-content';
-        
+
         // 店舗詳細パネル（左側）
         const shopDetailPanel = document.createElement('div');
         shopDetailPanel.id = 'shopDetailPanel';
@@ -1131,7 +1131,7 @@ const MapComponent = {
         const map = document.createElement('div');
         map.id = 'map';
         content.appendChild(map);
-        
+
         // ローディング
         const loading = document.createElement('div');
         loading.className = 'map-loading';
@@ -1139,7 +1139,7 @@ const MapComponent = {
         loading.style.display = 'none';
         loading.innerHTML = '<div class="map-spinner"></div><p>読み込み中...</p>';
         content.appendChild(loading);
-        
+
         // エラー
         const error = document.createElement('div');
         error.className = 'map-error';
@@ -1151,15 +1151,15 @@ const MapComponent = {
             <button onclick="MapComponent.retryLoad()">再試行</button>
         `;
         content.appendChild(error);
-        
+
         // 凡例
         const legend = document.createElement('div');
         legend.className = 'map-legend';
         legend.id = 'mapLegend';
         content.appendChild(legend);
-        
+
         container.appendChild(content);
-        
+
         return container;
     },
 
@@ -1167,65 +1167,65 @@ const MapComponent = {
     async initializeMap() {
         try {
             this.showLoading(true);
-            
+
             // 既存のマップを破棄
             if (this.state.map) {
                 this.state.map.remove();
                 this.state.map = null;
             }
-            
+
             // IPアドレスから位置情報を取得
             const location = await this.getLocationFromIP();
-            
+
             // マップコンテナをクリア
             const mapContainer = document.getElementById('map');
             if (mapContainer) {
                 mapContainer.innerHTML = '';
             }
-            
+
             // マップを作成
             this.state.map = L.map('map', {
                 maxZoom: 18,
                 minZoom: 4  // 縮小の最大値を設定（最小ズームレベル）
             }).setView([location.lat, location.lng], 13);
-            
+
             L.maplibreGL({
                 style: 'https://tiles.openfreemap.org/styles/liberty',
                 maxZoom: 18,
                 minZoom: 4  // 縮小の最大値を設定（最小ズームレベル）
             }).addTo(this.state.map)
-            
+
             // マーカーをグループ化して管理
             this.state.markerLayerGroup = L.layerGroup().addTo(this.state.map);
-            
+
             // ブランドごとのクラスターグループを初期化
             this.initializeBrandClusters();
-            
+
             // 地図の移動イベントをリッスン（デバウンス処理付き）
             this.state.map.on('moveend', () => {
                 this.handleMapMove();
             });
-            
+
             // ズームレベル変更時にもマーカー表示を更新
             this.state.map.on('zoomend', () => {
                 const currentZoom = this.state.map.getZoom();
                 const searchRadius = this.calculateSearchRadius(currentZoom);
                 //console.log(`ズームレベル変更: ${currentZoom}, 検索範囲を ${searchRadius}km に調整`);
-                
+
                 // ズームレベルが大きく変更された場合は再検索
                 const center = this.state.map.getCenter();
                 this.addNearbyShops({ lat: center.lat, lng: center.lng }, null);
-                
+
                 // マーカーの表示範囲も更新
                 this.updateMarkerVisibility();
             });
-            
+
             // 現在位置マーカーを追加
             this.addUserMarker(location);
-            
+
             // 初期中心位置を保存
             this.state.lastCenter = location;
-            
+
             // 近くのラーメン店データを取得して追加
             await this.addNearbyShops(location, null);
 
@@ -1244,25 +1244,25 @@ const MapComponent = {
         try {
             // ip-api.comを使用してIPアドレスから位置情報を取得
             const response = await fetch('https://ipinfo.io/json');
-            
+
             if (!response.ok) {
                 throw new Error('位置情報の取得に失敗しました');
             }
-            
+
             const data = await response.json();
-            
+
             // ipinfo.ioのレスポンス形式に対応
             if (data.error) {
                 throw new Error(data.error.message || '位置情報の取得に失敗しました');
             }
-            
+
             // locフィールドから緯度経度を抽出
             const [lat, lng] = data.loc ? data.loc.split(',').map(coord => parseFloat(coord)) : [null, null];
-            
+
             if (!lat || !lng) {
                 throw new Error('位置情報の取得に失敗しました');
             }
-            
+
             this.state.userLocation = {
                 lat: lat,
                 lng: lng,
@@ -1273,12 +1273,12 @@ const MapComponent = {
                 timezone: data.timezone || '',
                 org: data.org || ''
             };
-            
+
             return this.state.userLocation;
-            
+
         } catch (error) {
             console.error('IPベースの位置取得に失敗しました:', error);
-            
+
             // デフォルト位置（東京）を返す
             this.state.userLocation = {
                 lat: 35.6762,
@@ -1286,7 +1286,7 @@ const MapComponent = {
                 city: '東京',
                 country: '日本'
             };
-            
+
             return this.state.userLocation;
         }
     },
@@ -1298,7 +1298,7 @@ const MapComponent = {
             iconSize: [20, 20],
             className: 'user-marker'
         });
-        
+
         L.marker([location.lat, location.lng], { icon: userIcon })
             .addTo(this.state.map)
             .bindPopup(`<b>現在地</b><br>${location.city}, ${location.country}`);
@@ -1310,18 +1310,18 @@ const MapComponent = {
         if (this.state.debounceTimer) {
             clearTimeout(this.state.debounceTimer);
         }
-        
+
         // 新しいタイマーを設定（500ms後に実行）
         this.state.debounceTimer = setTimeout(async () => {
             const currentCenter = this.state.map.getCenter();
             const { lat, lng } = currentCenter;
             const currentZoom = this.state.map.getZoom();
-            
+
             // 前回の中心位置との距離を計算
             if (this.state.lastCenter) {
                 const latDiff = Math.abs(lat - this.state.lastCenter.lat);
                 const lngDiff = Math.abs(lng - this.state.lastCenter.lng);
-                
+
                 // 閾値以下の移動ならAPIを呼ばない
                 if (latDiff < this.state.moveThreshold && lngDiff < this.state.moveThreshold) {
                     // マーカーの表示範囲だけ更新
@@ -1329,14 +1329,14 @@ const MapComponent = {
                     return;
                 }
             }
-            
+
             // 現在の中心位置を保存
             this.state.lastCenter = { lat, lng };
-            
+
             // ズームレベルに応じて検索範囲を計算
             const searchRadius = this.calculateSearchRadius(currentZoom);
             //console.log(`マップ移動: ズームレベル ${currentZoom}, 検索範囲 ${searchRadius}km`);
-            
+
             // APIを呼び出して近くの店舗を取得
             await this.addNearbyShops({ lat, lng }, null);
         }, 500);
@@ -1353,13 +1353,13 @@ const MapComponent = {
     // キャッシュに店舗データを保存
     cacheShopData(key, data) {
         const { shopCache, maxCacheSize } = this.state.cache;
-        
+
         // キャッシュサイズが上限に達した場合、最も古いエントリを削除
         if (shopCache.size >= maxCacheSize) {
             const firstKey = shopCache.keys().next().value;
             shopCache.delete(firstKey);
         }
-        
+
         // タイムスタンプ付きでデータを保存
         shopCache.set(key, {
             data: data,
@@ -1372,29 +1372,29 @@ const MapComponent = {
         const { shopCache } = this.state.cache;
         const cached = shopCache.get(key);
         if (!cached) return null;
-        
+
         // 5分以上経過したキャッシュは無効
         const maxAge = 5 * 60 * 1000; // 5分
         if (Date.now() - cached.timestamp > maxAge) {
             shopCache.delete(key);
             return null;
         }
-        
+
         return cached.data;
     },
 
     // 近くのキャッシュエントリを検索
     findNearbyCacheEntry(lat, lng, radius) {
         const { shopCache } = this.state.cache;
-        
+
         // グリッドベースのキャッシュキーを生成
         const gridLat = Math.round(lat * 10) / 10;
         const gridLng = Math.round(lng * 10) / 10;
-        
+
         // 同じグリッド内のキャッシュを検索
         for (const [key, entry] of shopCache.entries()) {
             const [cachedGridLat, cachedGridLng, cachedRadius] = key.split(',').map(Number);
-            
+
             // 同じグリッド内で、より広い範囲のキャッシュがあれば使用
             if (cachedGridLat === gridLat && cachedGridLng === gridLng && cachedRadius >= radius) {
                 return entry.data;
@@ -1412,7 +1412,7 @@ const MapComponent = {
                 // 4個未満のマーカーはクラスタリングしないカスタム関数
                 iconCreateFunction: (cluster) => {
                     const count = cluster.getChildCount();
-                    
+
                     // 4個未満のマーカーはクラスタリングしない
                     if (count < 4) {
                         // 最初のマーカーのアイコンを取得して返す
@@ -1421,18 +1421,18 @@ const MapComponent = {
                             return markers[0].getIcon();
                         }
                     }
-                    
+
                     let size = 'small';
                     let className = `marker-cluster marker-cluster-${brandKey}`;
-                    
+
                     if (count >= 20) {
                         size = 'large';
                     } else if (count >= 10) {
                         size = 'medium';
                     }
-                    
+
                     className += ` marker-cluster-${size}`;
-                    
+
                     return L.divIcon({
                         html: `<div><span>${count}</span></div>`,
                         className: className,
@@ -1452,22 +1452,22 @@ const MapComponent = {
                 // マーカーの位置情報が無効な場合のエラーハンドリング
                 maxSingleMarkerRadius: 50 // 単一マーカーのクラスタリングを防ぐ
             };
-            
+
             // 特にピンク（豚山）のクラスタースタイルをカスタマイズ
             if (brandKey === 'butayama') {
                 clusterOptions.iconCreateFunction = (cluster) => {
                     const count = cluster.getChildCount();
                     let size = 'small';
                     let className = `marker-cluster marker-cluster-pink`;
-                    
+
                     if (count >= 20) {
                         size = 'large';
                     } else if (count >= 10) {
                         size = 'medium';
                     }
-                    
+
                     className += ` marker-cluster-${size}`;
-                    
+
                     return L.divIcon({
                         html: `<div><span>${count}</span></div>`,
                         className: className,
@@ -1475,7 +1475,7 @@ const MapComponent = {
                     });
                 };
             }
-            
+
             try {
                 this.state.brandClusters[brandKey] = L.markerClusterGroup(clusterOptions);
                 this.state.map.addLayer(this.state.brandClusters[brandKey]);
@@ -1493,14 +1493,14 @@ const MapComponent = {
         // ズームレベルに応じて検索範囲を動的に調整
         // ズームアウト時（低いズームレベル）は広範囲を検索
         // ズームイン時（高いズームレベル）は狭範囲を検索
-        
+
         if (zoomLevel <= 6) {
             // 日本全土が見えるような非常に広い範囲
             return 600;
         } else if (zoomLevel <= 8) {
             // 広域（地方レベル）
             return 250;
-        } else if(zoomLevel <=9){
+        } else if (zoomLevel <= 9) {
             // 中域（県レベル）
             return 100;
         } else if (zoomLevel <= 10) {
@@ -1525,10 +1525,10 @@ const MapComponent = {
     async addNearbyShops(centerLocation, currentRadius = null) {
         try {
             const { lat, lng } = centerLocation;
-            
+
             // 現在のズームレベルを取得
             const zoomLevel = this.state.map ? this.state.map.getZoom() : 13;
-            
+
             // ズームレベルに応じて検索範囲を計算
             let radius;
             if (currentRadius) {
@@ -1537,11 +1537,11 @@ const MapComponent = {
                 radius = this.calculateSearchRadius(zoomLevel);
                 console.log(`ズームレベル ${zoomLevel} に基づき検索範囲を ${radius}km に設定`);
             }
-            
+
             // 検索範囲を段階的に広げるための配列
             const radiusSteps = [10, 20, 40, 80, 150, 300, 500]; // km
             const maxRadius = 500; // 最大検索範囲
-            
+
             // 現在の検索範囲がradiusStepsに含まれていない場合は、次のステップを見つける
             let radiusIndex = radiusSteps.indexOf(radius);
             if (radiusIndex === -1) {
@@ -1551,27 +1551,27 @@ const MapComponent = {
                     radiusIndex = radiusSteps.length - 1; // 最大値を使用
                 }
             }
-            
+
             // 検索範囲を段階的に広げながら店舗を検索
             for (let i = radiusIndex; i < radiusSteps.length; i++) {
                 radius = radiusSteps[i];
-                
+
                 // キャッシュキーを生成
                 const cacheKey = this.generateCacheKey(lat, lng, radius);
-                
+
                 // まず近くのキャッシュエントリを検索
                 let cachedData = this.findNearbyCacheEntry(lat, lng, radius);
-                
+
                 // 近くのキャッシュがなければ、正確なキーでキャッシュを検索
                 if (!cachedData) {
                     cachedData = this.getCachedShopData(cacheKey);
                 }
-                
+
                 // キャッシュがあればそれを使用
                 if (cachedData) {
                     console.log(`キャッシュから店舗データを使用 (範囲: ${radius}km)`);
                     this.updateShopMarkers(cachedData.shops);
-                    
+
                     // 店舗数が10以下で、まだ最大検索範囲に達していない場合は次の範囲を試す
                     if (cachedData.shops.length <= 10 && radius < maxRadius) {
                         console.log(`店舗数が${cachedData.shops.length}件のため、検索範囲を広げます`);
@@ -1579,17 +1579,17 @@ const MapComponent = {
                     }
                     return;
                 }
-                
+
                 // 進行中の同じリクエストがあれば、それが完了するまで待つ
                 const pendingKey = `${lat},${lng},${radius}`;
                 const { pendingRequests } = this.state.cache;
-                
+
                 if (pendingRequests.has(pendingKey)) {
                     console.log(`進行中のリクエストを待機中... (範囲: ${radius}km)`);
                     const existingRequest = pendingRequests.get(pendingKey);
                     const data = await existingRequest;
                     this.updateShopMarkers(data.shops);
-                    
+
                     // 店舗数が10以下で、まだ最大検索範囲に達していない場合は次の範囲を試す
                     if (data.shops.length <= 10 && radius < maxRadius) {
                         console.log(`店舗数が${data.shops.length}件のため、検索範囲を広げます`);
@@ -1597,7 +1597,7 @@ const MapComponent = {
                     }
                     return;
                 }
-                
+
                 // APIリクエストを作成
                 const apiRequest = API.request(`/api/v1/ramen/nearby?latitude=${lat}&longitude=${lng}&radius_km=${radius}`)
                     .then(data => {
@@ -1625,26 +1625,26 @@ const MapComponent = {
                         // リクエスト完了後、pendingリストから削除
                         this.state.cache.pendingRequests.delete(pendingKey);
                     });
-                
+
                 // 進行中のリクエストとして保存
                 this.state.cache.pendingRequests.set(pendingKey, apiRequest);
-                
+
                 // この範囲での検索を開始したので、ループを抜ける
                 break;
             }
-            
+
         } catch (error) {
             console.error('ラーメン店データの取得に失敗しました:', error);
             this.showError('ラーメン店データの取得に失敗しました: ' + error.message);
         }
     },
-    
+
     // 店舗マーカーをクリア
     clearShopMarkers() {
         // 既存の店舗マーカーを地図から削除
         for (const [shopId, marker] of this.state.markers.entries()) {
             const brand = marker.brand || 'other';
-            
+
             try {
                 if (this.state.clusterEnabled && this.state.brandClusters[brand]) {
                     // クラスタリングが有効な場合はクラスターグループから削除
@@ -1661,7 +1661,7 @@ const MapComponent = {
                 console.error(`マーカーの削除に失敗しました (店舗ID: ${shopId}):`, error);
             }
         }
-        
+
         // マーカーリストと表示セットをクリア
         this.state.markers.clear();
         this.state.visibleMarkers.clear();
@@ -1671,10 +1671,10 @@ const MapComponent = {
     initializeBrandFilters() {
         // デフォルトではすべての店舗を表示（フィルターは無効）
         this.state.activeFilters.clear();
-        
+
         // フィルターボタンを生成
         this.updateFilterButtons();
-        
+
         // 凡例を更新
         this.updateLegend();
     },
@@ -1752,14 +1752,14 @@ const MapComponent = {
 
         // ブランドごとの店舗数をカウント
         this.state.brandShopCounts = this.countShopsByBrand(shops);
-        
+
         // フィルターボタンと凡例を更新
         this.updateFilterButtons();
         this.updateLegend();
 
         // 既存のマーカーをマップで管理
         const newShopIds = new Set();
-        
+
         // 新しい店舗データでマーカーを更新または追加
         shops.forEach(shop => {
             // 緯度・経度が存在することを確認
@@ -1767,10 +1767,10 @@ const MapComponent = {
                 console.warn(`店舗 ID ${shop.id} の位置情報が不足しています: 緯度=${shop.latitude}, 経度=${shop.longitude}`);
                 return; // この店舗はスキップ
             }
-            
+
             // ブランドを判定
             const brand = MapUtils.determineBrand(shop.name, this.BRAND_CONFIG);
-            
+
             const shopData = {
                 id: shop.id,
                 name: shop.name,
@@ -1785,10 +1785,10 @@ const MapComponent = {
                 distance: shop.distance,
                 description: `${shop.address}<br>営業時間: ${shop.business_hours || '不明'}<br>定休日: ${shop.closed_day || '不明'}${shop.distance !== undefined ? `<br>距離: 約${shop.distance}km` : ''}`
             };
-            
+
             const shopId = shop.id;
             newShopIds.add(shopId);
-            
+
             // findIndex の代わりに Map.has() を使用 (高速)
             if (this.state.markers.has(shopId)) {
                 // 既存マーカーの更新
@@ -1806,12 +1806,12 @@ const MapComponent = {
                 }
             }
         });
-        
+
         // 不要なマーカーを削除
         for (const [shopId, marker] of this.state.markers.entries()) {
             if (!newShopIds.has(shopId)) {
                 const brand = marker.brand || 'other';
-                
+
                 try {
                     if (this.state.clusterEnabled && this.state.brandClusters[brand]) {
                         // クラスタリングが有効な場合はクラスターグループから削除
@@ -1838,7 +1838,7 @@ const MapComponent = {
                 }
             }
         }
-        
+
         // 表示範囲内のマーカーだけを表示
         this.updateMarkerVisibility();
     },
@@ -1846,11 +1846,11 @@ const MapComponent = {
     // 表示範囲内のマーカーだけを表示/非表示
     updateMarkerVisibility() {
         if (!this.state.map) return;
-        
+
         const bounds = this.state.map.getBounds();
         const center = this.state.map.getCenter();
         const zoom = this.state.map.getZoom();
-        
+
         // ズームレベルに応じて表示範囲を調整
         let visibilityRadius = this.state.markerVisibilityRadius;
         if (zoom < 10) {
@@ -1860,21 +1860,21 @@ const MapComponent = {
         } else {
             visibilityRadius = 30; // 高ズームでは狭範囲を表示
         }
-        
+
         // フィルターが空の場合はすべてのブランドがアクティブ
         const hasActiveFilters = this.state.activeFilters.size > 0;
-        
+
         for (const [shopId, marker] of this.state.markers.entries()) {
             const markerPos = marker.getLatLng();
-            
+
             // マーカーの位置情報が有効かチェック
             if (!markerPos || !markerPos.lat || !markerPos.lng) {
                 console.warn(`マーカー ID ${shopId} の位置情報が無効です`);
                 continue;
             }
-            
+
             const brand = marker.brand || 'other';
-            
+
             // 早期フィルタリング：フィルターに合致しない場合はスキップ
             if (hasActiveFilters && !this.state.activeFilters.has(brand)) {
                 // 表示範囲外またはフィルターに合致しない場合、マーカーを非表示
@@ -1894,7 +1894,7 @@ const MapComponent = {
                 this.state.visibleMarkers.delete(shopId);
                 continue;
             }
-            
+
             // 早期フィルタリング：表示範囲外の場合はスキップ
             if (!bounds.contains(markerPos)) {
                 // 表示範囲外の場合、マーカーを非表示
@@ -1914,10 +1914,10 @@ const MapComponent = {
                 this.state.visibleMarkers.delete(shopId);
                 continue;
             }
-            
+
             // 距離計算（範囲内のマーカーのみ）
             const distance = MapUtils.calculateDistance(center.lat, center.lng, markerPos.lat, markerPos.lng);
-            
+
             if (distance <= visibilityRadius) {
                 // 表示範囲内かつフィルターに合致する場合、マーカーを表示
                 try {
@@ -1967,17 +1967,17 @@ const MapComponent = {
         const R = 6371; // 地球の半径（km）
         const dLat = this.toRad(lat2 - lat1);
         const dLng = this.toRad(lng2 - lng1);
-        const a = 
-            Math.sin(dLat/2) * Math.sin(dLat/2) +
-            Math.cos(this.toRad(lat1)) * Math.cos(this.toRad(lat2)) * 
-            Math.sin(dLng/2) * Math.sin(dLng/2);
-        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+        const a =
+            Math.sin(dLat / 2) * Math.sin(dLat / 2) +
+            Math.cos(this.toRad(lat1)) * Math.cos(this.toRad(lat2)) *
+            Math.sin(dLng / 2) * Math.sin(dLng / 2);
+        const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
         return R * c;
     },
 
     // 度数をラジアンに変換
     toRad(deg) {
-        return deg * (Math.PI/180);
+        return deg * (Math.PI / 180);
     },
 
     // 店舗マーカーを追加
@@ -1987,14 +1987,14 @@ const MapComponent = {
             console.warn(`店舗 ID ${shop.id} の位置情報が不足しています: 緯度=${shop.lat}, 経度=${shop.lng}`);
             return null; // マーカーを作成しない
         }
-        
+
         const brand = shop.brand || shop.type || 'other';
         const brandConfig = this.BRAND_CONFIG[brand];
         const color = brandConfig ? brandConfig.color : this.BRAND_CONFIG.other.color;
         const textColor = brandConfig ? brandConfig.textColor : this.BRAND_CONFIG.other.textColor;
         // markerTextが設定されていない場合はデフォルトで「ラ」を表示
         const markerText = (brandConfig && brandConfig.markerText) ? brandConfig.markerText : 'ラ';
-        
+
         // より目立つマーカーアイコンを作成
         const shopIcon = L.divIcon({
             html: `
@@ -2031,7 +2031,7 @@ const MapComponent = {
             popupAnchor: [0, -30],
             className: 'shop-marker'
         });
-        
+
         const popupContent = `
             <div style="max-width: 200px;">
                 <h3 style="margin: 0 0 8px 0;">${shop.name}</h3>
@@ -2040,14 +2040,14 @@ const MapComponent = {
                 <button onclick="MapComponent.showShopDetails(${shop.id})" style="margin-top: 8px; padding: 4px 8px; background: ${color}; color: white; border: none; border-radius: 4px; cursor: pointer;">詳細を見る</button>
             </div>
         `;
-        
+
         const marker = L.marker([shop.lat, shop.lng], { icon: shopIcon })
             .bindPopup(popupContent);
-        
+
         // 店舗IDとブランドをマーカーに保存して後で識別できるようにする
         marker.shopId = shop.id;
         marker.brand = brand;
-        
+
         // クラスタリングが有効な場合はブランドごとのクラスターグループに追加
         try {
             if (this.state.clusterEnabled && this.state.brandClusters[brand]) {
@@ -2065,14 +2065,14 @@ const MapComponent = {
                 console.error(`マーカーのフォールバック追加にも失敗しました (店舗ID: ${shop.id}):`, fallbackError);
             }
         }
-        
+
         // 表示範囲内かチェックして、範囲内なら表示
         if (this.state.map) {
             const bounds = this.state.map.getBounds();
             const center = this.state.map.getCenter();
             const distance = MapUtils.calculateDistance(center.lat, center.lng, shop.lat, shop.lng);
             const zoom = this.state.map.getZoom();
-            
+
             let visibilityRadius = this.state.markerVisibilityRadius;
             if (zoom < 10) {
                 visibilityRadius = 100;
@@ -2081,7 +2081,7 @@ const MapComponent = {
             } else {
                 visibilityRadius = 30;
             }
-            
+
             if (bounds.contains([shop.lat, shop.lng]) && distance <= visibilityRadius) {
                 // フィルターが適用されている場合は、フィルターに合致する場合のみ表示
                 if (this.state.activeFilters.size === 0 || this.state.activeFilters.has(brand)) {
@@ -2089,7 +2089,7 @@ const MapComponent = {
                 }
             }
         }
-        
+
         // ここでマーカーを直接 state.markers に追加するのではなく、呼び出し元に返す
         return marker;
     },
@@ -2190,7 +2190,7 @@ const MapComponent = {
     // マップ検索処理
     async handleMapSearch(query) {
         const searchResults = document.getElementById('mapSearchResults');
-        
+
         if (!query || query.trim().length < 2) {
             searchResults.style.display = 'none';
             return;
@@ -2199,7 +2199,7 @@ const MapComponent = {
         try {
             // APIで店舗を検索
             const shops = await API.getShops(query.trim());
-            
+
             if (shops.length === 0) {
                 searchResults.innerHTML = '<div class="search-no-results">店舗が見つかりませんでした</div>';
                 searchResults.style.display = 'block';
@@ -2243,7 +2243,7 @@ const MapComponent = {
         } else {
             this.state.activeFilters.add(brand);
         }
-        
+
         // 選択されたボタンのアクティブ状態を切り替え
         const button = document.querySelector(`[data-brand="${brand}"]`);
         if (button) {
@@ -2253,7 +2253,7 @@ const MapComponent = {
                 button.classList.remove('active');
             }
         }
-        
+
         // マーカーの表示を更新
         this.updateMarkerVisibility();
     },
@@ -2264,13 +2264,13 @@ const MapComponent = {
         for (const brandKey of Object.keys(this.BRAND_CONFIG)) {
             this.state.activeFilters.add(brandKey);
         }
-        
+
         // すべてのボタンをアクティブ状態にする
         const buttons = document.querySelectorAll('.map-filter-btn[data-brand]');
         buttons.forEach(button => {
             button.classList.add('active');
         });
-        
+
         // マーカーの表示を更新
         this.updateMarkerVisibility();
     },
@@ -2279,13 +2279,13 @@ const MapComponent = {
     clearAllFilters() {
         // すべてのフィルターをクリア
         this.state.activeFilters.clear();
-        
+
         // すべてのボタンを非アクティブ状態にする
         const buttons = document.querySelectorAll('.map-filter-btn[data-brand]');
         buttons.forEach(button => {
             button.classList.remove('active');
         });
-        
+
         // マーカーの表示を更新（すべての店舗を表示）
         this.updateMarkerVisibility();
     },
@@ -2461,7 +2461,7 @@ const MapComponent = {
     showError(message) {
         const errorElement = document.getElementById('mapError');
         const errorMessage = document.getElementById('mapErrorMessage');
-        
+
         errorMessage.textContent = message;
         errorElement.style.display = 'block';
         this.showLoading(false);
@@ -2471,19 +2471,19 @@ const MapComponent = {
     retryLoad() {
         const errorElement = document.getElementById('mapError');
         errorElement.style.display = 'none';
-        
+
         // 既存のマップを破棄してから再初期化
         if (this.state.map) {
             this.state.map.remove();
             this.state.map = null;
         }
-        
+
         // マーカーをクリア
         this.clearShopMarkers();
-        
+
         // クラスターグループをリセット
         this.state.brandClusters = {};
-        
+
         // マップを再初期化
         this.initializeMap();
     },

@@ -27,59 +27,111 @@ const CommentComponent = {
         }
 
         this.state.isLoading = true;
-        
+
         const contentArea = document.getElementById('contentArea');
         contentArea.innerHTML = `
             <style>
+                /* アニメーション定義 */
+                @keyframes slideInUp {
+                    from {
+                        opacity: 0;
+                        transform: translateY(20px);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: translateY(0);
+                    }
+                }
+
+                @keyframes fadeIn {
+                    from { opacity: 0; }
+                    to { opacity: 1; }
+                }
+
+                @keyframes scaleIn {
+                    from {
+                        opacity: 0;
+                        transform: scale(0.95);
+                    }
+                    to {
+                        opacity: 1;
+                        transform: scale(1);
+                    }
+                }
+
                 /* コンテナとヘッダー */
                 .comment-container {
-                    max-width: 600px;
+                    max-width: 680px;
                     margin: 0 auto;
-                    background: var(--color-surface);
+                    background: linear-gradient(180deg, var(--glass-bg-light) 0%, rgba(255, 255, 255, 0.5) 100%);
+                    backdrop-filter: var(--blur-md);
                     min-height: 100vh;
-                    border: 1px solid rgba(231, 220, 205, 0.7);
+                    border: 1px solid var(--glass-border);
                     border-radius: var(--radius-lg);
-                    box-shadow: var(--shadow-sm);
+                    box-shadow: var(--shadow-md), 0 0 0 1px rgba(255, 255, 255, 0.5) inset,
+                                0 20px 40px rgba(47, 37, 25, 0.08);
                     overflow: hidden;
+                    animation: fadeIn 0.4s ease;
                 }
 
                 .comment-header {
                     display: flex;
                     align-items: center;
                     padding: 16px;
-                    border-bottom: 1px solid var(--color-border);
+                    border-bottom: 1px solid var(--glass-border-soft);
                     position: sticky;
                     top: 0;
-                    background: rgba(255, 255, 255, 0.9);
-                    backdrop-filter: blur(14px);
+                    background: var(--glass-bg);
+                    backdrop-filter: var(--blur-md);
+                    box-shadow: 0 1px 0 0 rgba(255, 255, 255, 0.4) inset;
                     z-index: 10;
                 }
 
                 .comment-back {
-                    background: transparent;
-                    border: none;
-                    font-size: 20px;
+                    background: var(--glass-bg);
+                    border: 1px solid var(--glass-border);
+                    font-size: 18px;
                     cursor: pointer;
                     color: var(--color-text);
-                    padding: 8px;
+                    padding: 10px;
                     margin-right: 12px;
                     border-radius: 50%;
-                    transition: background 0.2s;
+                    width: 40px;
+                    height: 40px;
+                    display: flex;
+                    align-items: center;
+                    justify-content: center;
+                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    box-shadow: 0 2px 8px rgba(47, 37, 25, 0.06);
                 }
 
                 .comment-back:hover {
-                    background: var(--color-surface-muted);
+                    background: var(--color-primary);
+                    color: white;
+                    transform: translateX(-4px);
+                    box-shadow: 0 4px 12px rgba(212, 165, 116, 0.3);
                 }
 
                 .comment-title {
-                    font-size: 18px;
-                    font-weight: bold;
+                    font-size: 20px;
+                    font-weight: 700;
+                    background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
+                    -webkit-background-clip: text;
+                    -webkit-text-fill-color: transparent;
+                    background-clip: text;
+                    letter-spacing: 0.02em;
                 }
 
                 /* 元の投稿表示 */
                 .original-post {
-                    padding: 16px;
-                    border-bottom: 1px solid var(--color-border);
+                    padding: 24px;
+                    margin: 16px;
+                    border-radius: var(--radius-lg);
+                    background: var(--glass-bg);
+                    backdrop-filter: var(--blur-md);
+                    border: 1px solid var(--glass-border);
+                    box-shadow: var(--shadow-sm), 0 0 0 1px rgba(255, 255, 255, 0.4) inset;
+                    animation: scaleIn 0.5s cubic-bezier(0.4, 0, 0.2, 1);
                 }
 
                 .post-header {
@@ -179,8 +231,20 @@ const CommentComponent = {
 
                 /* コメント入力 */
                 .comment-input-section {
-                    padding: 16px;
-                    border-bottom: 1px solid var(--color-border);
+                    padding: 20px;
+                    margin: 16px;
+                    border-radius: var(--radius-lg);
+                    background: var(--glass-bg-strong);
+                    backdrop-filter: var(--blur-lg);
+                    border: 2px solid var(--glass-border);
+                    box-shadow: var(--shadow-md), 0 0 0 1px rgba(255, 255, 255, 0.6) inset;
+                    transition: all 0.3s ease;
+                }
+
+                .comment-input-section:focus-within {
+                    border-color: var(--color-primary);
+                    box-shadow: 0 8px 24px rgba(212, 165, 116, 0.2), 0 0 0 1px rgba(255, 255, 255, 0.6) inset;
+                    transform: translateY(-2px);
                 }
 
                 .comment-input-wrapper {
@@ -192,12 +256,19 @@ const CommentComponent = {
                     width: 48px;
                     height: 48px;
                     border-radius: 50%;
-                    background: var(--color-primary);
+                    background: linear-gradient(135deg, var(--color-primary), var(--color-accent));
                     flex-shrink: 0;
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     color: #fff;
+                    box-shadow: 0 4px 12px rgba(212, 165, 116, 0.3);
+                    border: 2px solid rgba(255, 255, 255, 0.8);
+                    transition: transform 0.2s ease;
+                }
+
+                .comment-avatar:hover {
+                    transform: scale(1.05);
                 }
 
                 .comment-textarea {
@@ -263,18 +334,34 @@ const CommentComponent = {
 
                 /* コメントリスト */
                 .comments-list {
-                    padding: 0 16px;
+                    padding: 16px;
                 }
 
                 .comment-item {
-                    padding: 20px 0;
-                    border-bottom: 1px solid var(--color-border);
-                    transition: background 0.2s ease;
+                    padding: 20px;
+                    margin-bottom: 12px;
+                    border-radius: var(--radius-md);
+                    background: var(--glass-bg);
+                    backdrop-filter: var(--blur-sm);
+                    border: 1px solid var(--glass-border);
+                    box-shadow: 0 2px 8px rgba(47, 37, 25, 0.04);
+                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    animation: slideInUp 0.4s ease;
+                    animation-fill-mode: both;
                 }
 
                 .comment-item:hover {
-                    background: var(--color-surface-muted);
+                    background: var(--glass-bg-strong);
+                    transform: translateY(-2px);
+                    box-shadow: 0 8px 20px rgba(47, 37, 25, 0.1), 0 0 0 1px rgba(255, 255, 255, 0.5) inset;
+                    border-color: rgba(212, 165, 116, 0.3);
                 }
+
+                .comment-item:nth-child(1) { animation-delay: 0.05s; }
+                .comment-item:nth-child(2) { animation-delay: 0.1s; }
+                .comment-item:nth-child(3) { animation-delay: 0.15s; }
+                .comment-item:nth-child(4) { animation-delay: 0.2s; }
+                .comment-item:nth-child(5) { animation-delay: 0.25s; }
 
                 .comment-header {
                     display: flex;
@@ -319,25 +406,39 @@ const CommentComponent = {
 
                 .comment-actions {
                     display: flex;
-                    gap: 16px;
+                    gap: 12px;
+                    margin-top: 12px;
+                    padding-top: 12px;
+                    border-top: 1px solid var(--glass-border-soft);
                 }
 
                 .comment-action-btn {
                     display: flex;
                     align-items: center;
-                    gap: 4px;
-                    background: transparent;
-                    border: none;
+                    gap: 6px;
+                    background: var(--glass-bg-light);
+                    backdrop-filter: var(--blur-sm);
+                    border: 1px solid var(--glass-border);
                     color: var(--color-muted);
                     cursor: pointer;
-                    padding: 4px 8px;
-                    border-radius: 4px;
-                    transition: all 0.2s;
+                    padding: 8px 14px;
+                    border-radius: 999px;
+                    font-size: 13px;
+                    font-weight: 500;
+                    transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+                    box-shadow: 0 2px 4px rgba(47, 37, 25, 0.05);
                 }
 
                 .comment-action-btn:hover {
-                    background: var(--color-surface-muted);
-                    color: var(--color-primary);
+                    background: var(--color-primary);
+                    color: white;
+                    transform: translateY(-2px);
+                    box-shadow: 0 4px 12px rgba(212, 165, 116, 0.3);
+                    border-color: var(--color-primary);
+                }
+
+                .comment-action-btn i {
+                    font-size: 14px;
                 }
 
                 /* レスポンシブ対応 */
@@ -647,13 +748,13 @@ const CommentComponent = {
         // Add event listeners after rendering
         const textarea = document.getElementById('commentTextarea');
         const submitBtn = document.getElementById('commentSubmitBtn');
-        
-        if(textarea && submitBtn) {
+
+        if (textarea && submitBtn) {
             const charCounter = document.getElementById('commentCharCounter');
             textarea.addEventListener('input', () => {
                 const length = textarea.value.length;
                 charCounter.textContent = `${length}/200`;
-                
+
                 // 文字数に応じて色を変更
                 charCounter.classList.remove('warning', 'error');
                 if (length > 180) {
@@ -661,12 +762,12 @@ const CommentComponent = {
                 } else if (length > 150) {
                     charCounter.classList.add('warning');
                 }
-                
+
                 submitBtn.disabled = !textarea.value.trim() || length > 200;
             });
             submitBtn.addEventListener('click', () => this.submitComment());
         }
-        
+
         // 画像モーダルのイベントリスナーを設定
         this.setupImageModalListeners();
     },
@@ -679,7 +780,7 @@ const CommentComponent = {
             const postResult = await API.getPost(postId);
             if (!postResult.success) throw new Error(postResult.error);
             this.state.currentPost = postResult.post;
-            
+
             const repliesResult = await API.getRepliesForPost(postId);
             if (!repliesResult.success) throw new Error(repliesResult.error);
             this.state.comments = repliesResult.replies;
@@ -742,13 +843,13 @@ const CommentComponent = {
     // コメントをレンダリング
     renderComments() {
         const commentsList = document.getElementById('commentsList');
-        
+
         if (this.state.comments.length === 0) {
             commentsList.innerHTML = `<div style="text-align: center; padding: 20px; color: var(--color-muted);"><p>コメントがありません</p></div>`;
             return;
         }
 
-       commentsList.innerHTML = this.state.comments.map(comment => `
+        commentsList.innerHTML = this.state.comments.map(comment => `
            <div class="comment-item" data-comment-id="${comment.id}">
                 <div class="comment-header">
                     <div class="comment-avatar"><img src="${API.escapeHtml(comment.author_profile_image_url || 'assets/baseicon.png')}" alt="${API.escapeHtml(comment.author_username)}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;"></div>
@@ -776,64 +877,64 @@ const CommentComponent = {
                </div>
            </div>
        `).join('');
-   },
+    },
 
-   // 削除ボタンの表示制御
-   renderDeleteButton(comment) {
-       const token = API.getCookie('authToken');
-       if (!token) return '';
+    // 削除ボタンの表示制御
+    renderDeleteButton(comment) {
+        const token = API.getCookie('authToken');
+        if (!token) return '';
 
-       // ログインユーザー情報が全体どこかで管理されている前提
-       // API.getCurrentUser() があればそれを利用し、なければサーバー側で検証されるため常に表示しても良いが、
-       // ここでは安全側に「コメント投稿者のみ」表示する想定で user_id を比較
-       const currentUserId = API.getCurrentUserId ? API.getCurrentUserId() : null;
+        // ログインユーザー情報が全体どこかで管理されている前提
+        // API.getCurrentUser() があればそれを利用し、なければサーバー側で検証されるため常に表示しても良いが、
+        // ここでは安全側に「コメント投稿者のみ」表示する想定で user_id を比較
+        const currentUserId = API.getCurrentUserId ? API.getCurrentUserId() : null;
 
-       if (currentUserId && String(currentUserId) === String(comment.user_id)) {
-           return `
+        if (currentUserId && String(currentUserId) === String(comment.user_id)) {
+            return `
                <button class="comment-action-btn" onclick="CommentComponent.confirmAndDeleteReply(${comment.id})">
                    <i class="fas fa-trash-alt"></i> 削除
                </button>
            `;
-       }
+        }
 
-       return '';
-   },
+        return '';
+    },
 
-   // 返信削除処理
-   async confirmAndDeleteReply(commentId) {
-       if (!confirm('この返信を削除しますか？')) {
-           return;
-       }
+    // 返信削除処理
+    async confirmAndDeleteReply(commentId) {
+        if (!confirm('この返信を削除しますか？')) {
+            return;
+        }
 
-       const token = API.getCookie('authToken');
-       if (!token) {
-           alert('削除するにはログインしてください');
-           router.navigate('auth', ['login']);
-           return;
-       }
+        const token = API.getCookie('authToken');
+        if (!token) {
+            alert('削除するにはログインしてください');
+            router.navigate('auth', ['login']);
+            return;
+        }
 
-       try {
-           const result = await API.deleteReply(commentId);
+        try {
+            const result = await API.deleteReply(commentId);
 
-           if (!result.success) {
-               alert(`削除に失敗しました: ${result.error}`);
-               return;
-           }
+            if (!result.success) {
+                alert(`削除に失敗しました: ${result.error}`);
+                return;
+            }
 
-           // ローカル状態から削除
-           this.state.comments = this.state.comments.filter(c => c.id !== commentId);
+            // ローカル状態から削除
+            this.state.comments = this.state.comments.filter(c => c.id !== commentId);
 
-           // DOMから削除
-           const item = document.querySelector(`.comment-item[data-comment-id="${commentId}"]`);
-           if (item) {
-               item.remove();
-           }
+            // DOMから削除
+            const item = document.querySelector(`.comment-item[data-comment-id="${commentId}"]`);
+            if (item) {
+                item.remove();
+            }
 
-       } catch (error) {
-           console.error('返信削除中にエラーが発生しました:', error);
-           alert('返信の削除に失敗しました。時間をおいて再度お試しください。');
-       }
-   },
+        } catch (error) {
+            console.error('返信削除中にエラーが発生しました:', error);
+            alert('返信の削除に失敗しました。時間をおいて再度お試しください。');
+        }
+    },
 
     // 長いテキストかどうかを判定
     isLongText(text) {
@@ -845,7 +946,7 @@ const CommentComponent = {
     toggleText(type, id) {
         const content = document.getElementById(`${type}-content-${id}`);
         const button = content.nextElementSibling;
-        
+
         if (content.classList.contains('collapsed')) {
             content.classList.remove('collapsed');
             button.textContent = '閉じる';
@@ -859,24 +960,24 @@ const CommentComponent = {
     async submitComment() {
         const textarea = document.getElementById('commentTextarea');
         const content = textarea.value.trim();
-        
+
         if (!content || !this.state.currentPost) return;
-        
+
         const token = API.getCookie('authToken');
         if (!token) {
             alert('コメントするにはログインしてください');
             router.navigate('auth', ['login']);
             return;
         }
-        
+
         const result = await API.postReply(this.state.currentPost.id, content);
-        
+
         if (result.success) {
             textarea.value = '';
             document.getElementById('commentSubmitBtn').disabled = true;
             // Reload comments
             await this.loadPostAndComments(this.state.currentPost.id);
-            
+
             // 遅延読み込みを再設定
             setTimeout(() => {
                 this.setupLazyLoading();
@@ -904,51 +1005,51 @@ const CommentComponent = {
         // UIを即座に更新
         post.is_liked_by_current_user = !originalLikedState;
         post.likes_count = originalLikedState ? originalLikesCount - 1 : originalLikesCount + 1;
-        
+
         const likeIcon = document.getElementById(`like-icon-${postId}`);
         const likeCount = document.getElementById(`like-count-${postId}`);
-        
+
         if (likeIcon) {
             likeIcon.classList.toggle('liked', post.is_liked_by_current_user);
         }
-        
+
         if (likeCount) {
             likeCount.textContent = post.likes_count;
         }
 
         try {
-            const result = post.is_liked_by_current_user ? 
-                await API.likePost(postId) : 
+            const result = post.is_liked_by_current_user ?
+                await API.likePost(postId) :
                 await API.unlikePost(postId);
-                
+
             if (!result.success) {
                 // 失敗した場合は元に戻す
                 post.is_liked_by_current_user = originalLikedState;
                 post.likes_count = originalLikesCount;
-                
+
                 if (likeIcon) {
                     likeIcon.classList.toggle('liked', originalLikedState);
                 }
-                
+
                 if (likeCount) {
                     likeCount.textContent = originalLikesCount;
                 }
-                
+
                 alert(`エラー: ${result.error}`);
             }
         } catch (error) {
             // 失敗した場合は元に戻す
             post.is_liked_by_current_user = originalLikedState;
             post.likes_count = originalLikesCount;
-            
+
             if (likeIcon) {
                 likeIcon.classList.toggle('liked', originalLikedState);
             }
-            
+
             if (likeCount) {
                 likeCount.textContent = originalLikesCount;
             }
-            
+
             alert('いいねに失敗しました。');
         }
     },
@@ -971,14 +1072,14 @@ const CommentComponent = {
         // UIを即座に更新
         comment.is_liked_by_current_user = !originalLikedState;
         comment.likes_count = originalLikedState ? originalLikesCount - 1 : originalLikesCount + 1;
-        
+
         const likeIcon = document.getElementById(`comment-like-icon-${commentId}`);
         const likeCount = document.getElementById(`comment-like-count-${commentId}`);
-        
+
         if (likeIcon) {
             likeIcon.classList.toggle('liked', comment.is_liked_by_current_user);
         }
-        
+
         if (likeCount) {
             likeCount.textContent = comment.likes_count;
         }
@@ -986,38 +1087,38 @@ const CommentComponent = {
         try {
             // コメントのいいねAPIがあれば使用する
             // 現在は投稿といいねAPIを共通で使用
-            const result = comment.is_liked_by_current_user ? 
-                await API.likePost(commentId) : 
+            const result = comment.is_liked_by_current_user ?
+                await API.likePost(commentId) :
                 await API.unlikePost(commentId);
-                
+
             if (!result.success) {
                 // 失敗した場合は元に戻す
                 comment.is_liked_by_current_user = originalLikedState;
                 comment.likes_count = originalLikesCount;
-                
+
                 if (likeIcon) {
                     likeIcon.classList.toggle('liked', originalLikedState);
                 }
-                
+
                 if (likeCount) {
                     likeCount.textContent = originalLikesCount;
                 }
-                
+
                 alert(`エラー: ${result.error}`);
             }
         } catch (error) {
             // 失敗した場合は元に戻す
             comment.is_liked_by_current_user = originalLikedState;
             comment.likes_count = originalLikesCount;
-            
+
             if (likeIcon) {
                 likeIcon.classList.toggle('liked', originalLikedState);
             }
-            
+
             if (likeCount) {
                 likeCount.textContent = originalLikesCount;
             }
-            
+
             alert('いいねに失敗しました。');
         }
     },
@@ -1030,7 +1131,7 @@ const CommentComponent = {
         // 現在のURLを取得
         const currentUrl = window.location.href;
         const shareUrl = `${window.location.origin}/#comment/${postId}`;
-        
+
         // Web Share APIが利用可能かチェック
         if (navigator.share) {
             navigator.share({
@@ -1055,7 +1156,7 @@ const CommentComponent = {
 
         // 現在のURLを取得
         const shareUrl = `${window.location.origin}/#comment/${this.state.currentPost.id}`;
-        
+
         // Web Share APIが利用可能かチェック
         if (navigator.share) {
             navigator.share({
@@ -1082,7 +1183,7 @@ const CommentComponent = {
         textarea.style.opacity = '0';
         document.body.appendChild(textarea);
         textarea.select();
-        
+
         try {
             const successful = document.execCommand('copy');
             if (successful) {
@@ -1094,7 +1195,7 @@ const CommentComponent = {
             console.error('コピーに失敗しました:', err);
             alert('コピーに失敗しました');
         }
-        
+
         document.body.removeChild(textarea);
     },
 
@@ -1165,27 +1266,27 @@ const CommentComponent = {
 
             const handleMouseDown = (e) => {
                 if (this.state.imageModal.zoom <= 1) return;
-                
+
                 this.state.imageModal.isDragging = true;
                 imageContainer.classList.add('dragging');
-                
+
                 startX = e.clientX;
                 startY = e.clientY;
                 initialX = this.state.imageModal.position.x;
                 initialY = this.state.imageModal.position.y;
-                
+
                 e.preventDefault();
             };
 
             const handleMouseMove = (e) => {
                 if (!this.state.imageModal.isDragging) return;
-                
+
                 const dx = e.clientX - startX;
                 const dy = e.clientY - startY;
-                
+
                 this.state.imageModal.position.x = initialX + dx;
                 this.state.imageModal.position.y = initialY + dy;
-                
+
                 this.updateImageTransform();
             };
 
@@ -1202,14 +1303,14 @@ const CommentComponent = {
             // タッチイベント
             imageContainer.addEventListener('touchstart', (e) => {
                 if (this.state.imageModal.zoom <= 1) return;
-                
+
                 const touch = e.touches[0];
                 handleMouseDown({ clientX: touch.clientX, clientY: touch.clientY, preventDefault: () => e.preventDefault() });
             });
 
             document.addEventListener('touchmove', (e) => {
                 if (!this.state.imageModal.isDragging) return;
-                
+
                 const touch = e.touches[0];
                 handleMouseMove({ clientX: touch.clientX, clientY: touch.clientY });
             });
@@ -1254,7 +1355,7 @@ const CommentComponent = {
     handleSwipe() {
         const swipeThreshold = 50;
         const diff = this.touchStartX - this.touchEndX;
-        
+
         if (Math.abs(diff) > swipeThreshold) {
             if (diff > 0) {
                 // 左にスワイプ - 次の画像
@@ -1269,41 +1370,41 @@ const CommentComponent = {
     // 画像モーダルを開く
     openImageModal(images, startIndex = 0) {
         if (!images || images.length === 0) return;
-        
+
         this.state.imageModal.images = images;
         this.state.imageModal.currentIndex = startIndex;
         this.state.imageModal.isOpen = true;
         this.state.imageModal.zoom = 1;
         this.state.imageModal.position = { x: 0, y: 0 };
-        
+
         const modal = document.getElementById('imageModal');
         const modalImage = document.getElementById('imageModalImage');
         const loading = document.getElementById('imageModalLoading');
-        
+
         if (modal && modalImage) {
             // ローディング表示
             if (loading) loading.style.display = 'block';
             modalImage.style.opacity = '0';
-            
+
             // 画像を読み込んで表示
             modalImage.onload = () => {
                 if (loading) loading.style.display = 'none';
                 modalImage.style.opacity = '1';
             };
-            
+
             modalImage.onerror = () => {
                 if (loading) loading.style.display = 'none';
                 console.error('画像の読み込みに失敗しました');
             };
-            
+
             modalImage.src = images[startIndex];
-            
+
             // モーダルを表示
             modal.classList.add('show');
-            
+
             // UIを更新
             this.updateImageModalUI();
-            
+
             // スクロールを無効化
             document.body.style.overflow = 'hidden';
         }
@@ -1312,14 +1413,14 @@ const CommentComponent = {
     // 画像モーダルを閉じる
     closeImageModal() {
         const modal = document.getElementById('imageModal');
-        
+
         if (modal) {
             modal.classList.remove('show');
             this.state.imageModal.isOpen = false;
-            
+
             // スクロールを有効化
             document.body.style.overflow = '';
-            
+
             // 少し遅延して画像をクリア
             setTimeout(() => {
                 const modalImage = document.getElementById('imageModalImage');
@@ -1334,36 +1435,36 @@ const CommentComponent = {
     navigateImage(direction) {
         const newIndex = this.state.imageModal.currentIndex + direction;
         const images = this.state.imageModal.images;
-        
+
         if (newIndex < 0 || newIndex >= images.length) return;
-        
+
         this.state.imageModal.currentIndex = newIndex;
         this.state.imageModal.zoom = 1;
         this.state.imageModal.position = { x: 0, y: 0 };
-        
+
         const modalImage = document.getElementById('imageModalImage');
         const loading = document.getElementById('imageModalLoading');
-        
+
         if (modalImage) {
             // ローディング表示
             if (loading) loading.style.display = 'block';
             modalImage.style.opacity = '0';
-            
+
             // 画像を読み込んで表示
             modalImage.onload = () => {
                 if (loading) loading.style.display = 'none';
                 modalImage.style.opacity = '1';
             };
-            
+
             modalImage.onerror = () => {
                 if (loading) loading.style.display = 'none';
                 console.error('画像の読み込みに失敗しました');
             };
-            
+
             modalImage.src = images[newIndex];
             this.updateImageTransform();
         }
-        
+
         this.updateImageModalUI();
     },
 
@@ -1396,17 +1497,17 @@ const CommentComponent = {
         const indicator = document.getElementById('imageModalIndicator');
         const prevBtn = document.getElementById('imageModalPrev');
         const nextBtn = document.getElementById('imageModalNext');
-        
+
         // インジケーターを更新
         if (indicator) {
             indicator.textContent = `${currentIndex + 1} / ${images.length}`;
         }
-        
+
         // ナビゲーションボタンの状態を更新
         if (prevBtn) {
             prevBtn.classList.toggle('disabled', currentIndex === 0);
         }
-        
+
         if (nextBtn) {
             nextBtn.classList.toggle('disabled', currentIndex === images.length - 1);
         }
@@ -1418,7 +1519,7 @@ const CommentComponent = {
         if (post.thumbnail_url || post.original_image_url) {
             const thumbnailUrl = post.thumbnail_url || post.image_url;
             const originalUrl = post.original_image_url || post.image_url;
-            
+
             return `
                 <div class="post-image">
                     <picture>
@@ -1433,7 +1534,7 @@ const CommentComponent = {
                 </div>
             `;
         }
-        
+
         // 後方互換性のための従来の画像表示
         if (post.image_url) {
             return `
@@ -1446,7 +1547,7 @@ const CommentComponent = {
                 </div>
             `;
         }
-        
+
         return '';
     },
 
@@ -1456,7 +1557,7 @@ const CommentComponent = {
         if (comment.thumbnail_url || comment.original_image_url) {
             const thumbnailUrl = comment.thumbnail_url || comment.image_url;
             const originalUrl = comment.original_image_url || comment.image_url;
-            
+
             return `
                 <div class="post-image">
                     <picture>
@@ -1471,7 +1572,7 @@ const CommentComponent = {
                 </div>
             `;
         }
-        
+
         // 後方互換性のための従来の画像表示
         if (comment.image_url) {
             return `
@@ -1484,26 +1585,26 @@ const CommentComponent = {
                 </div>
             `;
         }
-        
+
         return '';
     },
 
     // 遅延読み込みの設定
     setupLazyLoading() {
         const images = document.querySelectorAll('img[data-src]');
-        
+
         if ('IntersectionObserver' in window) {
             const imageObserver = new IntersectionObserver((entries, observer) => {
                 entries.forEach(entry => {
                     if (entry.isIntersecting) {
                         const img = entry.target;
-                        
+
                         // すでに高画質画像に切り替わっている場合はスキップ
                         if (img.dataset.loaded === 'true') {
                             observer.unobserve(img);
                             return;
                         }
-                        
+
                         // ネットワーク状況に応じて画像の読み込みを制御
                         if (this.isSlowNetwork()) {
                             // 低速ネットワークの場合はサムネイルのまま
@@ -1511,7 +1612,7 @@ const CommentComponent = {
                             observer.unobserve(img);
                             return;
                         }
-                        
+
                         // 通常画質画像に切り替え
                         const highQualitySrc = img.dataset.src;
                         if (highQualitySrc && img.src !== highQualitySrc) {
@@ -1526,14 +1627,14 @@ const CommentComponent = {
                             // 高画質画像がない場合でもロード済みとしてマーク
                             img.dataset.loaded = 'true';
                         }
-                        
+
                         observer.unobserve(img);
                     }
                 });
             }, {
                 rootMargin: '50px' // ビューポートの50px手前から読み込み開始
             });
-            
+
             images.forEach(img => imageObserver.observe(img));
         } else {
             // IntersectionObserverがサポートされていない場合のフォールバック
@@ -1542,12 +1643,12 @@ const CommentComponent = {
                 if (img.dataset.loaded === 'true') {
                     return;
                 }
-                
+
                 if (this.isSlowNetwork()) {
                     img.dataset.loaded = 'true';
                     return; // 低速ネットワークの場合はサムネイルのまま
                 }
-                
+
                 const highQualitySrc = img.dataset.src;
                 if (highQualitySrc) {
                     img.src = highQualitySrc;
@@ -1564,7 +1665,7 @@ const CommentComponent = {
     // ネットワーク速度の判定
     isSlowNetwork() {
         const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-        
+
         if (connection) {
             // 接続タイプで判定
             if (connection.type === 'cellular') {
@@ -1575,13 +1676,13 @@ const CommentComponent = {
                     return true;
                 }
             }
-            
+
             // ダウンロード速度で判定
             if (connection.downlink && connection.downlink < 1.5) {
                 return true; // 1.5Mbps未満は低速と判定
             }
         }
-        
+
         return false;
     }
 };

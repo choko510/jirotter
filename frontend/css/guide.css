@@ -82,10 +82,12 @@
 .guide-section-block {
     margin-bottom: 30px;
     padding: 26px;
-    background: var(--color-surface-muted);
+    background: var(--glass-bg);
+    backdrop-filter: var(--blur-md);
+    border: 1px solid var(--glass-border);
     border-radius: var(--radius-md);
     border-left: 4px solid var(--color-primary);
-    box-shadow: var(--shadow-xs);
+    box-shadow: var(--shadow-sm), 0 0 0 1px rgba(255, 255, 255, 0.3) inset;
 }
 
 .guide-section-block h3 {
@@ -134,8 +136,10 @@
     margin-top: 24px;
     padding: 20px;
     border-radius: var(--radius-lg);
-    background: linear-gradient(135deg, rgba(212, 165, 116, 0.18), rgba(212, 165, 116, 0.05));
-    box-shadow: var(--shadow-xs);
+    background: var(--glass-bg);
+    backdrop-filter: var(--blur-sm);
+    border: 1px solid var(--glass-border);
+    box-shadow: var(--shadow-sm), 0 0 0 1px rgba(255, 255, 255, 0.2) inset;
 }
 
 .highlight-card strong {
@@ -155,9 +159,10 @@
     align-items: flex-start;
     gap: 15px;
     padding: 20px;
-    background: rgba(255, 255, 255, 0.6);
+    background: var(--glass-bg);
+    backdrop-filter: var(--blur-sm);
     border-radius: var(--radius-md);
-    border: 1px solid rgba(231, 220, 205, 0.5);
+    border: 1px solid var(--glass-border);
     transition: all 0.3s ease;
 }
 

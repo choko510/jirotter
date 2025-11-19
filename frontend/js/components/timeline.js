@@ -484,10 +484,11 @@ const TimelineComponent = {
                 .post-input-area {
                     padding: 20px;
                     margin: 0 16px 20px;
-                    border: 1px solid var(--color-border);
+                    border: 1px solid var(--glass-border);
                     border-radius: var(--radius-lg);
-                    background: var(--color-surface);
-                    box-shadow: var(--shadow-xs);
+                    background: var(--glass-bg);
+                    backdrop-filter: var(--blur-md);
+                    box-shadow: var(--shadow-sm), 0 0 0 1px rgba(255, 255, 255, 0.3) inset;
                 }
                 .post-input-wrapper { display: flex; gap: 12px; }
                 .post-avatar { width: 48px; height: 48px; border-radius: 50%; background: var(--color-primary); flex-shrink: 0; }
@@ -523,12 +524,13 @@ const TimelineComponent = {
                     font-weight: 600;
                 }
                 .post-card {
-                    background: var(--color-surface);
-                    border: 1px solid rgba(231, 220, 205, 0.7);
+                    background: var(--glass-bg);
+                    backdrop-filter: var(--blur-md);
+                    border: 1px solid var(--glass-border);
                     border-radius: var(--radius-lg);
                     padding: 20px;
                     margin: 0 16px 20px;
-                    box-shadow: var(--shadow-xs);
+                    box-shadow: var(--shadow-sm), 0 0 0 1px rgba(255, 255, 255, 0.3) inset;
                     transition: transform 0.2s ease, box-shadow 0.2s ease;
                 }
                 .post-card:hover { transform: translateY(-2px); box-shadow: var(--shadow-sm); }
@@ -598,14 +600,17 @@ const TimelineComponent = {
                     left: 0;
                     right: 0;
                     bottom: 0;
-                    background: rgba(0, 0, 0, 0.5);
+                    background: rgba(0, 0, 0, 0.35);
+                    backdrop-filter: var(--blur-sm);
                     display: flex;
                     align-items: center;
                     justify-content: center;
                     z-index: 1000;
                 }
                 .report-modal {
-                    background: var(--color-surface);
+                    background: var(--glass-bg-strong);
+                    backdrop-filter: var(--blur-lg);
+                    border: 1px solid var(--glass-border);
                     border-radius: var(--radius-lg);
                     width: 90%;
                     max-width: 500px;
@@ -613,8 +618,7 @@ const TimelineComponent = {
                     overflow: hidden;
                     display: flex;
                     flex-direction: column;
-                    box-shadow: var(--shadow-md);
-                    border: 1px solid rgba(231, 220, 205, 0.7);
+                    box-shadow: var(--shadow-lg), 0 0 0 1px rgba(255, 255, 255, 0.5) inset;
                 }
                 .report-modal-header {
                     display: flex;
