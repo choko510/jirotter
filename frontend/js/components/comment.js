@@ -1,3 +1,4 @@
+// @ts-nocheck
 // コメントコンポーネント
 const CommentComponent = {
     // 状態管理
@@ -61,7 +62,6 @@ const CommentComponent = {
 
                 /* コンテナとヘッダー */
                 .comment-container {
-                    max-width: 680px;
                     margin: 0 auto;
                     background: linear-gradient(180deg, var(--glass-bg-light) 0%, rgba(255, 255, 255, 0.5) 100%);
                     backdrop-filter: var(--blur-md);
@@ -204,7 +204,6 @@ const CommentComponent = {
                     justify-content: space-around;
                     margin-top: 12px;
                     padding-top: 12px;
-                    border-top: 1px solid var(--color-border);
                 }
 
                 .engagement-btn {
@@ -409,7 +408,6 @@ const CommentComponent = {
                     gap: 12px;
                     margin-top: 12px;
                     padding-top: 12px;
-                    border-top: 1px solid var(--glass-border-soft);
                 }
 
                 .comment-action-btn {
@@ -874,9 +872,10 @@ const CommentComponent = {
                        <i class="fas fa-share"></i> 共有
                    </button>
                    ${this.renderDeleteButton(comment)}
+                   ${this.renderReportButton(comment)}
                </div>
            </div>
-       `).join('');
+        `).join('');
     },
 
     // 削除ボタンの表示制御
@@ -898,6 +897,18 @@ const CommentComponent = {
         }
 
         return '';
+    },
+
+    // 通報ボタンの表示制御
+    renderReportButton(comment) {
+        const token = API.getCookie('authToken');
+        if (!token) return '';
+
+        return `
+            <button class="comment-action-btn report-btn" onclick="CommentComponent.reportComment(${comment.id})" title="通報">
+                <i class="fas fa-flag"></i> 通報
+            </button>
+        `;
     },
 
     // 返信削除処理
@@ -1684,6 +1695,85 @@ const CommentComponent = {
         }
 
         return false;
+    },
+
+    // 通報機能
+    reportComment(replyId) {
+        const reasons = [
+            'スパム・広告',
+            '性的な内容',
+            '差別・攻撃的な内容',
+            'デマ・偽情報',
+            '権利侵害',
+            'その他'
+        ];
+
+        const modalHTML = `
+            <div class="report-modal-overlay" id="reportModal">
+                <div class="report-modal">
+                    <h3>通報する理由を選択してください</h3>
+                    <select id="reportReasonSelect">
+                        ${reasons.map(reason => `<option value="${reason}">${reason}</option>`).join('')}
+                    </select>
+                    <div class="report-modal-actions">
+                        <button class="report-cancel-btn" onclick="CommentComponent.cancelReport()">キャンセル</button>
+                        <button class="report-submit-btn" onclick="CommentComponent.submitReport(${replyId})">通報する</button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.insertAdjacentHTML('beforeend', modalHTML);
+        const modal = document.getElementById('reportModal');
+        modal.classList.add('show');
+
+        // ESCキー対応
+        const escHandler = (e) => {
+            if (e.key === 'Escape') {
+                this.cancelReport();
+                document.removeEventListener('keydown', escHandler);
+            }
+        };
+        document.addEventListener('keydown', escHandler);
+    },
+
+    cancelReport() {
+        const modal = document.getElementById('reportModal');
+        if (modal) {
+            modal.remove();
+        }
+    },
+
+    async submitReport(replyId) {
+        const reasonSelect = document.getElementById('reportReasonSelect');
+        const reason = reasonSelect.value;
+
+        if (!reason) {
+            Utils.showNotification('通報理由を選択してください', 'warning');
+            return;
+        }
+
+        const token = API.getCookie('authToken');
+        if (!token) {
+            Utils.showNotification('通報するにはログインしてください', 'error');
+            this.cancelReport();
+            router.navigate('auth', ['login']);
+            return;
+        }
+
+        try {
+            const result = await API.reportReply(replyId, reason);
+
+            if (result.success) {
+                Utils.showNotification('通報を送信しました。ありがとうございます。', 'success');
+            } else {
+                Utils.showNotification(`通報に失敗しました: ${result.error}`, 'error');
+            }
+        } catch (error) {
+            Utils.showNotification('通報処理中にエラーが発生しました', 'error');
+        } finally {
+            this.cancelReport();
+        }
     }
 };
 

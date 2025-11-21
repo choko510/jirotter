@@ -105,7 +105,8 @@ const MapComponent = {
         // レイアウト監視関連
         resizeObserver: null,
         resizeListener: null,
-        pendingResizeFrame: null
+        pendingResizeFrame: null,
+        currentShopId: null
     },
 
     // フィルターエリアの開閉
@@ -1027,6 +1028,204 @@ const MapComponent = {
             .marker-cluster-other div {
                 background-color: rgba(149, 165, 166, 0.8) !important;
                 color: white !important;
+            }
+            
+            /* マップパネル用レビュースタイル */
+            .shop-reviews-section {
+                margin-top: 20px;
+            }
+            .shop-reviews-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                margin-bottom: 12px;
+            }
+            .review-stats {
+                flex: 1;
+            }
+            .average-rating {
+                text-align: center;
+            }
+            .average-rating-value {
+                font-size: 24px;
+                font-weight: bold;
+                color: #d4a574;
+            }
+            .average-rating-label {
+                font-size: 14px;
+                color: #666;
+                margin-top: 4px;
+            }
+            .rating-breakdown {
+                margin-top: 8px;
+            }
+            .rating-row {
+                display: flex;
+                align-items: center;
+                gap: 8px;
+                margin-bottom: 4px;
+            }
+            .rating-label {
+                width: 20px;
+                text-align: right;
+                font-weight: bold;
+            }
+            .rating-bar {
+                flex: 1;
+                height: 8px;
+                background: #f0f0f0;
+                border-radius: 4px;
+                overflow: hidden;
+            }
+            .rating-bar-fill {
+                height: 100%;
+                background: linear-gradient(90deg, #d4a574, #f4d4a3);
+                border-radius: 4px;
+                transition: width 0.3s ease;
+            }
+            .rating-count {
+                font-size: 12px;
+                color: #666;
+                min-width: 30px;
+                text-align: right;
+            }
+            .no-reviews-hint {
+                font-size: 14px;
+                color: #999;
+                text-align: center;
+                padding: 20px;
+            }
+            .shop-review-list {
+                max-height: 300px;
+                overflow-y: auto;
+                margin-bottom: 16px;
+            }
+            .review-card {
+                padding: 12px;
+                border: 1px solid #e0e0e0;
+                border-radius: 8px;
+                margin-bottom: 12px;
+                background: white;
+            }
+            .review-card:last-child {
+                margin-bottom: 0;
+            }
+            .review-card-header {
+                display: flex;
+                justify-content: space-between;
+                align-items: flex-start;
+                margin-bottom: 8px;
+            }
+            .review-author {
+                display: flex;
+                gap: 8px;
+                align-items: center;
+                flex: 1;
+            }
+            .review-avatar {
+                width: 32px;
+                height: 32px;
+                border-radius: 50%;
+                overflow: hidden;
+                flex-shrink: 0;
+            }
+            .review-avatar img {
+                width: 100%;
+                height: 100%;
+                object-fit: cover;
+            }
+            .review-author-name {
+                font-weight: bold;
+                font-size: 14px;
+            }
+            .review-date {
+                font-size: 12px;
+                color: #666;
+            }
+            .review-rating {
+                display: flex;
+                gap: 2px;
+                flex-shrink: 0;
+            }
+            .review-rating i {
+                font-size: 14px;
+                color: #ffa500;
+            }
+            .review-comment {
+                line-height: 1.4;
+                color: #333;
+                margin: 0;
+            }
+            .shop-review-form {
+                background: #f9f9f9;
+                padding: 16px;
+                border-radius: 8px;
+            }
+            .review-form-card {
+                background: white;
+                padding: 16px;
+                border-radius: 8px;
+                border: 1px solid #e0e0e0;
+            }
+            .review-form-card h3 {
+                margin-top: 0;
+                font-size: 16px;
+            }
+            .review-form-guest, .review-form-disabled {
+                text-align: center;
+                padding: 20px;
+                color: #666;
+            }
+            .review-form-hint {
+                font-size: 12px;
+                color: #666;
+                margin-top: 8px;
+                text-align: center;
+            }
+            .form-row {
+                margin-bottom: 12px;
+            }
+            .review-input-label {
+                display: block;
+                font-weight: bold;
+                margin-bottom: 4px;
+                font-size: 14px;
+            }
+            #shopReviewRating {
+                width: 100%;
+                padding: 8px;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                background: white;
+            }
+            textarea#shopReviewComment {
+                width: 100%;
+                border: 1px solid #ddd;
+                border-radius: 4px;
+                padding: 8px;
+                resize: vertical;
+                font-family: inherit;
+            }
+            .review-form-feedback {
+                min-height: 20px;
+                margin-bottom: 12px;
+                font-size: 14px;
+            }
+            .error-text {
+                color: #d32f2f;
+            }
+            .success-text {
+                color: #2e7d32;
+            }
+            .loading {
+                text-align: center;
+                padding: 20px;
+                color: #666;
+            }
+            .error {
+                text-align: center;
+                padding: 20px;
+                color: #d32f2f;
             }
         `;
     },
@@ -2432,7 +2631,7 @@ const MapComponent = {
             `;
 
             // 詳細表示後にレビュー情報を読み込み
-            this.loadShopReviewsForMap(shopId);
+            MapComponent.loadShopReviewsForMap.call(MapComponent, shopId);
         } catch (error) {
             console.error('店舗詳細の取得に失敗しました:', error);
             panel.innerHTML = `<div class="error" style="padding: 20px; text-align: center;">店舗情報の取得に失敗しました</div>`;
@@ -2449,6 +2648,250 @@ const MapComponent = {
         const div = document.createElement('div');
         div.textContent = text;
         return div.innerHTML;
+    },
+
+    // マップパネル用レビュー機能
+    renderStarsForMap(rating = 0) {
+        const stars = [];
+        for (let i = 1; i <= 5; i++) {
+            const filled = i <= rating;
+            stars.push(`<i class="${filled ? 'fas' : 'far'} fa-star"></i>`);
+        }
+        return stars.join('');
+    },
+
+    formatReviewDateForMap(dateString) {
+        if (!dateString) return '';
+        try {
+            const date = new Date(dateString);
+            return new Intl.DateTimeFormat('ja-JP', {
+                year: 'numeric',
+                month: 'short',
+                day: 'numeric'
+            }).format(date);
+        } catch (error) {
+            return dateString;
+        }
+    },
+
+    createReviewCardForMap(review) {
+        const avatarUrl = review.author_profile_image_url || 'assets/baseicon.png';
+        const username = review.author_username || review.user_id;
+        return `
+            <article class="review-card">
+                <header class="review-card-header">
+                    <div class="review-author">
+                        <div class="review-avatar">
+                            <img src="${this.escapeHtml(avatarUrl)}" alt="${this.escapeHtml(username)}のアイコン">
+                        </div>
+                        <div>
+                            <div class="review-author-name">${this.escapeHtml(username)}</div>
+                            <div class="review-date">${this.formatReviewDateForMap(review.created_at)}</div>
+                        </div>
+                    </div>
+                    <div class="review-rating" aria-label="評価 ${review.rating} / 5">
+                        ${this.renderStarsForMap(review.rating)}
+                    </div>
+                </header>
+                <p class="review-comment">${this.escapeHtml(review.comment)}</p>
+            </article>
+        `;
+    },
+
+    renderReviewStatsForMap(data, container) {
+        if (!container) return;
+        if (!data || !data.total) {
+            container.innerHTML = '<p class="no-reviews-hint">この店舗のレビューはまだありません</p>';
+            return;
+        }
+
+        const averageLabel = typeof data.average_rating === 'number'
+            ? data.average_rating.toFixed(1)
+            : '–';
+
+        const breakdownHtml = [5, 4, 3, 2, 1].map((rating) => {
+            const count = (data.rating_distribution && data.rating_distribution[String(rating)]) || 0;
+            const percentage = data.total ? Math.round((count / data.total) * 100) : 0;
+            return `
+                <div class="rating-row">
+                    <span class="rating-label">${rating}</span>
+                    <div class="rating-bar">
+                        <div class="rating-bar-fill" style="width: ${percentage}%"></div>
+                    </div>
+                    <span class="rating-count">${count}</span>
+                </div>
+            `;
+        }).join('');
+
+        container.innerHTML = `
+            <div class="average-rating" aria-label="平均評価 ${averageLabel}">
+                <div class="average-rating-value">${averageLabel}</div>
+                <div class="average-rating-label">平均評価 (${data.total}件)</div>
+            </div>
+            <div class="rating-breakdown">${breakdownHtml}</div>
+        `;
+    },
+
+    renderReviewListForMap(reviews = [], container) {
+        if (!container) return;
+        if (!reviews.length) {
+            container.innerHTML = `
+                <div class="no-reviews">
+                    <i class="fas fa-pen"></i>
+                    <p>最初のレビューを書いてこの店を応援しましょう</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = reviews.map((review) => this.createReviewCardForMap(review)).join('');
+    },
+
+    renderReviewFormForMap(userReviewId, container) {
+        if (!container) return;
+
+        const currentUser = API.getCurrentUser();
+        if (!currentUser) {
+            container.innerHTML = `
+                <div class="review-form-card review-form-guest">
+                    <p>ログインして店舗レビューを投稿しましょう。</p>
+                    <button type="button" class="action-button primary" onclick="router.navigate('auth', ['login'])">
+                        ログイン / 新規登録
+                    </button>
+                </div>
+            `;
+            return;
+        }
+
+        if (userReviewId) {
+            container.innerHTML = `
+                <div class="review-form-card review-form-disabled">
+                    <p>この店舗には既にレビューを投稿済みです。</p>
+                    <p class="review-form-hint">レビューは1店舗につき1件のみ投稿できます。</p>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = `
+            <form id="mapShopReviewForm" class="review-form-card">
+                <h3>レビューを投稿</h3>
+                <div class="form-row">
+                    <label class="review-input-label" for="mapShopReviewRating">評価</label>
+                    <select id="mapShopReviewRating" required>
+                        <option value="5">★★★★★ とにかく最高</option>
+                        <option value="4">★★★★☆ かなり満足</option>
+                        <option value="3">★★★☆☆ 普通</option>
+                        <option value="2">★★☆☆☆ 改善の余地あり</option>
+                        <option value="1">★☆☆☆☆ 期待外れ</option>
+                    </select>
+                </div>
+                <div class="form-row">
+                    <label class="review-input-label" for="mapShopReviewComment">レビュー本文</label>
+                    <textarea id="mapShopReviewComment" rows="4" maxlength="1000" placeholder="味・雰囲気・おすすめの食べ方などを共有してください" required></textarea>
+                </div>
+                <div class="review-form-feedback" id="mapShopReviewFormFeedback" aria-live="polite"></div>
+                <button type="submit" class="action-button primary">レビューを投稿</button>
+                <p class="review-form-hint">AIによるモデレーションで安全なコミュニティを保ちます。</p>
+            </form>
+        `;
+
+        const form = document.getElementById('mapShopReviewForm');
+        if (form) {
+            form.addEventListener('submit', (event) => this.handleReviewSubmitForMap(event));
+        }
+    },
+
+    async handleReviewSubmitForMap(event) {
+        event.preventDefault();
+        if (!this.state.currentShopId) return;
+
+        const form = event.target;
+        const ratingEl = document.getElementById('mapShopReviewRating');
+        const commentEl = document.getElementById('mapShopReviewComment');
+        const feedbackEl = document.getElementById('mapShopReviewFormFeedback');
+        const submitButton = form.querySelector('button[type="submit"]');
+
+        const rating = Number(ratingEl.value);
+        const comment = commentEl.value.trim();
+
+        if (!comment) {
+            if (feedbackEl) {
+                feedbackEl.textContent = 'レビュー本文を入力してください。';
+                feedbackEl.classList.add('error-text');
+            }
+            return;
+        }
+
+        if (submitButton) {
+            submitButton.disabled = true;
+            submitButton.textContent = '投稿中...';
+        }
+        if (feedbackEl) {
+            feedbackEl.textContent = '';
+            feedbackEl.classList.remove('error-text', 'success-text');
+        }
+
+        try {
+            const result = await API.createShopReview(this.state.currentShopId, { rating, comment });
+            if (!result.success) {
+                throw new Error(result.error || 'レビューの投稿に失敗しました');
+            }
+
+            if (feedbackEl) {
+                feedbackEl.textContent = 'レビューを投稿しました。反映まで数秒かかる場合があります。';
+                feedbackEl.classList.add('success-text');
+            }
+            form.reset();
+            await this.loadShopReviewsForMap(this.state.currentShopId);
+        } catch (error) {
+            console.error('レビュー投稿に失敗しました:', error);
+            if (feedbackEl) {
+                feedbackEl.textContent = error.message || 'レビューの投稿に失敗しました';
+                feedbackEl.classList.add('error-text');
+            }
+        } finally {
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.textContent = 'レビューを投稿';
+            }
+        }
+    },
+
+    async loadShopReviewsForMap(shopId) {
+        const reviewList = document.getElementById('shopReviewList');
+        const statsContainer = document.getElementById('shopReviewStats');
+        const formContainer = document.getElementById('shopReviewFormContainer');
+
+        if (reviewList) {
+            reviewList.innerHTML = '<div class="loading">レビューを読み込み中...</div>';
+        }
+
+        try {
+            const result = await API.getShopReviews(shopId, { limit: 20 });
+            if (!result.success) {
+                throw new Error(result.error || 'レビューの取得に失敗しました');
+            }
+
+            this.renderReviewStatsForMap(result, statsContainer);
+            this.renderReviewListForMap(result.reviews, reviewList);
+            this.renderReviewFormForMap(result.user_review_id, formContainer);
+        } catch (error) {
+            console.error('店舗レビューの読み込みに失敗しました:', error);
+            if (reviewList) {
+                reviewList.innerHTML = `
+                    <div class="error">
+                        <p>${this.escapeHtml(error.message || 'レビューの取得に失敗しました')}</p>
+                    </div>
+                `;
+            }
+            if (statsContainer) {
+                statsContainer.innerHTML = '';
+            }
+            if (formContainer) {
+                formContainer.innerHTML = '';
+            }
+        }
     },
 
     // ローディング表示

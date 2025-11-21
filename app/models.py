@@ -85,7 +85,6 @@ class Post(Base):
     id = Column(Integer, primary_key=True)
     content = Column(Text, nullable=False)
     user_id = Column(String(80), ForeignKey('users.id'), nullable=False)
-    image_url = Column(String(255), nullable=True)  # 後方互換性のために残す
     thumbnail_url = Column(String(255), nullable=True)  # 低画質画像URL
     original_image_url = Column(String(255), nullable=True)  # 通常画質画像URL
     video_url = Column(String(255), nullable=True)  # 動画URL
@@ -253,14 +252,21 @@ class Report(Base):
     __tablename__ = 'reports'
 
     id = Column(Integer, primary_key=True)
-    post_id = Column(Integer, ForeignKey('posts.id'), nullable=False)
+    post_id = Column(Integer, ForeignKey('posts.id'), nullable=True)
+    reply_id = Column(Integer, ForeignKey('replies.id'), nullable=True)
     reporter_id = Column(String(80), ForeignKey('users.id'), nullable=False)
     reason = Column(String(255), nullable=False)
     description = Column(Text)
     created_at = Column(DateTime, default=lambda: datetime.now(JST))
     
+    __table_args__ = (
+        UniqueConstraint('post_id', 'reporter_id', name='uq_reports_post_reporter'),
+        UniqueConstraint('reply_id', 'reporter_id', name='uq_reports_reply_reporter'),
+    )
+    
     # Relationships
-    post = relationship('Post', backref='reports')
+    post = relationship('Post', backref='post_reports')
+    reply = relationship('Reply', backref='reply_reports')
     reporter = relationship('User', backref='reports_made')
 
 

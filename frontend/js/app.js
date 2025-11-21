@@ -197,7 +197,6 @@ const API = {
                     avatar: `<img src="${API.escapeHtml(post.author_profile_image_url || 'assets/baseicon.png')}" alt="User Icon" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`
                 },
                 text: post.content,
-                image: post.image_url,  // 後方互換性
                 thumbnail_url: post.thumbnail_url,
                 original_image_url: post.original_image_url,
                 time: this.formatTime(post.created_at),
@@ -338,7 +337,6 @@ const API = {
                     avatar: `<img src="${API.escapeHtml(post.author_profile_image_url || 'assets/baseicon.png')}" alt="User Icon" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`
                 },
                 text: post.content,
-                image: post.image_url,  // 後方互換性
                 thumbnail_url: post.thumbnail_url,
                 original_image_url: post.original_image_url,
                 time: this.formatTime(post.created_at),
@@ -382,7 +380,6 @@ const API = {
                     avatar: `<img src="${API.escapeHtml(post.author_profile_image_url || 'assets/baseicon.png')}" alt="User Icon" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`
                 },
                 text: post.content,
-                image: post.image_url,  // 後方互換性
                 thumbnail_url: post.thumbnail_url,
                 original_image_url: post.original_image_url,
                 time: this.formatTime(post.created_at),
@@ -430,7 +427,6 @@ const API = {
                     avatar: `<img src="${API.escapeHtml(data.author_profile_image_url || 'assets/baseicon.png')}" alt="User Icon" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">`
                 },
                 text: data.content,
-                image: data.image_url,  // 後方互換性
                 thumbnail_url: data.thumbnail_url,
                 original_image_url: data.original_image_url,
                 time: this.formatTime(data.created_at),
@@ -744,6 +740,20 @@ const API = {
         }
     },
 
+    // 返信を通報する
+    async reportReply(replyId, reason) {
+        try {
+            const data = await this.request(`/api/v1/reports/replies/${replyId}`, {
+                method: 'POST',
+                body: { reason }
+            });
+            return { success: true, report: data };
+        } catch (error) {
+            console.error('返信の通報に失敗しました:', error);
+            return { success: false, error: error.message };
+        }
+    },
+
     // プロフィール更新
     async updateUserProfile(updateData) {
         try {
@@ -861,13 +871,14 @@ const Utils = {
                     <button onclick="AuthComponent.showLoginForm()" style="background: #d4a574; color: white; border: none; padding: 8px 16px; border-radius: 20px; cursor: pointer; margin-top: 10px;">ログイン</button>
                 `;
             } else {
+                const displayName = API.escapeHtml(currentUser.username || currentUser.id);
                 const iconSrc = API.escapeHtml(currentUser.profile_image_url || 'assets/baseicon.png');
                 userProfile.innerHTML = `
                     <div class="profile-icon" style="cursor: pointer;" onclick="Utils.goToUserProfile('${currentUser.id}')">
                         <img src="${iconSrc}" alt="User Icon" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;">
                     </div>
                     <div style="text-align: center; margin-top: 10px;">
-                        <div style="font-weight: bold; cursor: pointer;" onclick="Utils.goToUserProfile('${currentUser.id}')">${currentUser.username}</div>
+                        <div style="font-weight: bold; cursor: pointer;" onclick="Utils.goToUserProfile('${currentUser.id}')">${displayName}</div>
                         <div style="font-size: 12px; color: #666;">@${currentUser.id}</div>
                         <button onclick="Utils.logout()" style="margin-top: 8px; background: transparent; color: #666; border: 1px solid #e0e0e0; padding: 6px 12px; border-radius: 20px; cursor: pointer;">ログアウト</button>
                     </div>

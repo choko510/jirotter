@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 from typing import Dict, Any, List
 
 from database import get_db
-from app.models import Post, User, Report, Visit
+from app.models import Post, User, Report, Visit, Reply
 from app.schemas import PostReportCreate, PostReportResponse
 from app.utils.auth import get_current_active_user
 from app.utils.content_moderator import content_moderator
@@ -220,6 +220,85 @@ async def create_report(
             )
 
         return report
+
+    except Exception:
+        db.rollback()
+        raise HTTPException(
+            status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
+            detail="通報の送信に失敗しました",
+        )
+
+
+@router.post("/replies/{reply_id}/report", response_model=Dict[str, Any], status_code=status.HTTP_201_CREATED)
+async def create_reply_report(
+    reply_id: int,
+    report_data: PostReportCreate,
+    background_tasks: BackgroundTasks,
+    current_user: User = Depends(get_current_active_user),
+    db: Session = Depends(get_db),
+):
+    """返信通報エンドポイント"""
+    # 返信の存在確認
+    reply = db.query(Reply).filter(Reply.id == reply_id).first()
+    if not reply:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="返信が見つかりません",
+        )
+
+    # 自分の返信は通報できない
+    if reply.user_id == current_user.id:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="自分の返信を通報することはできません",
+        )
+
+    # 既に同じ返信を通報しているか確認
+    existing_report = (
+        db.query(Report)
+        .filter(
+            Report.reply_id == reply_id,
+            Report.reporter_id == current_user.id,
+        )
+        .first()
+    )
+
+    if existing_report:
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="この返信は既に通報されています",
+        )
+
+    try:
+        report = Report(
+            reply_id=reply_id,
+            reporter_id=current_user.id,
+            reason=report_data.reason,
+            description=report_data.description,
+        )
+
+        db.add(report)
+        db.commit()
+        db.refresh(report)
+
+        # バックグラウンドでAIによるコンテンツ審査を実行（postと同様の関数を流用、または新規実装）
+        # 現時点ではpost用のみのため省略、将来的に拡張
+        # if hasattr(content_moderator, "review_reported_reply"):
+        #     background_tasks.add_task(
+        #         content_moderator.review_reported_reply,
+        #         db,
+        #         reply_id,
+        #         report_data.reason,
+        #     )
+
+        return {
+            "id": report.id,
+            "reply_id": reply_id,
+            "reporter_id": current_user.id,
+            "reason": report.reason,
+            "description": report.description,
+            "created_at": report.created_at,
+        }
 
     except Exception:
         db.rollback()

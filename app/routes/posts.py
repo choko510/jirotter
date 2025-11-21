@@ -136,9 +136,6 @@ async def create_post(
                     detail="画像の処理に失敗しました"
                 )
             
-            # 後方互換性のためにimage_urlにも設定
-            image_url = thumbnail_url
-            
         except Exception as e:
             print(f"画像処理エラー: {e}")
             raise HTTPException(
@@ -205,7 +202,6 @@ async def create_post(
         post = Post(
             content=sanitized_content,
             user_id=current_user.id,
-            image_url=image_url,  # 後方互換性
             thumbnail_url=thumbnail_url,
             original_image_url=original_image_url,
             video_url=video_url,
@@ -457,7 +453,6 @@ async def get_posts(
                 # username は任意入力のため None の場合は id をフォールバック
                 "author_username": post.author.username or post.author.id,
                 "author_profile_image_url": post.author.profile_image_url,
-                "image_url": post.image_url,  # 後方互換性
                 "thumbnail_url": post.thumbnail_url,
                 "original_image_url": post.original_image_url,
                 "video_url": post.video_url,
@@ -538,7 +533,6 @@ async def get_post(
         # username は任意入力のため None の場合は id をフォールバック
         "author_username": post.author.username or post.author.id,
         "author_profile_image_url": post.author.profile_image_url,
-        "image_url": post.image_url,  # 後方互換性
         "thumbnail_url": post.thumbnail_url,
         "original_image_url": post.original_image_url,
         "video_url": post.video_url,
@@ -655,7 +649,6 @@ async def get_user_posts(
                 # username は任意入力のため None の場合は id をフォールバック
                 "author_username": post.author.username or post.author.id,
                 "author_profile_image_url": post.author.profile_image_url,
-                "image_url": post.image_url,  # 後方互換性
                 "thumbnail_url": post.thumbnail_url,
                 "original_image_url": post.original_image_url,
                 "video_url": post.video_url,

@@ -646,9 +646,8 @@ const SettingsComponent = {
         `;
         
         // ダイアログを追加
-        const dialogContainer = document.createElement('div');
-        dialogContainer.innerHTML = dialogHtml;
-        document.body.appendChild(dialogContainer.firstElementChild);
+        const fragment = document.createRange().createContextualFragment(dialogHtml);
+        document.body.appendChild(fragment);
         
         // 入力フィールドのイベントリスナーを設定
         const confirmationInput = document.getElementById('deleteConfirmation');

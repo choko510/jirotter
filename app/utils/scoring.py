@@ -10,35 +10,50 @@ from app.models import User, UserPointLog, JST
 from app.utils.achievements import evaluate_new_titles, serialize_title_record
 
 
+
 RANK_DEFINITIONS = [
     
+
+   {
+        "name": "ゼロリアン",
+        "min_points": 0,
+        "badge_color": "#9CA3AF",
+        "description": "ジロリアンの卵。ジロリアンの道に出発"
+    },
+
     {
         "name": "啜りし者",
-        "min_points": 0,
+        "min_points": 20,
         "badge_color": "#9CA3AF",
         "description": "初めての一杯を記録し始めた初心者。すべてはここから始まる。"
     },
     {
         "name": "スープの底を覗く者",
-        "min_points": 150,
+        "min_points": 80,
         "badge_color": "#60A5FA",
         "description": "街の人気店を巡り、スープの深淵を覗き始めた探求者。"
     },
     {
         "name": "天地返し中毒者",
-        "min_points": 300,
+        "min_points": 200,
         "badge_color": "#FBBF24",
         "description": "天地返しの快感に取り憑かれ、麺とスープを一体化させる者"
     },
     {
-        "name": "呪文詠唱 ニンニクヤサイアブラ",
-        "min_points": 500,
+        "name": "呪文詠唱 ﾆﾝﾆｸﾔｻｲｱﾌﾞﾗｶﾗﾒ",
+        "min_points": 400,
         "badge_color": "#C084FC",
         "description": "唱えれば己を覚醒させる禁断のコールを会得した者"
     },
     {
+        "name": "ジロリアン",
+        "min_points": 700,
+        "badge_color": "#C084FC",
+        "description": "ただのジロリアン"
+    },
+    {
         "name": "真のジロリアン",
-        "min_points": 1000,
+        "min_points": 1200,
         "badge_color": "#34D399",
         "description": "味、量、雰囲気…二郎の全てを理解した者"
     },
@@ -50,58 +65,70 @@ RANK_DEFINITIONS = [
     },
     {
         "name": "人間やめますか",
-        "min_points": 5000,
+        "min_points": 4000,
         "badge_color": "#F97316",
         "description": "常識を捨て、二郎と共に生きることを選んだ伝説のジロリアン"
     },
     {
         "name": "私は完璧で究極のジロリアン",
-        "min_points": 10000,
+        "min_points": 7000,
         "badge_color": "#EF4444",
         "description": "すべてのジロリアンを見守る、神の領域に到達した究極の存在。"
     },
     {
         "name": "二郎の歴史を刻むもの",
-        "min_points": 20000,
+        "min_points": 11000,
         "badge_color": "#0044FF",
         "description": "その名を聞くだけで列が伸びる。二郎界の頂点に最も近い者。"
     },
     {
-        "name": "万象を二郎へ帰す者",
+        "name": "二郎の意思を継ぐ者",
+        "min_points": 16000,
+        "badge_color": "#FFD700",
+        "description": "もはや店に行かずとも麺の気配を感じ取れる領域に到達した者。"
+    },
+    {
+        "name": "麺と対話する存在",
+        "min_points": 24000,
+        "badge_color": "#FF66CC",
+        "description": "湯気の揺らぎだけで味を理解し、麺に語りかけることができる存在。"
+    },
+    {
+        "name": "二郎の概念そのもの",
         "min_points": 30000,
-        "badge_color": "#F43F5E",
-        "description": "食・文化・哲学・雑踏……この世界に存在する万物を、二郎という一つの原理に還元して捉える域へ到達した者。その視点はすでに人間では理解し得ない、万象帰一の境地。"
+        "badge_color": "#00FFAA",
+        "description": "肉体という束縛を捨て、二郎という概念と同化した抽象的存在。"
     },
     {
-        "name": "二郎法則の外側に立つ者",
+        "name": "虚無をすする者",
         "min_points": 40000,
-        "badge_color": "#7F1D1D",
-        "description": "二郎を生む宇宙すら、その法則すら、この存在の前では一つの揺らぎにすぎない。原初を超え、創造を超え、因果の外側から二郎という現象そのものを“観測”する唯一の存在。ジロリアンという概念を超え、二郎という体系を超え、あらゆる物語の外側に立つ終極点。"
+        "badge_color": "#5500FF",
+        "description": "器も麺も存在しない虚無の一杯を完食する、物理法則を逸脱した者。"
     },
     {
-        "name": "二郎法則の外側に立つ者",
+        "name": "永劫なる二郎",
         "min_points": 50000,
-        "badge_color": "#A306FE",
-        "description": "二郎を生む宇宙すら、その法則すら、この存在の前では一つの揺らぎにすぎない。原初を超え、創造を超え、因果の外側から二郎という現象そのものを“観測”する唯一の存在。ジロリアンという概念を超え、二郎という体系を超え、あらゆる物語の外側に立つ終極点。"
+        "badge_color": "#000000",
+        "description": "始まりであり終わり。二郎の歴史・文化・運命すべてを内包する究極の存在。"
     },
 ]
 
 
 POINT_RULES: Dict[str, Dict[str, object]] = {
-    "shop_review": {"points": 16, "internal": 2, "reason": "店舗レビューの投稿"},
-    "checkin": {"points": 15, "internal": 1, "reason": "チェックインボーナス"},
-    "waittime_report": {"points": 12, "internal": 2, "reason": "待ち時間の共有"},
-    "image_post": {"points": 18, "internal": 1, "reason": "写真付き投稿"},
-    "video_post": {"points": 22, "internal": 2, "reason": "動画付き投稿"},
-    "new_follower": {"points": 20, "internal": 1, "reason": "フォロワー獲得"},
-    "shop_submission_approved": {"points": 28, "internal": 3, "reason": "店舗情報の改善"},
+    "shop_review": {"points": 10, "internal": 2, "reason": "店舗レビューの投稿"},
+    "checkin": {"points": 10, "internal": 1, "reason": "チェックインボーナス"},
+    "waittime_report": {"points": 10, "internal": 2, "reason": "待ち時間の共有"},
+    "image_post": {"points": 10, "internal": 1, "reason": "写真付き投稿"},
+    "video_post": {"points": 15, "internal": 2, "reason": "動画付き投稿"},
+    "new_follower": {"points": 5, "internal": 1, "reason": "フォロワー獲得"},
+    "shop_submission_approved": {"points": 20, "internal": 3, "reason": "店舗情報の改善"},
 }
 
 
 PENALTY_RULES: Dict[str, Dict[str, Dict[str, object]]] = {
     "content_violation": {
-        "low": {"points": -20, "internal": -25, "reason": "軽微なガイドライン違反"},
-        "medium": {"points": -40, "internal": -35, "reason": "ガイドライン違反"},
+        "low": {"points": -30, "internal": -25, "reason": "軽微なガイドライン違反"},
+        "medium": {"points": -50, "internal": -35, "reason": "ガイドライン違反"},
         "high": {"points": -70, "internal": -50, "reason": "重大なガイドライン違反"},
     },
     "false_information": {
