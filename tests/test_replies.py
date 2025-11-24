@@ -80,7 +80,7 @@ def test_create_empty_reply(test_client, test_db):
     assert "返信内容は必須です" in response.json()["detail"]
 
 
-from unittest.mock import patch
+from unittest.mock import patch, AsyncMock
 from app.utils.rate_limiter import rate_limiter
 from fastapi import HTTPException, status
 
@@ -94,19 +94,23 @@ def test_reply_rate_limit(test_client, test_db):
     post_id = post["id"]
     headers = {"Authorization": f"Bearer {token}"}
 
-    # First 20 replies should succeed
-    for i in range(20):
-        reply_data = {"content": f"定型返信 {i}"}
-        response = test_client.post(f"/api/v1/posts/{post_id}/replies", json=reply_data, headers=headers)
-        assert response.status_code == 201
+    # Geminiのモデレーションをモックして、違反なしとして返す
+    with patch("app.utils.content_moderator.content_moderator.analyze_content", new_callable=AsyncMock) as mock_analyze:
+        mock_analyze.return_value = {"is_violation": False, "confidence": 0.0}
 
-    # Patch the rate limiter to simulate exceeding the limit
-    with patch.object(rate_limiter, "hit", mock_rate_limit_exceeded):
-        overflow_reply = {"content": "21件目の返信"}
-        response = test_client.post(f"/api/v1/posts/{post_id}/replies", json=overflow_reply, headers=headers)
+        # First 20 replies should succeed
+        for i in range(20):
+            reply_data = {"content": f"定型返信 {i}"}
+            response = test_client.post(f"/api/v1/posts/{post_id}/replies", json=reply_data, headers=headers)
+            assert response.status_code == 201
 
-        assert response.status_code == 429
-        assert "短時間に過剰なリクエスト" in response.json()["detail"]
+        # Patch the rate limiter to simulate exceeding the limit
+        with patch.object(rate_limiter, "hit", mock_rate_limit_exceeded):
+            overflow_reply = {"content": "21件目の返信"}
+            response = test_client.post(f"/api/v1/posts/{post_id}/replies", json=overflow_reply, headers=headers)
+
+            assert response.status_code == 429
+            assert "短時間に過剰なリクエスト" in response.json()["detail"]
 
 
 def test_reply_spam_detection_shadow_bans(test_client, test_db):
@@ -119,24 +123,30 @@ def test_reply_spam_detection_shadow_bans(test_client, test_db):
     spam_reply = {
         "content": "無料で稼げる！無料で稼げる！ http://example.com http://example.com http://example.com"
     }
-    response = test_client.post(f"/api/v1/posts/{post_id}/replies", json=spam_reply, headers=headers)
-    created = response.json()
 
-    assert response.status_code == 201
-    assert created["is_shadow_banned"] is True
-    assert "スパム" in created["shadow_ban_reason"]
+    # Geminiのモデレーションをモックして、違反なし（または低信頼度）として返す
+    # これにより、spam_detectorによるシャドウバンのロジックのみをテストできる
+    with patch("app.utils.content_moderator.content_moderator.analyze_content", new_callable=AsyncMock) as mock_analyze:
+        mock_analyze.return_value = {"is_violation": False, "confidence": 0.0}
+        
+        response = test_client.post(f"/api/v1/posts/{post_id}/replies", json=spam_reply, headers=headers)
+        created = response.json()
 
-    # 公開の返信一覧には表示されない
-    public_replies = test_client.get(f"/api/v1/posts/{post_id}/replies").json()
-    assert len(public_replies) == 0
+        assert response.status_code == 201
+        assert created["is_shadow_banned"] is True
+        assert "スパム" in created["shadow_ban_reason"]
 
-    # 作成者は返信を確認できる
-    author_replies = test_client.get(f"/api/v1/posts/{post_id}/replies", headers=headers).json()
-    assert len(author_replies) == 1
-    assert author_replies[0]["is_shadow_banned"] is True
+        # 公開の返信一覧には表示されない
+        public_replies = test_client.get(f"/api/v1/posts/{post_id}/replies").json()
+        assert len(public_replies) == 0
 
-    # 別ユーザーを作成しても表示されない
-    other_token = create_user_and_get_token(test_client, "ruser7", "ruser7@example.com")
-    other_headers = {"Authorization": f"Bearer {other_token}"}
-    other_replies = test_client.get(f"/api/v1/posts/{post_id}/replies", headers=other_headers).json()
-    assert len(other_replies) == 0
+        # 作成者は返信を確認できる
+        author_replies = test_client.get(f"/api/v1/posts/{post_id}/replies", headers=headers).json()
+        assert len(author_replies) == 1
+        assert author_replies[0]["is_shadow_banned"] is True
+
+        # 別ユーザーを作成しても表示されない
+        other_token = create_user_and_get_token(test_client, "ruser7", "ruser7@example.com")
+        other_headers = {"Authorization": f"Bearer {other_token}"}
+        other_replies = test_client.get(f"/api/v1/posts/{post_id}/replies", headers=other_headers).json()
+        assert len(other_replies) == 0

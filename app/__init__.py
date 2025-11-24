@@ -444,8 +444,7 @@ def create_app():
     if settings.DEBUG:
         app.add_middleware(CacheBustingMiddleware)
 
-    # CSRFミドルウェアを一時的に無効化
-    # app.add_middleware(CSRFMiddleware, secret=settings.SESSION_SECRET_KEY)
+    app.add_middleware(CSRFMiddleware, secret=settings.SESSION_SECRET_KEY)
 
     # CORSミドルウェアの設定
     app.add_middleware(

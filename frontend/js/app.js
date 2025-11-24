@@ -249,6 +249,9 @@ const API = {
                 if (filters && filters.prefecture) {
                     params.append('prefecture', filters.prefecture);
                 }
+                if (filters && filters.category) {
+                    params.append('category', filters.category);
+                }
             }
 
             const url = params.toString() ? `${endpoint}?${params.toString()}` : endpoint;
@@ -601,10 +604,10 @@ const API = {
         try {
             // 確認前にCSRFトークンを取得
             await this.getCsrfToken();
-            
+
             // リクエストボディをJSON文字列に変換
             const requestBody = JSON.stringify({ id, password, email });
-            
+
             const data = await this.request('/api/v1/auth/verify-email', {
                 method: 'POST',
                 body: requestBody,
@@ -676,7 +679,7 @@ const API = {
     },
 
     // ユーザーのフォロワー一覧取得
-    getFollowers: async function(userId) {
+    getFollowers: async function (userId) {
         try {
             const data = await this.request(`/api/v1/users/${userId}/followers`);
             return { success: true, users: data };
@@ -687,7 +690,7 @@ const API = {
     },
 
     // ユーザーのフォロー中一覧取得
-    getFollowing: async function(userId) {
+    getFollowing: async function (userId) {
         try {
             const data = await this.request(`/api/v1/users/${userId}/following`);
             return { success: true, users: data };
@@ -705,11 +708,11 @@ const API = {
         const diffMins = Math.floor(diffMs / 60000);
         const diffHours = Math.floor(diffMs / 3600000);
         const diffDays = Math.floor(diffMs / 86400000);
-        
+
         if (diffMins < 60) return `${diffMins}分前`;
         if (diffHours < 24) return `${diffHours}時間前`;
         if (diffDays < 7) return `${diffDays}日前`;
-        
+
         return date.toLocaleDateString('ja-JP');
     },
 
@@ -802,7 +805,7 @@ const API = {
     async getAuthStatus() {
         try {
             const data = await this.request('/api/v1/auth/status');
-            
+
             // 存在しないアカウント or 未認証の場合はクッキー削除 + リロードで強制ログアウト
             if (!data || data.authenticated === false) {
                 this.deleteCookie('authToken');
@@ -826,7 +829,7 @@ const Utils = {
     toggleSidebar() {
         const sidebar = document.getElementById('leftSidebar');
         const overlay = document.getElementById('sidebarOverlay');
-        
+
         if (!sidebar || !overlay) return;
 
         const isOpening = !sidebar.classList.contains('show');
@@ -979,7 +982,7 @@ const Utils = {
         const notification = document.createElement('div');
         notification.id = 'banNotification';
         notification.className = 'ban-notification';
-        
+
         let message = authStatus.status_message || 'アカウントが停止されています';
         if (authStatus.ban_expires_at) {
             const expiryDate = new Date(authStatus.ban_expires_at);
@@ -1016,23 +1019,28 @@ window.closeSidebarOnOverlay = Utils.closeSidebarOnOverlay;
 window.closeBanNotification = Utils.closeBanNotification;
 
 // アプリケーションの初期化
-document.addEventListener('DOMContentLoaded', function() {
-   Utils.updateUserProfileUI();
-    
+document.addEventListener('DOMContentLoaded', function () {
+    Utils.updateUserProfileUI();
+
     // Ban状態をチェックして通知を表示
     Utils.checkAndShowBanNotification();
-    
+
     // ロゴにクリックイベントを追加してホームに遷移
     const appIcon = document.getElementById('appIcon');
     if (appIcon) {
-        appIcon.addEventListener('click', function() {
+        appIcon.addEventListener('click', function () {
             router.navigate('timeline');
         });
         appIcon.style.cursor = 'pointer'; // カーソルをポインターに変更
     }
-    
+
     // アプリケーション起動時にCSRFトークンを取得
     API.getCsrfToken().catch(error => {
         console.error('初期CSRFトークンの取得に失敗しました:', error);
     });
+
+    // Initialize RightSidebar
+    if (typeof RightSidebar !== 'undefined') {
+        RightSidebar.init();
+    }
 });

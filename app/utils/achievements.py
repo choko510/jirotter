@@ -26,7 +26,6 @@ METRIC_LABELS: Dict[str, str] = {
     "posts": "投稿数",
     "followers": "フォロワー数",
     "contribution_actions": "総アクション数",
-    # レビュー系称号用メトリクス
     "reviews": "総レビュー数",
 }
 
