@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Request, HTTPException, status
+from fastapi import FastAPI, Request, HTTPException, status, Depends
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import HTMLResponse, Response
 from fastapi.staticfiles import StaticFiles
@@ -7,7 +7,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 from starlette.middleware.sessions import SessionMiddleware
 from starlette_csrf import CSRFMiddleware
 from contextlib import asynccontextmanager
-from database import engine, Base, SessionLocal
+from database import engine, Base, SessionLocal, get_db
 from config import settings
 import os
 import time
@@ -17,6 +17,12 @@ import base64
 from pathlib import Path
 import threading
 import user_agents
+from datetime import datetime, timezone
+from typing import Dict, List, Optional, Tuple
+from functools import lru_cache
+from sqlalchemy.orm import Session
+from sqlalchemy import func
+from app.models import RamenShop, Checkin
 
 from app.routes.auth import router as auth_router
 from app.routes.posts import router as posts_router
@@ -133,6 +139,73 @@ class JavaScriptObfuscator:
 
 
 js_obfuscator = JavaScriptObfuscator()
+
+# Sitemap and Robots.txt helper functions
+def calculate_shop_priority(shop: RamenShop, checkin_count: int = 0) -> float:
+    """店舗の重要度を計算"""
+    base_priority = 0.7
+    
+    # チェックイン数で重要度を調整
+    if checkin_count > 0:
+        base_priority += min(0.2, checkin_count * 0.01)
+    
+    # 最近の更新で重要度を上げる
+    if shop.last_update:
+        # タイムゾーン対応
+        last_update = shop.last_update
+        if last_update.tzinfo is None:
+            last_update = last_update.replace(tzinfo=timezone.utc)
+            
+        if (datetime.now(timezone.utc) - last_update).days < 30:
+            base_priority += 0.1
+    
+    # 小数点第1位で丸める（浮動小数点誤差対策）
+    return min(1.0, round(base_priority, 1))
+
+def determine_changefreq(last_update: Optional[datetime]) -> str:
+    """更新頻度を決定"""
+    if not last_update:
+        return "monthly"
+    
+    # タイムゾーン対応
+    if last_update.tzinfo is None:
+        last_update = last_update.replace(tzinfo=timezone.utc)
+    
+    days_since_update = (datetime.now(timezone.utc) - last_update).days
+    
+    if days_since_update < 7:
+        return "daily"
+    elif days_since_update < 30:
+        return "weekly"
+    elif days_since_update < 90:
+        return "monthly"
+    else:
+        return "yearly"
+
+@lru_cache(maxsize=1)
+def get_sitemap_cache_key() -> str:
+    """sitemapキャッシュ用のキーを生成"""
+    # 時間ベースのキャッシュキー（1時間ごとに更新）
+    return f"sitemap_{datetime.now(timezone.utc).strftime('%Y%m%d_%H')}"
+
+def generate_sitemap_xml(urls: List[Dict]) -> str:
+    """sitemap XMLを生成"""
+    xml_urls = []
+    for url_data in urls:
+        url_xml = f'  <url><loc>{url_data["loc"]}</loc>'
+        if url_data.get("lastmod"):
+            url_xml += f'<lastmod>{url_data["lastmod"]}</lastmod>'
+        url_xml += f'<changefreq>{url_data["changefreq"]}</changefreq>'
+        url_xml += f'<priority>{url_data["priority"]}</priority>'
+        url_xml += '</url>'
+        xml_urls.append(url_xml)
+    
+    return (
+        '<?xml version="1.0" encoding="UTF-8"?>\n'
+        '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
+        + "\n".join(xml_urls) +
+        "\n</urlset>\n"
+    )
 
 class CacheBustingMiddleware(BaseHTTPMiddleware):
     """Debugモード時に静的ファイルにランダムパラメーターを追加してキャッシュを防ぐミドルウェア"""
@@ -469,6 +542,10 @@ def create_app():
     @app.get("/js/{file_path:path}", response_class=Response)
     async def serve_obfuscated_js(file_path: str):
         """JavaScriptファイルを読み込み、難読化した上で返却する。"""
+        # ディレクトリトラバーサル対策
+        if ".." in file_path or file_path.startswith("/") or file_path.startswith("\\"):
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ファイルが見つかりません")
+
         safe_root = JS_DIR.resolve()
         requested_path = (safe_root / file_path).resolve()
 
@@ -574,48 +651,115 @@ def create_app():
     @app.get("/robots.txt", include_in_schema=False)
     async def robots_txt():
         """
-        robots.txt を静的に返却
-        - 一般公開ページはクロール許可
-        - 管理画面系やAPIルートなどはクロール対象外
-        - テスト環境 / DEBUG 時は全体 noindex 相当の制御も検討可能
+        拡張robots.txt
+        - クロールディレクティブの詳細化
+        - sitemapインデックスの指定
+        - 特殊ボットの対応
         """
-        # テスト環境・ローカル環境では全体をブロックしたい場合はここで条件分岐も可能
-        disallow_admin = "Disallow: /admin/\n"
-        disallow_api = "Disallow: /api/\n"
-        disallow_uploads = "Disallow: /uploads/\n"
+        base_url = settings.BASE_URL.rstrip("/")
+        
+        content = f"""User-agent: *
+Allow: /
+Disallow: /admin/
+Disallow: /api/
+Disallow: /uploads/
+Disallow: /*?*
+Crawl-delay: 1
 
-        content = (
-            "User-agent: *\n"
-            f"{disallow_admin}"
-            f"{disallow_api}"
-            f"{disallow_uploads}"
-            "Allow: /\n"
-            "Sitemap: " + settings.BASE_URL.rstrip("/") + "/sitemap.xml\n"
-        )
+# Googlebot特別設定
+User-agent: Googlebot
+Allow: /
+Allow: /#!/shop/*
+Disallow: /admin/
+Disallow: /api/
+Crawl-delay: 0
+
+# 画像検索用
+User-agent: Googlebot-Image
+Allow: /uploads/
+Allow: /assets/
+
+# SNSクローラー
+User-agent: Twitterbot
+Allow: /
+User-agent: facebookexternalhit
+Allow: /
+
+Sitemap: {base_url}/sitemap.xml
+"""
         return Response(content=content, media_type="text/plain")
 
     @app.get("/sitemap.xml", include_in_schema=False)
-    async def sitemap_xml():
+    async def sitemap_xml(db: Session = Depends(get_db)):
         """
-        シンプルな静的 sitemap.xml
-        - 必要に応じて動的URL(店舗詳細等)は後で拡張
+        動的sitemap.xml生成
+        - ハッシュURL形式の店舗ページを含める
+        - キャッシュ戦略を実装
+        - ページング対応（将来的な拡張性）
         """
         base = settings.BASE_URL.rstrip("/")
-        urls = [
-            f"{base}/",
-            f"{base}/contribute",
+        
+        # 静的ページ
+        static_urls = [
+            {
+                "loc": f"{base}/",
+                "changefreq": "daily",
+                "priority": "1.0"
+            },
+            {
+                "loc": f"{base}/contribute",
+                "changefreq": "weekly",
+                "priority": "0.8"
+            },
         ]
-        xml_urls = "\n".join(
-            f'  <url><loc>{loc}</loc><changefreq>daily</changefreq><priority>0.8</priority></url>'
-            for loc in urls
-        )
-        content = (
-            '<?xml version="1.0" encoding="UTF-8"?>\n'
-            '<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">\n'
-            f"{xml_urls}\n"
-            "</urlset>\n"
-        )
-        return Response(content=content, media_type="application/xml")
+        
+        # 動的店舗ページ（ハッシュURL）
+        try:
+            # チェックイン数を含めて店舗情報を取得
+            shops_with_checkins = (
+                db.query(
+                    RamenShop,
+                    func.count(Checkin.id).label('checkin_count')
+                )
+                .outerjoin(Checkin, RamenShop.id == Checkin.shop_id)
+                .group_by(RamenShop.id)
+                .all()
+            )
+            
+            shop_urls = []
+            for shop, checkin_count in shops_with_checkins:
+                # GoogleのAjaxクローリング用に#!形式を使用
+                shop_urls.append({
+                    "loc": f"{base}/#!/shop/{shop.id}",
+                    "lastmod": shop.last_update.isoformat() if shop.last_update else None,
+                    "changefreq": determine_changefreq(shop.last_update),
+                    "priority": calculate_shop_priority(shop, checkin_count or 0)
+                })
+            
+            # 全URLを結合
+            all_urls = static_urls + shop_urls
+            
+        except Exception as e:
+            # エラー時は静的ページのみ返す
+            print(f"Error generating sitemap: {e}")
+            all_urls = static_urls
+        
+        # XML生成
+        xml_content = generate_sitemap_xml(all_urls)
+        
+        # キャッシュヘッダー設定
+        headers = {}
+        if settings.DEBUG or settings.DEVELOPMENT:
+            headers = {
+                "Cache-Control": "no-cache, no-store, must-revalidate",
+                "Pragma": "no-cache",
+                "Expires": "0",
+            }
+        else:
+            # 本番環境では1時間キャッシュ
+            headers = {"Cache-Control": "public, max-age=3600"}
+        
+        return Response(content=xml_content, media_type="application/xml; charset=utf-8", headers=headers)
 
     @app.get("/api")
     async def root():

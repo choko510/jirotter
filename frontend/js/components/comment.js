@@ -16,7 +16,8 @@ const CommentComponent = {
             isDragging: false,
             dragStart: { x: 0, y: 0 },
             position: { x: 0, y: 0 }
-        }
+        },
+        replyTo: null // 返信先のコメントID
     },
 
     // レンダリング
@@ -439,6 +440,47 @@ const CommentComponent = {
                     font-size: 14px;
                 }
 
+                /* ネストされたコメントのスタイル */
+                .comment-tree {
+                    position: relative;
+                }
+
+                .comment-children {
+                    margin-left: 24px;
+                    padding-left: 16px;
+                    border-left: 2px solid var(--glass-border);
+                }
+
+                .reply-indicator {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    background: var(--glass-bg-light);
+                    padding: 8px 16px;
+                    border-radius: 8px;
+                    margin-bottom: 8px;
+                    font-size: 14px;
+                    color: var(--color-muted);
+                }
+
+                .reply-indicator span {
+                    color: var(--color-primary);
+                    font-weight: bold;
+                }
+
+                .reply-indicator button {
+                    background: none;
+                    border: none;
+                    color: var(--color-muted);
+                    cursor: pointer;
+                    font-size: 18px;
+                    padding: 4px;
+                }
+
+                .reply-indicator button:hover {
+                    color: var(--color-text);
+                }
+
                 /* レスポンシブ対応 */
                 @media (max-width: 768px) {
                     .comment-container {
@@ -688,6 +730,7 @@ const CommentComponent = {
                         <div class="loading">読み込み中...</div>
                     </div>
                     <div class="comment-input-section">
+                        <div id="replyIndicatorContainer"></div>
                         <div class="comment-input-wrapper">
                             <div class="comment-avatar"></div>
                             <div style="flex: 1;">
@@ -847,35 +890,125 @@ const CommentComponent = {
             return;
         }
 
-        commentsList.innerHTML = this.state.comments.map(comment => `
-           <div class="comment-item" data-comment-id="${comment.id}">
-                <div class="comment-header">
-                    <div class="comment-avatar"><img src="${API.escapeHtml(comment.author_profile_image_url || 'assets/baseicon.png')}" alt="${API.escapeHtml(comment.author_username)}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;"></div>
-                    <div class="comment-user-info">
-                        <div class="comment-username">
-                            <span onclick="event.stopPropagation(); router.navigate('profile', ['${API.escapeHtml(comment.user_id)}'])">${API.escapeHtml(comment.author_username)}</span>
-                            <span class="comment-time">@${API.escapeHtml(comment.user_id)} · ${API.formatTime(comment.created_at)}</span>
+        // コメントをツリー構造に変換
+        const commentTree = this.buildCommentTree(this.state.comments);
+        commentsList.innerHTML = this.renderCommentTree(commentTree);
+    },
+
+    // コメントリストをツリー構造に変換
+    buildCommentTree(comments) {
+        const map = new Map();
+        const roots = [];
+
+        // まず全てのコメントをマップに登録
+        comments.forEach(comment => {
+            map.set(comment.id, { ...comment, children: [] });
+        });
+
+        // 親子関係を構築
+        comments.forEach(comment => {
+            if (comment.parent_id && map.has(comment.parent_id)) {
+                map.get(comment.parent_id).children.push(map.get(comment.id));
+            } else {
+                roots.push(map.get(comment.id));
+            }
+        });
+
+        // 日付順にソート（新しい順）
+        const sortComments = (nodes) => {
+            nodes.sort((a, b) => new Date(b.created_at) - new Date(a.created_at));
+            nodes.forEach(node => {
+                if (node.children.length > 0) {
+                    // 子コメントは古い順（時系列）の方が会話として自然かも？
+                    // Twitter等は新しい順だが、スレッド形式なら古い順もあり。
+                    // ここでは親と同じく新しい順にしておく
+                    sortComments(node.children);
+                }
+            });
+        };
+
+        sortComments(roots);
+        return roots;
+    },
+
+    // コメントツリーを再帰的にレンダリング
+    renderCommentTree(nodes) {
+        return nodes.map(comment => `
+            <div class="comment-tree">
+                <div class="comment-item" data-comment-id="${comment.id}">
+                    <div class="comment-header">
+                        <div class="comment-avatar"><img src="${API.escapeHtml(comment.author_profile_image_url || 'assets/baseicon.png')}" alt="${API.escapeHtml(comment.author_username)}" style="width: 100%; height: 100%; border-radius: 50%; object-fit: cover;"></div>
+                        <div class="comment-user-info">
+                            <div class="comment-username">
+                                <span onclick="event.stopPropagation(); router.navigate('profile', ['${API.escapeHtml(comment.user_id)}'])">${API.escapeHtml(comment.author_username)}</span>
+                                <span class="comment-time">@${API.escapeHtml(comment.user_id)} · ${API.formatTime(comment.created_at)}</span>
+                            </div>
                         </div>
                     </div>
+                    <div class="comment-text" id="comment-text-${comment.id}">
+                        <div class="comment-content" id="comment-content-${comment.id}">${API.escapeHtmlWithLineBreaks(comment.content)}</div>
+                        ${this.isLongText(comment.content) ? `<button class="show-more-btn" onclick="CommentComponent.toggleText('comment', ${comment.id})">続きを見る</button>` : ''}
+                    </div>
+                    ${this.createCommentImageHTML(comment)}
+                    <div class="comment-actions">
+                        <button class="comment-action-btn" onclick="CommentComponent.handleReplyClick(${comment.id}, '${API.escapeHtml(comment.author_username)}')">
+                            <i class="fas fa-reply"></i> 返信
+                        </button>
+                        <button class="comment-action-btn" onclick="CommentComponent.handleCommentLike(${comment.id})">
+                            <i class="fas fa-heart ${comment.is_liked_by_current_user ? 'liked' : ''}" id="comment-like-icon-${comment.id}"></i>
+                            <span id="comment-like-count-${comment.id}">${comment.likes_count || 0}</span>
+                        </button>
+                        <button class="comment-action-btn" onclick="CommentComponent.shareComment(${comment.id})">
+                            <i class="fas fa-share"></i> 共有
+                        </button>
+                        ${this.renderDeleteButton(comment)}
+                        ${this.renderReportButton(comment)}
+                    </div>
                 </div>
-                <div class="comment-text" id="comment-text-${comment.id}">
-                    <div class="comment-content" id="comment-content-${comment.id}">${API.escapeHtmlWithLineBreaks(comment.content)}</div>
-                    ${this.isLongText(comment.content) ? `<button class="show-more-btn" onclick="CommentComponent.toggleText('comment', ${comment.id})">続きを見る</button>` : ''}
-                </div>
-               ${this.createCommentImageHTML(comment)}
-               <div class="comment-actions">
-                   <button class="comment-action-btn" onclick="CommentComponent.handleCommentLike(${comment.id})">
-                       <i class="fas fa-heart ${comment.is_liked_by_current_user ? 'liked' : ''}" id="comment-like-icon-${comment.id}"></i>
-                       <span id="comment-like-count-${comment.id}">${comment.likes_count || 0}</span>
-                   </button>
-                   <button class="comment-action-btn" onclick="CommentComponent.shareComment(${comment.id})">
-                       <i class="fas fa-share"></i> 共有
-                   </button>
-                   ${this.renderDeleteButton(comment)}
-                   ${this.renderReportButton(comment)}
-               </div>
-           </div>
+                ${comment.children.length > 0 ? `
+                    <div class="comment-children">
+                        ${this.renderCommentTree(comment.children)}
+                    </div>
+                ` : ''}
+            </div>
         `).join('');
+    },
+
+    // 返信ボタンクリック時の処理
+    handleReplyClick(commentId, username) {
+        this.state.replyTo = { id: commentId, username: username };
+        this.updateReplyIndicator();
+        
+        const textarea = document.getElementById('commentTextarea');
+        if (textarea) {
+            textarea.focus();
+            textarea.scrollIntoView({ behavior: 'smooth', block: 'center' });
+        }
+    },
+
+    // 返信キャンセル
+    cancelReply() {
+        this.state.replyTo = null;
+        this.updateReplyIndicator();
+    },
+
+    // 返信インジケーターの更新
+    updateReplyIndicator() {
+        const container = document.getElementById('replyIndicatorContainer');
+        if (!container) return;
+
+        if (this.state.replyTo) {
+            container.innerHTML = `
+                <div class="reply-indicator">
+                    <div>
+                        <span>@${this.state.replyTo.username}</span> に返信中
+                    </div>
+                    <button onclick="CommentComponent.cancelReply()">&times;</button>
+                </div>
+            `;
+        } else {
+            container.innerHTML = '';
+        }
     },
 
     // 削除ボタンの表示制御
@@ -981,11 +1114,12 @@ const CommentComponent = {
             return;
         }
 
-        const result = await API.postReply(this.state.currentPost.id, content);
+        const result = await API.postReply(this.state.currentPost.id, content, this.state.replyTo ? this.state.replyTo.id : null);
 
         if (result.success) {
             textarea.value = '';
             document.getElementById('commentSubmitBtn').disabled = true;
+            this.cancelReply(); // 返信状態をリセット
             // Reload comments
             await this.loadPostAndComments(this.state.currentPost.id);
 

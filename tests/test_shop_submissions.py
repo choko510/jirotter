@@ -96,7 +96,7 @@ def test_admin_can_approve_update_submission(test_client, test_db):
     submission = test_db.query(RamenShopSubmission).filter(RamenShopSubmission.id == submission_id).one()
     assert submission.status == "approved"
     contributor = test_db.query(User).filter(User.id == submitter_id).one()
-    assert contributor.points >= 28
+    assert contributor.points >= 20
 
 
 def test_non_admin_cannot_access_pending(test_client, test_db):

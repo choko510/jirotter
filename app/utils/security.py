@@ -109,7 +109,7 @@ def sanitize_content(content: str) -> str:
         return ""
     
     # HTMLタグを除去
-    content = re.sub(r'<[^>]+>', '', content)
+    content = re.sub(r'<[^>]*>', '', content)
     
     # 危険なJavaScriptイベントハンドラを除去（最適化されたパターン）
     # 具体的なイベントハンドラ名を明示的に指定することで、バックトラッキングを削減

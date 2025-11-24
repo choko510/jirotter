@@ -1,5 +1,5 @@
 from sqlalchemy import Column, Integer, String, Text, DateTime, ForeignKey, Float, Boolean, JSON, Index, UniqueConstraint
-from sqlalchemy.orm import relationship
+from sqlalchemy.orm import relationship, backref
 from datetime import datetime, timezone
 from database import Base
 
@@ -145,6 +145,9 @@ class Reply(Base):
     created_at = Column(DateTime, default=lambda: datetime.now(JST))
     is_shadow_banned = Column(Boolean, nullable=False, default=False, index=True)
     shadow_ban_reason = Column(Text, nullable=True)
+    parent_id = Column(Integer, ForeignKey('replies.id'), nullable=True)
+
+    children = relationship('Reply', backref=backref('parent', remote_side=[id]), cascade='all, delete-orphan')
 
     @property
     def author_username(self):

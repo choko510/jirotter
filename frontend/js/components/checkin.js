@@ -164,7 +164,7 @@ const CheckinComponent = {
 
             // EXIFデータを抽出
             const exifData = await this.extractExifData(imageFile);
-            
+
             let position = null;
             if (exifData && exifData.GPSLatitude && exifData.GPSLongitude) {
                 position = {
@@ -198,12 +198,12 @@ const CheckinComponent = {
         return new Promise((resolve, reject) => {
             const img = new Image();
             const url = URL.createObjectURL(imageFile);
-            
+
             img.onload = () => {
                 // 実際のEXIF抽出にはexif-jsなどのライブラリが必要
                 // ここは簡易的な実装
                 URL.revokeObjectURL(url);
-                
+
                 // ダミーのEXIFデータを返す（実際にはライブラリを使用）
                 // 実装例：https://github.com/exif-js/exif-js
                 resolve({
@@ -214,14 +214,71 @@ const CheckinComponent = {
                     Model: null
                 });
             };
-            
+
             img.onerror = () => {
                 URL.revokeObjectURL(url);
                 reject(new Error('画像の読み込みに失敗しました'));
             };
-            
+
             img.src = url;
         });
+    },
+
+    // 近隣店舗選択画面を表示
+    showNearbyShopsSelection(shops, position) {
+        const modal = document.createElement('div');
+        modal.className = 'checkin-modal-overlay';
+
+        const shopsListHtml = shops.map(shop => `
+            <div class="checkin-shop-item" onclick="CheckinComponent.handleShopSelection(${shop.id})">
+                <div class="shop-name">${API.escapeHtml(shop.name)}</div>
+                <div class="shop-distance">現在地から約${shop.distance.toFixed(2)}km</div>
+            </div>
+        `).join('');
+
+        modal.innerHTML = `
+            <div class="checkin-modal">
+                <div class="checkin-modal-header">
+                    <h3>チェックインする店舗を選択</h3>
+                    <button class="checkin-modal-close">&times;</button>
+                </div>
+                <div class="checkin-modal-content">
+                    <div class="checkin-shops-list">
+                        ${shopsListHtml}
+                    </div>
+                    <div class="checkin-actions">
+                        <button class="checkin-manual-btn" onclick="CheckinComponent.openManualSearch()">
+                            その他の店舗を検索
+                        </button>
+                    </div>
+                </div>
+            </div>
+        `;
+
+        document.body.appendChild(modal);
+
+        // 店舗リストを保存（IDから検索用）
+        this.state.nearbyShops = shops;
+    },
+
+    // 店舗選択時の処理
+    handleShopSelection(shopId) {
+        const shop = this.state.nearbyShops.find(s => s.id === shopId);
+        if (shop) {
+            this.closeCheckinModal();
+            // GPS位置情報を持って確認画面へ
+            this.showCheckinConfirmation(shop, this.state.currentPosition);
+        }
+    },
+
+    // 手動検索を開く
+    openManualSearch() {
+        this.closeCheckinModal();
+        if (window.SearchComponent) {
+            SearchComponent.openModal((shop) => {
+                this.tryManualCheckin(shop.id);
+            });
+        }
     },
 
     // チェックイン確認画面を表示
@@ -262,7 +319,7 @@ const CheckinComponent = {
                 </div>
             </div>
         `;
-        
+
         document.body.appendChild(modal);
     },
 
@@ -275,13 +332,13 @@ const CheckinComponent = {
 
             // デバイス情報を取得
             const deviceInfo = this.getDeviceInfo();
-            
+
             // 位置情報ソースをサーバーが期待する値に変換
             let locationSource = this.state.checkinMethod;
             if (locationSource === 'manual') {
                 locationSource = 'gps'; // 手動選択の場合もgpsとして扱う
             }
-            
+
             // チェックインデータを作成
             const checkinData = {
                 shop_id: shopId,
@@ -308,10 +365,10 @@ const CheckinComponent = {
 
             // チェックイン成功
             this.showCheckinSuccess(checkinResult);
-            
+
             // 待ち時間アンケートを表示
             this.showWaitTimeSurvey(shopId);
-            
+
         } catch (error) {
             console.error('チェックイン実行エラー:', error);
             this.showCheckinError('チェックインに失敗しました: ' + error.message);
@@ -363,7 +420,7 @@ const CheckinComponent = {
                 </div>
             </div>
         `;
-        
+
         document.body.appendChild(modal);
         this.state.showWaitTimeSurvey = true;
     },
@@ -374,15 +431,15 @@ const CheckinComponent = {
             const shopId = button.dataset.shopId;
             const waitTimeInput = document.getElementById('waittime-input');
             const confidenceInput = document.querySelector('input[name="confidence"]:checked');
-            
+
             const waitTime = parseInt(waitTimeInput.value) || 0;
             const confidence = parseInt(confidenceInput.value);
-            
+
             if (waitTime < 0 || waitTime > 300) {
                 alert('待ち時間は0分から300分の間で入力してください');
                 return;
             }
-            
+
             await API.request('/api/v1/waittime/report', {
                 method: 'POST',
                 body: {
@@ -418,7 +475,7 @@ const CheckinComponent = {
     // デバイス情報を取得
     getDeviceInfo() {
         const userAgent = navigator.userAgent;
-        
+
         // ユーザーエージェント文字列からデバイスタイプを判定
         let deviceType = 'desktop';
         if (/Mobile|Android|iP(hone|od)|IEMobile|BlackBerry|Kindle|Silk-Accelerated|(hpw|web)OS|Opera M(obi|ini)/.test(userAgent)) {
@@ -426,7 +483,7 @@ const CheckinComponent = {
         } else if (/Tablet|iPad|(android(?!.*Mobile))|Silk-Accelerated/.test(userAgent)) {
             deviceType = 'tablet';
         }
-        
+
         return {
             userAgent: userAgent,
             deviceType: deviceType,
@@ -464,13 +521,13 @@ const CheckinComponent = {
     async handleCheckinButtonClick(button) {
         const shopId = button.dataset.shopId;
         const checkinType = button.dataset.checkinType;
-        
+
         if (!API.getCookie('authToken')) {
             alert('チェックインするにはログインしてください');
             router.navigate('auth', ['login']);
             return;
         }
-        
+
         switch (checkinType) {
             case 'gps':
                 await this.tryGPSCheckin();
@@ -512,7 +569,7 @@ const CheckinComponent = {
         if (existingModal) {
             existingModal.remove();
         }
-        
+
         const modal = document.createElement('div');
         modal.className = 'checkin-modal-overlay';
         modal.innerHTML = `
@@ -523,7 +580,7 @@ const CheckinComponent = {
                 </div>
             </div>
         `;
-        
+
         document.body.appendChild(modal);
     },
 
@@ -534,7 +591,7 @@ const CheckinComponent = {
         if (loadingModal) {
             loadingModal.remove();
         }
-        
+
         Utils.showNotification(`${checkinData.shop_name}にチェックインしました！`, 'success');
 
         // スタンプラリー画面表示中であれば、その場で内容を更新する
@@ -566,7 +623,7 @@ const CheckinComponent = {
         if (loadingModal) {
             loadingModal.remove();
         }
-        
+
         // エラーモーダルを表示
         const modal = document.createElement('div');
         modal.className = 'checkin-modal-overlay';
@@ -588,13 +645,18 @@ const CheckinComponent = {
                 </div>
             </div>
         `;
-        
+
         document.body.appendChild(modal);
     },
 
     // 近隣店舗がない場合の表示
     showNoNearbyShops() {
-        Utils.showNotification('近くに二郎店舗がありません。手動で店舗を選択してください。', 'warning');
+        Utils.showNotification('近くに店舗が見つかりませんでした。店舗を検索してください。', 'info');
+        if (window.SearchComponent) {
+            SearchComponent.openModal((shop) => {
+                this.tryManualCheckin(shop.id);
+            });
+        }
     },
 
     // チェックインモーダルを閉じる
@@ -608,7 +670,7 @@ const CheckinComponent = {
     // タイムラインでのチェックイン通知を表示
     showTimelineCheckinNotification(nearbyShops) {
         if (nearbyShops.length === 0) return;
-        
+
         const notification = document.createElement('div');
         notification.className = 'checkin-notification';
         notification.innerHTML = `
@@ -630,19 +692,19 @@ const CheckinComponent = {
                 </div>
             </div>
         `;
-        
+
         document.body.appendChild(notification);
-        
+
         // イベントリスナーを設定
         notification.querySelector('.checkin-notification-yes').addEventListener('click', () => {
             this.tryManualCheckin(nearbyShops[0].id);
             notification.remove();
         });
-        
+
         notification.querySelector('.checkin-notification-no').addEventListener('click', () => {
             notification.remove();
         });
-        
+
         // 自動的に非表示
         setTimeout(() => {
             if (notification.parentNode) {

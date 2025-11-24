@@ -188,3 +188,54 @@
     padding: 12px 16px;
     margin-top: 16px;
 }
+
+/* 店舗リスト */
+.checkin-shops-list {
+    display: flex;
+    flex-direction: column;
+    gap: 8px;
+    margin-bottom: 16px;
+    max-height: 300px;
+    overflow-y: auto;
+}
+
+.checkin-shop-item {
+    padding: 12px;
+    background: var(--glass-bg);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.checkin-shop-item:hover {
+    background: rgba(212, 165, 116, 0.1);
+    border-color: var(--color-primary);
+}
+
+.checkin-shop-item .shop-name {
+    font-weight: bold;
+    color: var(--color-text);
+    margin-bottom: 4px;
+}
+
+.checkin-shop-item .shop-distance {
+    font-size: 12px;
+    color: var(--color-muted);
+}
+
+.checkin-manual-btn {
+    width: 100%;
+    background: transparent;
+    color: var(--color-primary);
+    border: 1px dashed var(--color-primary);
+    padding: 12px;
+    border-radius: var(--radius-md);
+    cursor: pointer;
+    transition: all 0.2s ease;
+    font-weight: bold;
+}
+
+.checkin-manual-btn:hover {
+    background: rgba(212, 165, 116, 0.1);
+}

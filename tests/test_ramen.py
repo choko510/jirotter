@@ -32,7 +32,7 @@ def test_search_ramen_shops_with_no_match(test_client, test_db):
     """キーワードに一致するラーメン店がない場合の検索テスト"""
     add_ramen_shops_to_db(test_db)
 
-    response = test_client.get("/api/v1/ramen?keyword=家系")
+    response = test_client.get("/api/v1/ramen?keyword=カレー")
     data = response.json()
 
     assert response.status_code == 200
@@ -47,8 +47,8 @@ def test_search_ramen_shops_with_empty_keyword(test_client, test_db):
     data = response.json()
 
     assert response.status_code == 200
-    assert data["total"] == 4
-    assert len(data["shops"]) == 4
+    assert data["total"] == 7
+    assert len(data["shops"]) == 7
 
 def test_get_nearby_ramen_shops(test_client, test_db):
     """近隣のラーメン店を取得するテスト"""

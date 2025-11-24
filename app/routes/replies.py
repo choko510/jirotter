@@ -69,10 +69,20 @@ async def create_reply_for_post(
             detail="コミュニティガイドラインに違反する可能性が高いため、返信を投稿できません"
         )
 
+    # 親返信の検証
+    parent_id = reply_data.parent_id
+    if parent_id:
+        parent_reply = db.query(Reply).filter(Reply.id == parent_id).first()
+        if not parent_reply:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Parent reply not found")
+        if parent_reply.post_id != post_id:
+            raise HTTPException(status_code=status.HTTP_400_BAD_REQUEST, detail="Parent reply does not belong to this post")
+
     reply = Reply(
         content=sanitized_content,
         user_id=current_user.id,
         post_id=post_id,
+        parent_id=parent_id,
         is_shadow_banned=is_shadow_banned,
         shadow_ban_reason=shadow_ban_reason
     )

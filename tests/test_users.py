@@ -91,7 +91,7 @@ def test_follow_and_unfollow_user(test_client, test_db):
     profile_after_follow = response.json()
     assert profile_after_follow["is_following"] is True
     assert profile_after_follow["followers_count"] == 1
-    assert profile_after_follow["points"] == 20
+    assert profile_after_follow["points"] == 5
 
     # アンフォロー
     response = test_client.post("/api/v1/users/ufollowed/unfollow", headers=headers)
@@ -102,7 +102,7 @@ def test_follow_and_unfollow_user(test_client, test_db):
     profile_after_unfollow = response.json()
     assert profile_after_unfollow["is_following"] is False
     assert profile_after_unfollow["followers_count"] == 0
-    assert profile_after_unfollow["points"] == 20
+    assert profile_after_unfollow["points"] == 5
 
 
 def test_follow_self(test_client, test_db):

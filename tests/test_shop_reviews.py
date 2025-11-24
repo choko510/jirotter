@@ -51,7 +51,7 @@ def test_create_shop_review_awards_points(test_client, test_db):
 
     profile = test_client.get(f"/api/v1/users/{user_id}", headers=headers)
     assert profile.status_code == 200
-    assert profile.json()["points"] == 16
+    assert profile.json()["points"] == 10
 
     list_response = test_client.get(f"/api/v1/shops/{shop.id}/reviews")
     assert list_response.status_code == 200

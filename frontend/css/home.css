@@ -485,13 +485,13 @@ body {
 .bottom-nav {
     display: none;
     position: fixed;
+    max-height: 90px;
     bottom: 0;
     left: 0;
     right: 0;
     background: var(--glass-bg-strong);
     backdrop-filter: var(--blur-lg);
     border-top: 1px solid var(--glass-border);
-    padding: 10px 0;
     z-index: 2000;
     box-shadow: 0 -1px 0 0 rgba(255, 255, 255, 0.5) inset, 0 -4px 12px rgba(47, 37, 25, 0.06);
 }

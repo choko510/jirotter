@@ -357,10 +357,10 @@ async def get_reports(
             "current_page": page,
         }
 
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"通報一覧の取得に失敗しました: {e}",
+            detail="通報一覧の取得に失敗しました",
         )
 
 
@@ -409,8 +409,8 @@ async def moderate_post(
         result["post_id"] = post_id
         return result
 
-    except Exception as e:
+    except Exception:
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"投稿の審査に失敗しました: {e}",
+            detail="投稿の審査に失敗しました",
         )

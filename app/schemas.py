@@ -263,6 +263,8 @@ class ReplyBase(BaseModel):
     content: str
 
 class ReplyCreate(ReplyBase):
+    parent_id: Optional[int] = None
+
     @field_validator('content')
     @classmethod
     def validate_content_length(cls, v):
@@ -276,6 +278,7 @@ class ReplyResponse(ReplyBase):
     id: int
     user_id: str
     post_id: int
+    parent_id: Optional[int] = None
     author_username: str
     author_profile_image_url: Optional[str] = None
     created_at: datetime

@@ -195,7 +195,7 @@ const TimelineComponent = {
     // 自動更新を設定
     setupAutoRefresh() {
         this.stopAutoRefresh(); // 既存の自動更新をクリア
-        
+
         if (this.isAutoRefreshEnabled()) {
             // 5分ごとに自動更新
             this.state.autoRefreshInterval = setInterval(() => {
@@ -232,22 +232,22 @@ const TimelineComponent = {
         try {
             // 現在の最新投稿IDを保持
             const latestPostId = this.state.posts.length > 0 ? this.state.posts[0].id : null;
-            
+
             // タイムラインを再読み込み
             const result = await API.getTimeline(this.state.currentTab, 1);
-            
+
             if (result.posts.length > 0) {
                 // 新着投稿のみを抽出
                 let newPosts = result.posts;
                 if (latestPostId) {
                     newPosts = result.posts.filter(post => post.id > latestPostId);
                 }
-                
+
                 if (newPosts.length > 0) {
                     // 新着投稿を先頭に追加
                     this.state.posts = [...newPosts, ...this.state.posts];
                     this.prependPosts(newPosts);
-                    
+
                     // 新着投稿があることを通知
                     this.showNewPostsNotification(newPosts.length);
                 }
@@ -430,7 +430,7 @@ const TimelineComponent = {
         const timeline = document.getElementById('timeline');
         const postsHTML = newPosts.map(post => this.createPostHTML(post)).join('');
         timeline.insertAdjacentHTML('afterbegin', postsHTML);
-        
+
         // 遅延読み込みを設定
         this.setupLazyLoading();
     },
@@ -454,9 +454,9 @@ const TimelineComponent = {
             transition: opacity 0.3s;
         `;
         notification.textContent = `${count}件の新着投稿があります`;
-        
+
         document.body.appendChild(notification);
-        
+
         // 3秒後に通知を非表示
         setTimeout(() => {
             notification.style.opacity = '0';
@@ -472,7 +472,7 @@ const TimelineComponent = {
         this.init();
         this.state.selectedImage = null;
         const contentArea = document.getElementById('contentArea');
-        
+
         // ログイン状態をチェック
         const isLoggedIn = !!API.getCookie('authToken');
         const currentUser = API.getCurrentUser();
@@ -747,7 +747,7 @@ const TimelineComponent = {
         this.setupEventListeners();
         this.loadInitialPosts();
         this.setupAutoRefresh(); // 自動更新を設定
-        
+
         // チェックイン通知を確認
         this.checkForNearbyShops();
     },
@@ -761,29 +761,29 @@ const TimelineComponent = {
         const textarea = document.getElementById('postTextarea');
         const tweetBtn = document.getElementById('tweetBtn');
         const imageUpload = document.getElementById('imageUpload');
-        
+
         // ログインしている場合のみイベントリスナーを設定
         if (textarea && tweetBtn && imageUpload) {
             textarea.addEventListener('input', () => {
                 // テキストをフィルタリング
                 const originalValue = textarea.value;
                 const filteredValue = this.filterText(originalValue);
-                
+
                 // フィルタリング後に内容が変わった場合は修正
                 if (filteredValue !== originalValue) {
                     const cursorPosition = textarea.selectionStart;
                     textarea.value = filteredValue;
-                    
+
                     // カーソル位置を調整（削除された文字数を考慮）
                     const diff = originalValue.length - filteredValue.length;
                     textarea.setSelectionRange(Math.max(0, cursorPosition - diff), Math.max(0, cursorPosition - diff));
                 }
-                
+
                 const length = textarea.value.length;
                 const charCounter = document.getElementById('charCounter');
                 if (charCounter) {
                     charCounter.textContent = `${length}/200`;
-                    
+
                     // 文字数に応じて色を変更
                     charCounter.classList.remove('warning', 'error');
                     if (length > 180) {
@@ -792,7 +792,7 @@ const TimelineComponent = {
                         charCounter.classList.add('warning');
                     }
                 }
-                
+
                 tweetBtn.disabled = (!textarea.value.trim() && !this.state.selectedImage && !this.state.selectedShop) || length > 200;
             });
             imageUpload.addEventListener('change', (event) => this.handleImageSelect(event));
@@ -807,7 +807,7 @@ const TimelineComponent = {
 
     debounce(func, delay) {
         let timeout;
-        return function(...args) {
+        return function (...args) {
             const context = this;
             clearTimeout(timeout);
             timeout = setTimeout(() => func.apply(context, args), delay);
@@ -867,7 +867,7 @@ const TimelineComponent = {
         const timeline = document.getElementById('timeline');
         const postsHTML = newPosts.map(post => this.createPostHTML(post)).join('');
         timeline.insertAdjacentHTML('beforeend', postsHTML);
-        
+
         // 遅延読み込みを設定
         this.setupLazyLoading();
     },
@@ -1013,7 +1013,7 @@ const TimelineComponent = {
                 // Attach event listener to login button
                 const loginBtn = document.querySelector('#timeline .login-btn[data-action="login"]');
                 if (loginBtn) {
-                    loginBtn.addEventListener('click', function() {
+                    loginBtn.addEventListener('click', function () {
                         router.navigate('auth', ['login']);
                     });
                 }
@@ -1097,15 +1097,15 @@ const TimelineComponent = {
         // \u0020-\u007E: 基本ラテン文字（ASCII）
         // \u00A0-\u00FF: ラテン文字補助
         const allowedPattern = /^[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF\u3000-\u303F\uFF00-\uFFEF\u2600-\u26FF\u2700-\u27BF\u1F600-\u1F64F\u1F300-\u1F5FF\u1F680-\u1F6FF\u1F700-\u1F77F\u1F780-\u1F7FF\u1F800-\u1F8FF\u1F900-\u1F9FF\u2000-\u206F\u0020-\u007E\u00A0-\u00FF\s]+$/;
-        
+
         // 改行と空白は許可
         const cleanedText = text.replace(/\s+/g, ' ').trim();
-        
+
         if (!allowedPattern.test(cleanedText)) {
             // 許可されていない文字を削除
             return cleanedText.replace(/[^\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FAF\u3000-\u303F\uFF00-\uFFEF\u2600-\u26FF\u2700-\u27BF\u1F600-\u1F64F\u1F300-\u1F5FF\u1F680-\u1F6FF\u1F700-\u1F77F\u1F780-\u1F7FF\u1F800-\u1F8FF\u1F900-\u1F9FF\u2000-\u206F\u0020-\u007E\u00A0-\u00FF\s]/g, '');
         }
-        
+
         return text;
     },
 
@@ -1121,18 +1121,18 @@ const TimelineComponent = {
 
         // テキストをフィルタリング
         const filteredContent = this.filterText(content);
-        
+
         // フィルタリング後に内容が変わった場合は警告
         if (filteredContent !== content) {
             alert('使用できない文字が含まれていました。自動的に修正されました。');
             content = filteredContent;
             textarea.value = content;
-            
+
             // 文字数カウンターを更新
             const length = content.length;
             const charCounter = document.getElementById('charCounter');
             charCounter.textContent = `${length}/200`;
-            
+
             // 文字数に応じて色を変更
             charCounter.classList.remove('warning', 'error');
             if (length > 180) {
@@ -1140,11 +1140,11 @@ const TimelineComponent = {
             } else if (length > 150) {
                 charCounter.classList.add('warning');
             }
-            
+
             // ボタンの状態を更新
             const tweetBtn = document.getElementById('tweetBtn');
             tweetBtn.disabled = (!content.trim() && !this.state.selectedImage && !this.state.selectedShop) || length > 200;
-            
+
             return;
         }
 
@@ -1178,17 +1178,22 @@ const TimelineComponent = {
         if (file) {
             // ファイルバリデーション
             const validation = this.validateImageFile(file);
-            
+
             if (!validation.isValid) {
                 alert(validation.error);
                 // ファイル入力をリセット
                 event.target.value = '';
                 return;
             }
-            
+
             this.state.selectedImage = file;
             const previewContainer = document.getElementById('imagePreviewContainer');
-            previewContainer.innerHTML = `<img src="${URL.createObjectURL(file)}" class="image-preview" alt="Image preview"/>`;
+            previewContainer.innerHTML = '';
+            const img = document.createElement('img');
+            img.src = URL.createObjectURL(file);
+            img.className = 'image-preview';
+            img.alt = 'Image preview';
+            previewContainer.appendChild(img);
             document.getElementById('tweetBtn').disabled = false;
         }
     },
@@ -1240,10 +1245,10 @@ const TimelineComponent = {
                 error: '画像サイズは20MB以下にしてください'
             };
         }
-        
+
         // ファイル名チェック（危険な拡張子を排除）
         const dangerousExtensions = ['.php', '.js', '.exe', '.bat', '.cmd', '.sh', '.py', '.pl', '.rb'];
-        
+
         for (const ext of dangerousExtensions) {
             if (fileName.endsWith(ext)) {
                 return {
@@ -1252,7 +1257,7 @@ const TimelineComponent = {
                 };
             }
         }
-        
+
         return {
             isValid: true,
             error: null
@@ -1264,25 +1269,25 @@ const TimelineComponent = {
         try {
             // ipinfo.ioを使用してIPアドレスから位置情報を取得
             const response = await fetch('https://ipinfo.io/json');
-            
+
             if (!response.ok) {
                 throw new Error('位置情報の取得に失敗しました');
             }
-            
+
             const data = await response.json();
-            
+
             // ipinfo.ioのレスポンス形式に対応
             if (data.error) {
                 throw new Error(data.error.message || '位置情報の取得に失敗しました');
             }
-            
+
             // locフィールドから緯度経度を抽出
             const [lat, lng] = data.loc ? data.loc.split(',').map(coord => parseFloat(coord)) : [null, null];
-            
+
             if (!lat || !lng) {
                 throw new Error('位置情報の取得に失敗しました');
             }
-            
+
             return {
                 lat: lat,
                 lng: lng,
@@ -1293,10 +1298,10 @@ const TimelineComponent = {
                 timezone: data.timezone || '',
                 org: data.org || ''
             };
-            
+
         } catch (error) {
             console.error('IPベースの位置取得に失敗しました:', error);
-            
+
             // デフォルト位置（東京）を返す
             return {
                 lat: 35.6762,
@@ -1337,7 +1342,7 @@ const TimelineComponent = {
     // 店舗プレビューをレンダリング
     renderShopPreview() {
         if (!this.state.selectedShop) return;
-        
+
         const previewContainer = document.getElementById('shopPreviewContainer');
         previewContainer.innerHTML = `
             <div class="shop-preview" style="margin-top: 10px; padding: 10px; background: var(--color-surface-muted); border-radius: 8px; display: flex; align-items: center; justify-content: space-between;">
@@ -1359,7 +1364,7 @@ const TimelineComponent = {
     removeShop() {
         this.state.selectedShop = null;
         document.getElementById('shopPreviewContainer').innerHTML = '';
-        
+
         const textarea = document.getElementById('postTextarea');
         const tweetBtn = document.getElementById('tweetBtn');
         tweetBtn.disabled = (!textarea.value.trim() && !this.state.selectedImage) || textarea.value.length > 200;
@@ -1383,7 +1388,7 @@ const TimelineComponent = {
         }
 
         const button = content.nextElementSibling;
-        
+
         if (!button) {
             return;
         }
@@ -1396,8 +1401,8 @@ const TimelineComponent = {
             button.textContent = 'もっと見る';
         }
     },
-    
-    
+
+
     // 店舗検索して移動
     async searchAndNavigateToShop(shopName) {
         try {
@@ -1419,7 +1424,7 @@ const TimelineComponent = {
         // タイムラインの投稿に対するイベントリスナーを再設定
         document.querySelectorAll('.post-card').forEach(postCard => {
             const postId = postCard.id.replace('post-', '');
-            
+
             // いいねボタンのイベントリスナー
             const likeButton = postCard.querySelector('.engagement-btn:nth-child(1)');
             if (likeButton) {
@@ -1428,7 +1433,7 @@ const TimelineComponent = {
                     this.handleLike(parseInt(postId));
                 };
             }
-            
+
             // 通報ボタンのイベントリスナー
             const reportButton = postCard.querySelector('.engagement-btn:nth-child(2)');
             if (reportButton) {
@@ -1478,7 +1483,7 @@ const TimelineComponent = {
                 </div>
             </div>
         `;
-        
+
         document.body.appendChild(modal);
     },
 
@@ -1493,17 +1498,17 @@ const TimelineComponent = {
     // 通報を送信
     async submitReport(postId) {
         const reasonSelect = document.getElementById('reportReason');
-        
+
         const reason = reasonSelect.value;
-        
+
         if (!reason) {
             alert('通報理由を選択してください');
             return;
         }
-        
+
         try {
             const result = await API.reportPost(postId, reason);
-            
+
             if (result.success) {
                 alert('通報を送信しました');
                 this.closeReportModal();
@@ -1515,13 +1520,13 @@ const TimelineComponent = {
             alert('通報に失敗しました');
         }
     },
-    
+
     // GPS権限を確認
     async checkGPSPermission() {
         if (!navigator.geolocation) {
             return;
         }
-        
+
         // GPS権限状態を確認
         if ('permissions' in navigator) {
             try {
@@ -1535,14 +1540,14 @@ const TimelineComponent = {
             }
         }
     },
-    
+
     // 近隣店舗をチェック
     async checkForNearbyShops() {
         // ログインしていない場合はチェックしない
         if (!API.getCookie('authToken')) {
             return;
         }
-        
+
         // GPSが利用可能な場合
         if (navigator.geolocation) {
             navigator.geolocation.getCurrentPosition(
@@ -1576,14 +1581,14 @@ const TimelineComponent = {
             this.checkForNearbyShopsByIP();
         }
     },
-    
+
     // IPベースで近隣店舗をチェック
     async checkForNearbyShopsByIP() {
         // ログインしていない場合はチェックしない
         if (!API.getCookie('authToken')) {
             return;
         }
-        
+
         // モバイルデバイスかつモバイルネットワークの場合のみ実行
         if (this.isMobileDevice() && this.isMobileNetwork()) {
             try {
@@ -1602,13 +1607,13 @@ const TimelineComponent = {
             }
         }
     },
-    
+
     // モバイルデバイスかどうかを判定
     isMobileDevice() {
         const userAgent = navigator.userAgent.toLowerCase();
         return /android|webos|iphone|ipad|ipod|blackberry|iemobile|opera mini/i.test(userAgent);
     },
-    
+
     // モバイルネットワークかどうかを判定
     isMobileNetwork() {
         const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
@@ -1624,7 +1629,7 @@ const TimelineComponent = {
         if (post.thumbnail_url || post.original_image_url) {
             const thumbnailUrl = post.thumbnail_url || post.image;
             const originalUrl = post.original_image_url || post.image;
-            
+
             return `
                 <div class="post-image">
                     <picture>
@@ -1639,7 +1644,7 @@ const TimelineComponent = {
                 </div>
             `;
         }
-        
+
         // 後方互換性のための従来の画像表示
         if (post.image) {
             return `
@@ -1652,7 +1657,7 @@ const TimelineComponent = {
                 </div>
             `;
         }
-        
+
         return '';
     },
 
@@ -1727,19 +1732,19 @@ const TimelineComponent = {
     // 遅延読み込みの設定
     setupLazyLoading() {
         const images = document.querySelectorAll('img[data-src]');
-        
+
         if ('IntersectionObserver' in window) {
             const imageObserver = new IntersectionObserver((entries, observer) => {
                 entries.forEach(entry => {
                     if (entry.isIntersecting) {
                         const img = entry.target;
-                        
+
                         // すでに高画質画像に切り替わっている場合はスキップ
                         if (img.dataset.loaded === 'true') {
                             observer.unobserve(img);
                             return;
                         }
-                        
+
                         // ネットワーク状況に応じて画像の読み込みを制御
                         if (this.isSlowNetwork()) {
                             // 低速ネットワークの場合はサムネイルのまま
@@ -1747,7 +1752,7 @@ const TimelineComponent = {
                             observer.unobserve(img);
                             return;
                         }
-                        
+
                         // 通常画質画像に切り替え
                         const highQualitySrc = img.dataset.src;
                         if (highQualitySrc && img.src !== highQualitySrc) {
@@ -1762,14 +1767,14 @@ const TimelineComponent = {
                             // 高画質画像がない場合でもロード済みとしてマーク
                             img.dataset.loaded = 'true';
                         }
-                        
+
                         observer.unobserve(img);
                     }
                 });
             }, {
                 rootMargin: '50px' // ビューポートの50px手前から読み込み開始
             });
-            
+
             images.forEach(img => imageObserver.observe(img));
         } else {
             // IntersectionObserverがサポートされていない場合のフォールバック
@@ -1778,12 +1783,12 @@ const TimelineComponent = {
                 if (img.dataset.loaded === 'true') {
                     return;
                 }
-                
+
                 if (this.isSlowNetwork()) {
                     img.dataset.loaded = 'true';
                     return; // 低速ネットワークの場合はサムネイルのまま
                 }
-                
+
                 const highQualitySrc = img.dataset.src;
                 if (highQualitySrc) {
                     img.src = highQualitySrc;
@@ -1800,7 +1805,7 @@ const TimelineComponent = {
     // ネットワーク速度の判定
     isSlowNetwork() {
         const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-        
+
         if (connection) {
             // 接続タイプで判定
             if (connection.type === 'cellular') {
@@ -1811,13 +1816,13 @@ const TimelineComponent = {
                     return true;
                 }
             }
-            
+
             // ダウンロード速度で判定
             if (connection.downlink && connection.downlink < 1.5) {
                 return true; // 1.5Mbps未満は低速と判定
             }
         }
-        
+
         return false;
     }
 };
