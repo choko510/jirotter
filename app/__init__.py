@@ -37,7 +37,9 @@ from app.routes.visits import router as visits_router
 from app.routes.shop_submissions import router as shop_submissions_router
 from app.routes.reviews import router as shop_reviews_router
 from app.routes.admin import router as admin_router
+from app.routes.guide import router as guide_router
 from app.routes.shop_editor_ws import router as shop_editor_ws_router
+from app.routes.url_safety import router as url_safety_router
 from app.models import User
 from app.utils.auth import verify_token
 
@@ -492,6 +494,8 @@ def create_app():
     app.include_router(shop_submissions_router, prefix=settings.API_V1_STR)
     app.include_router(shop_reviews_router, prefix=settings.API_V1_STR)
     app.include_router(admin_router, prefix=settings.API_V1_STR)
+    app.include_router(guide_router, prefix=settings.API_V1_STR)
+    app.include_router(url_safety_router, prefix=settings.API_V1_STR)
 
     def _no_cache_headers() -> dict[str, str]:
         return {
@@ -564,48 +568,45 @@ def create_app():
         if settings.DEBUG or settings.DEVELOPMENT:
             headers = _no_cache_headers()
         else:
-            headers = {"Cache-Control": "public, max-age=31536000"}
+            headers = {}
 
         return Response(content=obfuscated, media_type="application/javascript", headers=headers)
 
     @app.get("/", response_class=HTMLResponse)
-    async def read_index():
-        """index.htmlを返すエンドポイント"""
-        # ルートは常に正規URL扱い（/ のみ）、クエリ付きアクセスはそのまま許容（UTM等）
+    async def index():
         return render_html("index.html")
 
-    @app.get("/contribute", response_class=HTMLResponse)
-    async def contribute_page():
-        """
-        店舗情報投稿ページ
-        - /contribute を正規URLとして運用
-        """
-        return render_html("contribute.html")
+    @app.get("/login", response_class=HTMLResponse)
+    async def login_page():
+        return render_html("login.html")
 
-    @app.get("/admin/review", response_class=HTMLResponse)
-    async def admin_review_page(request: Request):
-        """管理者向け審査ページを返すエンドポイント"""
-        token = request.cookies.get("authToken")
-        if not token:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ページが見つかりません")
+    @app.get("/register", response_class=HTMLResponse)
+    async def register_page():
+        return render_html("register.html")
 
-        user_id = verify_token(token)
-        if user_id is None:
-            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ページが見つかりません")
+    @app.get("/profile", response_class=HTMLResponse)
+    async def profile_page():
+        return render_html("profile.html")
+    
+    @app.get("/map", response_class=HTMLResponse)
+    async def map_page():
+        return render_html("map.html")
+    
+    @app.get("/guide", response_class=HTMLResponse)
+    async def guide_page():
+        return render_html("guide.html")
 
-        db = SessionLocal()
-        try:
-            user = db.query(User).filter(User.id == user_id).first()
-            if not user or not getattr(user, "is_admin", False):
-                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ページが見つかりません")
-        finally:
-            db.close()
+    @app.get("/terms", response_class=HTMLResponse)
+    async def terms_page():
+        return render_html("terms.html")
 
-        return render_html("admin-review.html")
+    @app.get("/privacy", response_class=HTMLResponse)
+    async def privacy_page():
+        return render_html("privacy.html")
 
-    @app.get("/admin/shop-editor", response_class=HTMLResponse)
-    async def admin_shop_editor_page(request: Request):
-        """店舗管理エディタページ (shop-editor.html) を返すエンドポイント"""
+    @app.get("/shop-editor", response_class=HTMLResponse)
+    async def shop_editor_page(request: Request):
+        """店舗情報編集ページを返すエンドポイント"""
         token = request.cookies.get("authToken")
         if not token:
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ページが見つかりません")
@@ -765,5 +766,3 @@ Sitemap: {base_url}/sitemap.xml
         return {"message": "SNS Backend API", "version": settings.VERSION}
     
     return app
-
-    

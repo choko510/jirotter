@@ -49,7 +49,7 @@ async def create_post(
     """投稿作成エンドポイント"""
     ensure_user_can_contribute(current_user)
     # 投稿頻度の制限
-    await rate_limiter.hit(f"post:{current_user.id}", limit=5, window_seconds=60)
+    await rate_limiter.hit(f"post:{current_user.id}", limit=5, window_seconds=120)
 
     # 投稿内容のバリデーションとサニタイズ
     errors, sanitized_content = validate_post_content(content)

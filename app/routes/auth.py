@@ -60,7 +60,6 @@ async def get_turnstile_config():
     }
 
 @router.post("/auth/register", response_model=Token, status_code=status.HTTP_201_CREATED)
-@skip_csrf_check
 async def register(user_data: UserCreate, db: Session = Depends(get_db), request: Request = None):
     """ユーザー登録エンドポイント"""
 
@@ -130,7 +129,6 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db), request
         )
 
 @router.post("/auth/login", response_model=Token)
-@skip_csrf_check
 async def login(login_data: UserLogin, db: Session = Depends(get_db), request: Request = None):
     """ログインエンドポイント"""
     # バリデーション
@@ -260,7 +258,6 @@ async def get_auth_status(current_user: Optional[User] = Depends(get_current_use
     }
 
 @router.post("/auth/verify-email", response_model=Token)
-@skip_csrf_check
 async def verify_email_for_login(
     verification_data: EmailVerificationRequest,
     db: Session = Depends(get_db),

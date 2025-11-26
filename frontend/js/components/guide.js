@@ -3,26 +3,27 @@ const GuideComponent = {
     async render() {
         const contentArea = document.getElementById('contentArea');
         if (!contentArea) return;
-        
+
         contentArea.innerHTML = '';
-        
+
         const container = document.createElement('div');
         container.className = 'guide-container';
-        
+
         // タブコンテナを作成
         const tabsContainer = document.createElement('div');
         tabsContainer.className = 'guide-tabs';
-        
+
         // タブを作成
         const tabs = [
             { id: 'usage', name: 'ご利用ガイド', icon: 'fas fa-book' },
             { id: 'beginner', name: '初心者ガイド', icon: 'fas fa-graduation-cap' },
-            { id: 'explanation', name: '説明', icon: 'fas fa-graduation-cap' }
+            { id: 'explanation', name: '説明', icon: 'fas fa-graduation-cap' },
+            { id: 'ai', name: 'AI Q&A', icon: 'fas fa-robot' }
         ];
-        
+
         const tabButtons = document.createElement('div');
         tabButtons.className = 'tab-buttons';
-        
+
         tabs.forEach(tab => {
             const tabButton = document.createElement('button');
             tabButton.className = `guide-tab-button ${tab.id === 'usage' ? 'active' : ''}`;
@@ -31,18 +32,18 @@ const GuideComponent = {
             tabButton.addEventListener('click', () => this.switchTab(tab.id));
             tabButtons.appendChild(tabButton);
         });
-        
+
         tabsContainer.appendChild(tabButtons);
         container.appendChild(tabsContainer);
-        
+
         // コンテンツエリアを作成
         const guideContentArea = document.createElement('div');
         guideContentArea.className = 'guide-content-area';
-        
+
         // 初期表示として利用ガイドを表示
         guideContentArea.appendChild(await this.createUsageGuide());
         container.appendChild(guideContentArea);
-        
+
         contentArea.appendChild(container);
     },
 
@@ -50,7 +51,7 @@ const GuideComponent = {
         const guideContent = document.createElement('div');
         guideContent.className = 'guide-section active';
         guideContent.id = 'usage-guide';
-        
+
         // ヘッダー
         const header = document.createElement('div');
         header.className = 'guide-header';
@@ -59,7 +60,7 @@ const GuideComponent = {
             <p>このアプリの基本的な使い方を説明します</p>
         `;
         guideContent.appendChild(header);
-        
+
         // セクション1: ホーム画面
         const section1 = document.createElement('div');
         section1.className = 'guide-section-block';
@@ -74,7 +75,7 @@ const GuideComponent = {
             </ul>
         `;
         guideContent.appendChild(section1);
-        
+
         // セクション2: MAP機能
         const section2 = document.createElement('div');
         section2.className = 'guide-section-block';
@@ -89,7 +90,7 @@ const GuideComponent = {
             </ul>
         `;
         guideContent.appendChild(section2);
-        
+
         // セクション3: チェックイン機能
         const section3 = document.createElement('div');
         section3.className = 'guide-section-block';
@@ -104,7 +105,7 @@ const GuideComponent = {
             </ul>
         `;
         guideContent.appendChild(section3);
-        
+
         // セクション4: スタンプラリー
         const section4 = document.createElement('div');
         section4.className = 'guide-section-block';
@@ -119,7 +120,7 @@ const GuideComponent = {
             </ul>
         `;
         guideContent.appendChild(section4);
-        
+
         // セクション5: プロフィール設定
         const section5 = document.createElement('div');
         section5.className = 'guide-section-block';
@@ -134,7 +135,7 @@ const GuideComponent = {
             </ul>
         `;
         guideContent.appendChild(section5);
-        
+
         // ヒント
         const tips = document.createElement('div');
         tips.className = 'guide-tips';
@@ -154,7 +155,7 @@ const GuideComponent = {
             </div>
         `;
         guideContent.appendChild(tips);
-        
+
         return guideContent;
     },
 
@@ -162,7 +163,7 @@ const GuideComponent = {
         const guideContent = document.createElement('div');
         guideContent.className = 'guide-section';
         guideContent.id = 'beginner-guide';
-        
+
         // ヘッダー
         const header = document.createElement('div');
         header.className = 'guide-header';
@@ -171,7 +172,7 @@ const GuideComponent = {
             <p>二郎ラーメンを初めて食べる方向けのガイドです</p>
         `;
         guideContent.appendChild(header);
-        
+
         // セクション1: 列の並び方・食券の買い方
         const section1 = document.createElement('div');
         section1.className = 'guide-section-block';
@@ -193,7 +194,7 @@ const GuideComponent = {
             </div>
         `;
         guideContent.appendChild(section1);
-        
+
         // セクション2: 席に着いたら
         const section2 = document.createElement('div');
         section2.className = 'guide-section-block';
@@ -207,7 +208,7 @@ const GuideComponent = {
             </div>
         `;
         guideContent.appendChild(section2);
-        
+
         // セクション3: コール
         const section3 = document.createElement('div');
         section3.className = 'guide-section-block';
@@ -246,7 +247,7 @@ const GuideComponent = {
             </div>
         `;
         guideContent.appendChild(section3);
-        
+
         // セクション4: 食べるスピード
         const section4 = document.createElement('div');
         section4.className = 'guide-section-block';
@@ -256,7 +257,7 @@ const GuideComponent = {
             <p>早食いをしろ！というわけではありませんが、<span class="guide-highlight">スマホを長時間見たり、おしゃべりをして食べるのが遅くなることはやめましょう</span></p>
         `;
         guideContent.appendChild(section4);
-        
+
         return guideContent;
     },
 
@@ -264,7 +265,7 @@ const GuideComponent = {
         const guideContent = document.createElement('div');
         guideContent.className = 'guide-section';
         guideContent.id = 'explanation-guide';
-        
+
         // ヘッダー
         const header = document.createElement('div');
         header.className = 'guide-header';
@@ -273,7 +274,7 @@ const GuideComponent = {
             <p>二郎ラーメンについて説明します</p>
         `;
         guideContent.appendChild(header);
-        
+
         // セクション1: アプリの概要
         const section1 = document.createElement('div');
         section1.className = 'guide-section-block';
@@ -288,7 +289,7 @@ const GuideComponent = {
             <p>からなるラーメンである。</p>
         `;
         guideContent.appendChild(section1);
-        
+
         // セクション2: 主な機能
         const section2 = document.createElement('div');
         section2.className = 'guide-section-block';
@@ -303,7 +304,7 @@ const GuideComponent = {
             <p>が中、並と呼称されるサイズはない。</p>
         `;
         guideContent.appendChild(section2);
-        
+
         // セクション3: 料金と利用規約
         const section3 = document.createElement('div');
         section3.className = 'guide-section-block';
@@ -318,7 +319,7 @@ const GuideComponent = {
             </ul>
         `;
         guideContent.appendChild(section3);
-        
+
         // セクション4: お問い合わせ
         const section4 = document.createElement('div');
         section4.className = 'guide-section-block';
@@ -336,7 +337,89 @@ const GuideComponent = {
             </div>
         `;
         guideContent.appendChild(section4);
-        
+
+        return guideContent;
+    },
+
+    async createAiGuide() {
+        const guideContent = document.createElement('div');
+        guideContent.className = 'guide-section';
+        guideContent.id = 'ai-guide';
+
+        // ヘッダー
+        const header = document.createElement('div');
+        header.className = 'guide-header';
+        header.innerHTML = `
+            <h2><i class="fas fa-robot"></i> AI Q&A</h2>
+            <p>二郎ラーメンに関する質問にAIがお答えします</p>
+        `;
+        guideContent.appendChild(header);
+
+        // 質問フォーム
+        const formSection = document.createElement('div');
+        formSection.className = 'guide-section-block';
+        formSection.innerHTML = `
+            <h3><i class="fas fa-question-circle"></i> 質問する</h3>
+            <p>二郎のルールやマナー、専門用語など、わからないことがあれば聞いてみてください。</p>
+            <div class="ai-question-form">
+                <textarea id="ai-question-input" placeholder="例：コールって何ですか？" rows="3"></textarea>
+                <button id="ai-question-submit" class="btn-primary">
+                    <i class="fas fa-paper-plane"></i> 質問する
+                </button>
+            </div>
+        `;
+        guideContent.appendChild(formSection);
+
+        // 回答エリア
+        const answerSection = document.createElement('div');
+        answerSection.className = 'guide-section-block';
+        answerSection.id = 'ai-answer-section';
+        answerSection.style.display = 'none';
+        answerSection.innerHTML = `
+            <h3><i class="fas fa-comment-dots"></i> AIの回答</h3>
+            <div id="ai-answer-content" class="ai-answer-content"></div>
+        `;
+        guideContent.appendChild(answerSection);
+
+        // イベントリスナー
+        const submitBtn = formSection.querySelector('#ai-question-submit');
+        const input = formSection.querySelector('#ai-question-input');
+
+        submitBtn.addEventListener('click', async () => {
+            const question = input.value.trim();
+            if (!question) return;
+
+            submitBtn.disabled = true;
+            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 考え中...';
+
+            try {
+                const response = await fetch('/api/v1/guide/ask', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({ question }),
+                });
+
+                if (!response.ok) {
+                    throw new Error('Network response was not ok');
+                }
+
+                const data = await response.json();
+
+                const answerContent = document.getElementById('ai-answer-content');
+                answerContent.textContent = data.answer;
+                answerSection.style.display = 'block';
+
+            } catch (error) {
+                console.error('Error:', error);
+                alert('エラーが発生しました。もう一度お試しください。');
+            } finally {
+                submitBtn.disabled = false;
+                submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> 質問する';
+            }
+        });
+
         return guideContent;
     },
 
@@ -348,19 +431,21 @@ const GuideComponent = {
                 btn.classList.add('active');
             }
         });
-        
+
         // コンテンツを切り替え
         const contentArea = document.querySelector('.guide-content-area');
         if (!contentArea) return;
-        
+
         contentArea.innerHTML = '';
-        
+
         if (tabId === 'usage') {
             contentArea.appendChild(await this.createUsageGuide());
         } else if (tabId === 'beginner') {
             contentArea.appendChild(await this.createBeginnerGuide());
         } else if (tabId === 'explanation') {
             contentArea.appendChild(await this.createExplanationGuide());
+        } else if (tabId === 'ai') {
+            contentArea.appendChild(await this.createAiGuide());
         }
     }
 };

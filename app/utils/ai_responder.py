@@ -58,6 +58,36 @@ class GeminiResponder:
 
         return fallback
 
+    async def ask_guide(self, question: str) -> str:
+        """ガイド用の質問に回答する"""
+        if not self.client:
+            return "申し訳ありません。現在AI機能は利用できません。"
+
+        try:
+            response = await self.client.aio.models.generate_content(
+                model="gemini-flash-latest",
+                contents=question,
+                config=types.GenerateContentConfig(
+                    system_instruction=(
+                        "あなたはラーメン二郎の初心者向けガイドAIです。"
+                        "ユーザーからの質問に対して、二郎のルール、マナー、用語などを優しく解説してください。"
+                        "初心者にもわかりやすい言葉を選び、威圧感を与えないようにしてください。"
+                        "もし二郎に関係のない質問が来た場合は、丁寧に「ラーメン二郎に関する質問をお願いします」と返してください。"
+                    ),
+                    temperature=0.7,
+                    response_mime_type="text/plain",
+                ),
+            )
+
+            if response and response.text:
+                return response.text.strip()
+            
+            return "申し訳ありません。回答を生成できませんでした。"
+
+        except Exception as exc:
+            print(f"AIガイド回答生成中にエラーが発生しました: {exc}")
+            return "申し訳ありません。エラーが発生しました。"
+
 
 _responder = GeminiResponder()
 
@@ -134,3 +164,8 @@ async def generate_ai_reply(post_content: str, author_id: str) -> str:
     """投稿内容に応じてGeminiでAI返信メッセージを生成する。"""
     reply = await _responder.generate(post_content, author_id)
     return reply
+
+
+async def ask_ai_guide(question: str) -> str:
+    """ガイドへの質問に対してAI回答を生成する。"""
+    return await _responder.ask_guide(question)

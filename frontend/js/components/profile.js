@@ -426,33 +426,34 @@ const ProfileComponent = {
                     border: 1px solid transparent;
                     font-weight: 600;
                     letter-spacing: 0.02em;
-                    background: var(--profile-accent);
+                    background: #000000;
                     color: #ffffff;
                     cursor: pointer;
                     box-shadow: none;
-                    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, border-color 0.2s ease;
+                    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
                 }
 
                 .profile-action-button:hover {
                     transform: translateY(-1px);
-                    box-shadow: 0 12px 24px rgba(37, 99, 235, 0.22);
+                    box-shadow: 0 12px 24px rgba(0, 0, 0, 0.22);
+                    opacity: 0.8;
                 }
 
                 .profile-action-button:focus-visible {
-                    outline: 3px solid rgba(37, 99, 235, 0.35);
+                    outline: 3px solid rgba(0, 0, 0, 0.35);
                     outline-offset: 2px;
                 }
 
                 .profile-action-button.is-following {
                     background: var(--profile-surface);
-                    color: var(--profile-accent);
-                    border-color: var(--profile-accent);
+                    color: #000000;
+                    border-color: #000000;
                     box-shadow: none;
                 }
 
                 .profile-action-button.is-edit {
-                    background: #111827;
-                    border-color: #111827;
+                    background: #000000;
+                    border-color: #000000;
                 }
 
                 .profile-stats {
@@ -892,9 +893,9 @@ const ProfileComponent = {
             const sanitizedStatusMessage = API.escapeHtml(status_message || '');
             const normalizedStatus = (account_status || 'active').toLowerCase();
             const statusClass = `rank-status rank-status--${normalizedStatus}`;
-            if (normalizedStatus != "active"){
+            if (normalizedStatus != "active") {
                 isBAN = `<div class="${statusClass}">${sanitizedStatusMessage}</div>`;
-            }else{
+            } else {
                 isBAN = "";
             }
             const sanitizedNextRankName = API.escapeHtml(next_rank_name || '');
@@ -918,50 +919,6 @@ const ProfileComponent = {
                 ${isBAN}
             `;
             infoDiv.appendChild(rankCard);
-
-            const featuredTitleWrapper = document.createElement('div');
-            featuredTitleWrapper.className = 'profile-featured-title';
-
-            const featuredTitle = this.state.user.featured_title;
-            const featuredColor = featuredTitle?.theme_color || '#f97316';
-
-            const featuredIcon = document.createElement('div');
-            featuredIcon.className = 'profile-featured-title__icon';
-            featuredIcon.style.background = this.getColorWithAlpha(featuredColor, 0.18);
-            featuredIcon.style.color = featuredColor;
-            featuredIcon.textContent = featuredTitle?.icon || '☆';
-            featuredTitleWrapper.appendChild(featuredIcon);
-
-            const featuredBody = document.createElement('div');
-            featuredBody.className = 'profile-featured-title__body';
-
-            const featuredName = document.createElement('div');
-            featuredName.className = 'profile-featured-title__name';
-            featuredName.textContent = featuredTitle?.name || 'まだ称号がありません';
-            featuredBody.appendChild(featuredName);
-
-            const featuredDescription = document.createElement('div');
-            featuredDescription.className = 'profile-featured-title__description';
-            featuredDescription.textContent = featuredTitle?.description || '称号を獲得するとここにハイライト表示されます。';
-            featuredBody.appendChild(featuredDescription);
-
-            if (featuredTitle?.earned_at) {
-                const earned = document.createElement('div');
-                earned.className = 'profile-featured-title__description';
-                earned.textContent = `獲得日: ${this.formatDate(featuredTitle.earned_at)}`;
-                featuredBody.appendChild(earned);
-            }
-
-            featuredTitleWrapper.appendChild(featuredBody);
-
-            const rankingButton = document.createElement('button');
-            rankingButton.type = 'button';
-            rankingButton.className = 'profile-featured-title__link';
-            rankingButton.textContent = 'ランキングを確認';
-            rankingButton.addEventListener('click', () => router.navigate('rankings'));
-            featuredTitleWrapper.appendChild(rankingButton);
-
-            infoDiv.appendChild(featuredTitleWrapper);
 
             const statsDiv = document.createElement('div');
             statsDiv.className = 'profile-stats';
@@ -1021,18 +978,23 @@ const ProfileComponent = {
                 actionButton.classList.toggle('is-following', Boolean(is_following));
                 actionButton.setAttribute('aria-pressed', Boolean(is_following));
                 actionButton.addEventListener('click', () => this.toggleFollow(id));
+            }
+            infoDiv.appendChild(actionButton);
 
-                // プロフィール通報ボタン（他人のプロフィールのみ表示）
+            // 通報ボタン（他人のプロフィールのみ、目立たない場所に配置）
+            if (!isOwnProfile) {
                 const reportBtn = document.createElement('button');
                 reportBtn.className = 'profile-action-button';
-                reportBtn.style.marginLeft = '12px';
-                reportBtn.style.background = '#ef4444';
-                reportBtn.style.boxShadow = '0 12px 24px rgba(239,68,68,0.35)';
-                reportBtn.textContent = 'このプロフィールを通報';
+                reportBtn.style.marginTop = '8px';
+                reportBtn.style.background = '#000000';
+                reportBtn.style.fontSize = '12px';
+                reportBtn.style.padding = '6px 12px';
+                reportBtn.style.opacity = '0.6';
+                reportBtn.style.boxShadow = 'none';
+                reportBtn.textContent = '通報';
                 reportBtn.addEventListener('click', () => this.openUserReportDialog(this.state.user));
                 infoDiv.appendChild(reportBtn);
             }
-            infoDiv.appendChild(actionButton);
             header.appendChild(infoDiv);
             profilePage.appendChild(header);
 
@@ -1734,7 +1696,7 @@ const ProfileComponent = {
         fileInput.accept = 'image/*';
 
         const helperText = document.createElement('small');
-        helperText.textContent = '5MB以下のJPEG/PNG/GIF/WebPを推奨します。';
+        helperText.textContent = 'JPEG/PNG/GIF/WebPのみ。';
         helperText.style.display = 'block';
         helperText.style.marginTop = '4px';
         helperText.style.color = '#666';
@@ -1886,13 +1848,13 @@ const ProfileComponent = {
     // 遅延読み込みの設定
     setupLazyLoading() {
         const images = document.querySelectorAll('.profile-post-item img[data-src]');
-        
+
         if ('IntersectionObserver' in window) {
             const imageObserver = new IntersectionObserver((entries, observer) => {
                 entries.forEach(entry => {
                     if (entry.isIntersecting) {
                         const img = entry.target;
-                        
+
                         // ネットワーク状況に応じて画像の読み込みを制御
                         if (this.isSlowNetwork()) {
                             // 低速ネットワークの場合はサムネイルのまま
@@ -1900,7 +1862,7 @@ const ProfileComponent = {
                             observer.unobserve(img);
                             return;
                         }
-                        
+
                         // 通常画質画像に切り替え
                         const highQualitySrc = img.dataset.src;
                         if (highQualitySrc && img.src !== highQualitySrc) {
@@ -1915,14 +1877,14 @@ const ProfileComponent = {
                             // 高画質画像がない場合でもロード済みとしてマーク
                             img.dataset.loaded = 'true';
                         }
-                        
+
                         observer.unobserve(img);
                     }
                 });
             }, {
                 rootMargin: '50px' // ビューポートの50px手前から読み込み開始
             });
-            
+
             images.forEach(img => imageObserver.observe(img));
         } else {
             // IntersectionObserverがサポートされていない場合のフォールバック
@@ -1931,7 +1893,7 @@ const ProfileComponent = {
                     img.dataset.loaded = 'true';
                     return; // 低速ネットワークの場合はサムネイルのまま
                 }
-                
+
                 const highQualitySrc = img.dataset.src;
                 if (highQualitySrc) {
                     img.src = highQualitySrc;
@@ -1948,7 +1910,7 @@ const ProfileComponent = {
     // ネットワーク速度の判定
     isSlowNetwork() {
         const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-        
+
         if (connection) {
             // 接続タイプで判定
             if (connection.type === 'cellular') {
@@ -1959,13 +1921,13 @@ const ProfileComponent = {
                     return true;
                 }
             }
-            
+
             // ダウンロード速度で判定
             if (connection.downlink && connection.downlink < 1.5) {
                 return true; // 1.5Mbps未満は低速と判定
             }
         }
-        
+
         return false;
     },
 

@@ -12,6 +12,7 @@ from typing import List, Optional, Tuple, Set
 from sqlalchemy.orm import Session
 
 from app.models import Post, Reply
+from app.utils.url_safety import URLBlocklistManager, URLSafetyResponse
 
 JACONV_AVAILABLE = importlib.util.find_spec("jaconv") is not None
 if JACONV_AVAILABLE:
@@ -77,6 +78,8 @@ class SpamDetectorConfig:
         "contact_drop": 2.0,
         "mention_bomb": 2.0,
         "emoji_bomb": 1.5,
+        "random_alphanum": 2.0,  # ランダムな英数字列
+        "meaningless_japanese": 1.5,  # 意味のない日本語文字列
     })
 
 
@@ -87,6 +90,24 @@ class SpamDetector:
     URL_PATTERN = re.compile(r"(?i)\b(?:https?://|www\.)[^\s]+")
     LINK_PATTERN = re.compile(r"https?://")  # 互換のために残す
     REPEATED_CHAR_PATTERN = re.compile(r"(.)\1{9,}")  # 同じ文字が10回以上連続
+
+    # --- 文字列分析のためのUnicode正規表現 ---
+    RE_HIRAGANA = re.compile(r'[\u3040-\u309F]')
+    RE_JAPANESE = re.compile(r'[\u3040-\u309F\u30A0-\u30FF\u4E00-\u9FFF]')
+
+    # --- 英語圏の単語としてありえない子音のペア ---
+    UNLIKELY_CONSONANT_PAIRS = {
+        'bv', 'bx', 'cf', 'cg', 'cj', 'cq', 'cv', 'cx', 'dx', 'fv', 'fx', 'gq',
+        'gx', 'gv', 'hf', 'hg', 'hj', 'hk', 'hq', 'hv', 'hx', 'jc', 'jd', 'jf',
+        'jg', 'jk', 'jl', 'jm', 'jn', 'jp', 'jq', 'jr', 'js', 'jt', 'jv', 'jw',
+        'jx', 'jz', 'kq', 'kv', 'kw', 'kx', 'kz', 'lq', 'lx', 'mq', 'mx', 'mz',
+        'pq', 'pv', 'px', 'qb', 'qc', 'qd', 'qf', 'qg', 'qh', 'qj', 'qk', 'ql',
+        'qm', 'qn', 'qp', 'qs', 'qt', 'qv', 'qw', 'qx', 'qy', 'qz', 'sx', 'sz',
+        'vf', 'vg', 'vq', 'vx', 'vz', 'wx', 'wz', 'xb', 'xc', 'xd', 'xg', 'xj',
+        'xk', 'xm', 'xn', 'xp', 'xq', 'xr', 'xt', 'xv', 'xz', 'yq', 'yx', 'yz',
+        'zb', 'zc', 'zd', 'zf', 'zg', 'zj', 'zk', 'zl', 'zm', 'zn', 'zp', 'zq',
+        'zr', 'zs', 'zt', 'zv', 'zx'
+    }
 
     # 誘導・スパム頻出語（日本語+英語）
     KEYWORD_PATTERN = re.compile(
@@ -125,6 +146,8 @@ class SpamDetector:
         self.badwords = self._load_badwords()
         # badwordsの正規表現パターンをコンパイル
         self.badwords_pattern = self._compile_badwords_pattern()
+        # URLブロックリストマネージャーを初期化
+        self.url_blocklist_manager = URLBlocklistManager()
 
     def _load_badwords(self) -> Set[str]:
         """badwords.txtから不適切な単語リストを読み込む"""
@@ -231,6 +254,62 @@ class SpamDetector:
         
         return ChunkedPattern(patterns)
 
+    def is_random_alphanum_string(self, s: str) -> bool:
+        """英数字の文字列がランダムな羅列である可能性が高いか判定する。"""
+        if len(s) <= 2:
+            return len(s) == 2 and s.isupper() and not any(c in 'AEIOU' for c in s)
+
+        # 不自然な大文字化 (例: "jsuBRAH")
+        if re.search(r'[a-z][A-Z]', s):
+            return True
+
+        s_lower = s.lower()
+        # 不自然な子音のペア
+        if any(s_lower[i:i+2] in self.UNLIKELY_CONSONANT_PAIRS for i in range(len(s_lower) - 1)):
+            return True
+
+        # その他のヒューリスティック
+        has_lower = any(c.islower() for c in s)
+        has_upper = any(c.isupper() for c in s)
+        has_digit = any(c.isdigit() for c in s)
+        if len(s) <= 10 and has_lower and has_upper and has_digit:
+            return True
+        if all(c.isupper() or c.isdigit() for c in s) and has_upper and has_digit and len(s) > 4:
+            return True
+        if re.search(r'[a-zA-Z]\d[a-zA-Z]', s):
+            return True
+            
+        name_alpha_only = ''.join(filter(str.isalpha, s))
+        if not name_alpha_only:
+            return False
+
+        vowels = "aeiou"
+        if len(name_alpha_only) in [3, 4] and all(c.lower() not in vowels for c in name_alpha_only):
+            return True
+        
+        if len(name_alpha_only) >= 5:
+            num_vowels = sum(1 for c in name_alpha_only.lower() if c in vowels)
+            if (num_vowels / len(name_alpha_only)) < 0.2:
+                return True
+                
+            consonants = ''.join(c for c in name_alpha_only.lower() if c not in vowels)
+            if len(consonants) >= 5 and any(consonants[i:i+5] for i in range(len(consonants)-4)):
+                return True
+
+        return False
+
+    def is_meaningful_japanese_string(self, s: str) -> bool:
+        """
+        日本語の文字列が意味のあるものである可能性が高いか判定する。
+        ひらがなが一文字でも含まれていれば、意図的な文字列と見なす。
+        """
+        if self.RE_HIRAGANA.search(s):
+            return True
+        # 現状では、ひらがなを含まないカタカナや漢字のみの文字列も、
+        # ランダムな英数字と混在していない限りは「意味あり」と見なす。
+        # これにより、`機密資料`のようなファイル名を保護する。
+        return True
+
     # -----------------------------
     # Public API (互換)
     # -----------------------------
@@ -248,6 +327,7 @@ class SpamDetector:
         score += self._check_contacts(normalized, reasons)
         score += self._check_noise(normalized, reasons)
         score += self._check_social(normalized, reasons)
+        score += self._check_random_strings(normalized, reasons)
 
         # DB依存のチェック（存在すれば）
         score += self._check_exact_duplicate_post(db, user_id, normalized, reasons)
@@ -276,6 +356,7 @@ class SpamDetector:
         score += self._check_contacts(normalized, reasons)
         score += self._check_noise(normalized, reasons)
         score += self._check_social(normalized, reasons)
+        score += self._check_random_strings(normalized, reasons)
 
         # DB依存チェック
         score += self._check_exact_duplicate_reply(db, user_id, post_id, normalized, reasons)
@@ -319,6 +400,16 @@ class SpamDetector:
             if any(s in host for s in self.URL_SHORTENERS):
                 reasons.append(f"短縮URLが含まれています: {host}")
                 score += self.cfg.weights["url_shortener"]
+
+            # URLブロックリストチェック
+            try:
+                safety_result = self.url_blocklist_manager.check_url(url)
+                if not safety_result.safe:
+                    reasons.append(f"ブロックリストに登録された危険なリンクが含まれています: {host}")
+                    score += 5.0  # ブロックリストマッチは高スコア
+            except Exception as e:
+                # ブロックリストチェック失敗時は既存のチェックのみ継続
+                pass
 
         # 難読化URL
         if self.OBFUSCATED_URL_PATTERN.search(text):
@@ -414,6 +505,28 @@ class SpamDetector:
         if emojis / total > self.cfg.emoji_max_ratio and emojis >= 5:
             reasons.append("絵文字が不自然に多用されています")
             score += self.cfg.weights["emoji_bomb"]
+        return score
+
+    def _check_random_strings(self, text: str, reasons: List[str]) -> float:
+        """ランダムな英数字文字列と意味のない日本語文字列をチェックする"""
+        score = 0.0
+        
+        # 英数字のみの部分文字列をチェック
+        alphanum_parts = re.findall(r'[A-Za-z0-9]+', text)
+        for part in alphanum_parts:
+            if self.is_random_alphanum_string(part):
+                reasons.append("ランダムな英数字列が含まれています")
+                score += self.cfg.weights["random_alphanum"]
+                break  # 1回検出すれば十分
+        
+        # 日本語文字列の意味チェック
+        japanese_parts = self.RE_JAPANESE.findall(text)
+        if japanese_parts:
+            has_meaningful_japanese = any(self.is_meaningful_japanese_string(part) for part in japanese_parts)
+            if not has_meaningful_japanese:
+                reasons.append("意味のない日本語文字列が含まれています")
+                score += self.cfg.weights["meaningless_japanese"]
+        
         return score
 
     def _check_social(self, text: str, reasons: List[str]) -> float:

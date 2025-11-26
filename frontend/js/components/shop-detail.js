@@ -445,7 +445,6 @@ const ShopDetailComponent = {
                 </div>
                 <div class="review-form-feedback" id="shopReviewFormFeedback" aria-live="polite"></div>
                 <button type="submit" class="action-button primary">レビューを投稿</button>
-                <p class="review-form-hint">AIによるモデレーションで安全なコミュニティを保ちます。</p>
             </form>
         `;
 

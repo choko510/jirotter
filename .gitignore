@@ -24,6 +24,7 @@ Thumbs.db
 
 # その他
 *.log
+*.txt
 
 .idx
 
