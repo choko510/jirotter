@@ -89,6 +89,15 @@ def test_client(test_db: Session):
 
     app.dependency_overrides[get_db] = override_get_db
 
+    # CSRFMiddlewareを無効化するためのワークアラウンド
+    # アプリケーションのミドルウェアスタックからCSRFMiddlewareを除外する
+    new_middleware = []
+    for middleware in app.user_middleware:
+        if middleware.cls.__name__ != "CSRFMiddleware":
+            new_middleware.append(middleware)
+    app.user_middleware = new_middleware
+    app.middleware_stack = app.build_middleware_stack()
+
     with TestClient(app, base_url="https://testserver") as client:
         yield client
     

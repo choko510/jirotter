@@ -17,6 +17,7 @@ itsdangerous
 pytest-asyncio
 jaconv
 filetype
+bcrypt==4.0.1
 # テスト用
 pytest
 pytest-playwright

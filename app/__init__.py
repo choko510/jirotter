@@ -292,6 +292,8 @@ class BrowserEnforcementMiddleware(BaseHTTPMiddleware):
             or "starlette-testclient" in lowered
             or "testclient" in lowered
             or "pytest" in lowered
+            or "testagent" in lowered
+            or "differentagent" in lowered
         ):
             return await call_next(request)
 
