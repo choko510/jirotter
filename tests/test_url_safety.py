@@ -135,7 +135,11 @@ class TestSpamDetectorIntegration:
         
         # 検証
         assert mock_check_url.called
-        assert "ブロックリストに登録された危険なリンクが含まれています" in reasons
+        # メッセージにはドメインが含まれる場合があるため、部分一致で確認するか、期待値を調整
+        # assert 'ブロックリストに登録された危険なリンクが含まれています' in ['ブロックリストに登録された危険なリンクが含まれています: malicious.com', 'URLを難読化した表現が含まれています']
+        # The failure was: assert '...' in ['...: malicious.com', ...]
+        found = any("ブロックリストに登録された危険なリンクが含まれています" in r for r in reasons)
+        assert found, f"Expected warning not found in reasons: {reasons}"
         assert score >= 5.0  # ブロックリストマッチは高スコア
 
 class TestURLBlocklistManager:
@@ -177,7 +181,12 @@ class TestURLBlocklistManager:
         127.0.0.1 bad-site.com
         ! 別のコメント
         """
-        mock_client.get.return_value = mock_response
+
+        # AsyncMockを使ってawaitに対応
+        async def mock_get(*args, **kwargs):
+            return mock_response
+
+        mock_client.get = MagicMock(side_effect=mock_get)
         
         manager = URLBlocklistManager()
         result = await manager._download_list(mock_client, 'https://test-list.com')
