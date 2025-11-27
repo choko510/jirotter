@@ -700,6 +700,17 @@ const API = {
         }
     },
 
+    // おすすめユーザー取得
+    getRecommendations: async function (limit = 20) {
+        try {
+            const data = await this.request(`/api/v1/users/me/recommendations?limit=${limit}`);
+            return { success: true, users: data };
+        } catch (error) {
+            console.error('おすすめユーザーの取得に失敗しました:', error);
+            return { success: false, error: error.message };
+        }
+    },
+
     // 時間フォーマット
     formatTime(dateString) {
         const date = new Date(dateString);
