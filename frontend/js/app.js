@@ -1043,4 +1043,9 @@ document.addEventListener('DOMContentLoaded', function () {
     if (typeof RightSidebar !== 'undefined') {
         RightSidebar.init();
     }
+
+    // Initialize AiSupportComponent
+    if (typeof AiSupportComponent !== 'undefined') {
+        AiSupportComponent.init();
+    }
 });
