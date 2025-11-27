@@ -1012,6 +1012,9 @@ const ProfileComponent = {
             tabs.appendChild(createTab('投稿', 'posts', true));
             tabs.appendChild(createTab('フォロワー', 'followers'));
             tabs.appendChild(createTab('フォロー中', 'following'));
+            if (isOwnProfile) {
+                tabs.appendChild(createTab('おすすめ', 'recommendations'));
+            }
             tabs.appendChild(createTab('称号', 'titles'));
             profilePage.appendChild(tabs);
 
@@ -1158,6 +1161,8 @@ const ProfileComponent = {
             this.showFollowers();
         } else if (tabName === 'following') {
             this.showFollowing();
+        } else if (tabName === 'recommendations') {
+            this.showRecommendations();
         }
     },
 
@@ -1388,6 +1393,85 @@ const ProfileComponent = {
             }
         } catch (error) {
             content.innerHTML = `<div class="error">フォロー中の読み込みに失敗しました: ${error.message}</div>`;
+        }
+    },
+
+    async showRecommendations() {
+        const content = document.getElementById('profileContent');
+        content.innerHTML = `<div class="loading">おすすめユーザーを読み込み中...</div>`;
+
+        try {
+            const result = await API.getRecommendations();
+            content.innerHTML = ''; // Clear loading
+
+            if (result.success) {
+                if (result.users.length === 0) {
+                    const noUsersDiv = document.createElement('div');
+                    noUsersDiv.className = 'user-list-empty';
+                    noUsersDiv.innerHTML = '現在おすすめできるユーザーはいません。<br>もっと店舗にチェックインして行動を広げてみましょう！';
+                    content.appendChild(noUsersDiv);
+                    return;
+                }
+
+                const infoDiv = document.createElement('div');
+                infoDiv.style.marginBottom = '16px';
+                infoDiv.style.fontSize = '14px';
+                infoDiv.style.color = 'var(--profile-muted)';
+                infoDiv.textContent = 'あなたがよく行くお店に通っているユーザーです。';
+                content.appendChild(infoDiv);
+
+                const userList = document.createElement('div');
+                userList.className = 'user-list';
+                result.users.forEach(user => {
+                    const item = document.createElement('div');
+                    item.className = 'user-list-item';
+                    item.style.cursor = 'pointer';
+                    item.addEventListener('click', () => {
+                        router.navigate('profile', [user.id]);
+                    });
+
+                    const avatar = document.createElement('div');
+                    avatar.className = 'user-list-avatar';
+                    const avatarImg = document.createElement('img');
+                    avatarImg.src = user.profile_image_url || 'assets/baseicon.png';
+                    avatarImg.alt = `${user.username}のアイコン`;
+                    avatar.appendChild(avatarImg);
+                    item.appendChild(avatar);
+
+                    const userInfo = document.createElement('div');
+                    userInfo.className = 'user-list-info';
+                    const nameDiv = document.createElement('div');
+                    nameDiv.className = 'user-list-name';
+                    nameDiv.textContent = user.username;
+                    userInfo.appendChild(nameDiv);
+
+                    const idDiv = document.createElement('div');
+                    idDiv.className = 'user-list-id';
+                    idDiv.textContent = `@${user.id}`;
+                    userInfo.appendChild(idDiv);
+
+                    if (user.bio) {
+                        const bioDiv = document.createElement('div');
+                        bioDiv.style.fontSize = '12px';
+                        bioDiv.style.color = 'var(--profile-muted)';
+                        bioDiv.style.marginTop = '4px';
+                        bioDiv.style.overflow = 'hidden';
+                        bioDiv.style.textOverflow = 'ellipsis';
+                        bioDiv.style.whiteSpace = 'nowrap';
+                        bioDiv.style.maxWidth = '200px';
+                        bioDiv.textContent = user.bio;
+                        userInfo.appendChild(bioDiv);
+                    }
+
+                    item.appendChild(userInfo);
+                    userList.appendChild(item);
+                });
+                content.appendChild(userList);
+            } else {
+                throw new Error(result.error);
+            }
+        } catch (error) {
+            content.innerHTML = `<div class="error">おすすめユーザーの読み込みに失敗しました: ${error.message}</div>`;
         }
     },
 

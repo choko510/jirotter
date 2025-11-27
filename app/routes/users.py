@@ -28,6 +28,7 @@ from app.utils.achievements import (
     serialize_title_brief,
 )
 from app.utils.scoring import award_points, get_rank_snapshot, get_status_message
+from app.utils.recommendations import get_user_recommendations
 
 router = APIRouter(tags=["users"])
 
@@ -382,6 +383,18 @@ async def get_following(user_id: str, db: Session = Depends(get_db)):
 
     following = [UserResponse.model_validate(f.followed) for f in user.following]
     return following
+
+
+@router.get("/users/me/recommendations", response_model=List[UserResponse])
+async def get_recommendations(
+    limit: int = Query(20, ge=1, le=50),
+    db: Session = Depends(get_db),
+    current_user: User = Depends(get_current_user)
+):
+    """おすすめユーザーを取得する"""
+    recommended_users = get_user_recommendations(db, current_user, limit)
+    return [UserResponse.model_validate(u) for u in recommended_users]
+
 
 @router.delete("/users/me", status_code=status.HTTP_204_NO_CONTENT)
 async def delete_user_account(
