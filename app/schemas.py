@@ -724,7 +724,8 @@ class ReportResponse(ReportBase):
     model_config = ConfigDict(from_attributes=True)
     
     id: int
-    post_id: int
+    post_id: Optional[int] = None
+    target_user_id: Optional[str] = None
     reporter_id: str
     created_at: datetime
 

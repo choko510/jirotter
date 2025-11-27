@@ -257,6 +257,7 @@ class Report(Base):
     id = Column(Integer, primary_key=True)
     post_id = Column(Integer, ForeignKey('posts.id'), nullable=True)
     reply_id = Column(Integer, ForeignKey('replies.id'), nullable=True)
+    target_user_id = Column(String(80), ForeignKey('users.id'), nullable=True)
     reporter_id = Column(String(80), ForeignKey('users.id'), nullable=False)
     reason = Column(String(255), nullable=False)
     description = Column(Text)
@@ -265,12 +266,14 @@ class Report(Base):
     __table_args__ = (
         UniqueConstraint('post_id', 'reporter_id', name='uq_reports_post_reporter'),
         UniqueConstraint('reply_id', 'reporter_id', name='uq_reports_reply_reporter'),
+        UniqueConstraint('target_user_id', 'reporter_id', name='uq_reports_user_reporter'),
     )
     
     # Relationships
     post = relationship('Post', backref='post_reports')
     reply = relationship('Reply', backref='reply_reports')
-    reporter = relationship('User', backref='reports_made')
+    reporter = relationship('User', foreign_keys=[reporter_id], backref='reports_made')
+    target_user = relationship('User', foreign_keys=[target_user_id], backref='reports_received')
 
 
 class UserPointLog(Base):
