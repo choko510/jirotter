@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status, BackgroundTasks
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import Dict, Any, List
 
 from database import get_db
@@ -44,13 +44,12 @@ async def create_user_report(
             detail="自分自身を通報することはできません",
         )
 
-    # 同一対象ユーザーに対する重複通報を防止（任意仕様）
-    # Reportモデルに user_id カラムがないため、description 内スナップショットで識別
+    # 同一対象ユーザーに対する重複通報を防止
     existing_report = (
         db.query(Report)
         .filter(
             Report.reporter_id == current_user.id,
-            Report.description.contains(f"対象ユーザーID: {reported_user.id}"),
+            Report.target_user_id == reported_user.id,
         )
         .first()
     )
@@ -110,7 +109,7 @@ async def create_user_report(
     }
 
     try:
-        # 既存 Report モデルを流用し、description にスナップショットを埋め込む
+        # description にスナップショットを埋め込む（管理画面での参照用）
         snapshot_text = (
             "[ユーザー通報]\n"
             f"対象ユーザーID: {profile_snapshot['reported_user_id']}\n"
@@ -124,6 +123,7 @@ async def create_user_report(
 
         report = Report(
             reporter_id=current_user.id,
+            target_user_id=reported_user_id,
             reason=report_data.reason,
             description=snapshot_text,
         )
@@ -144,6 +144,7 @@ async def create_user_report(
         return {
             "id": report.id,
             "reported_user_id": reported_user.id,
+            "target_user_id": reported_user.id,
             "reporter_id": current_user.id,
             "reason": report.reason,
             "description": report.description,
@@ -324,9 +325,11 @@ async def get_reports(
 
         reports = (
             db.query(Report)
-            .filter(
-                Report.post_id == Post.id,
-                Report.reporter_id == User.id,
+            .options(
+                joinedload(Report.post).joinedload(Post.author),
+                joinedload(Report.reporter),
+                joinedload(Report.target_user),
+                joinedload(Report.reply).joinedload(Reply.author)
             )
             .order_by(Report.created_at.desc())
             .offset((page - 1) * per_page)
@@ -336,19 +339,32 @@ async def get_reports(
 
         report_responses = []
         for report in reports:
-            report_responses.append(
-                {
-                    "id": report.id,
-                    "post_id": report.post_id,
-                    "post_content": report.post.content,
-                    "post_author": report.post.author.username,
-                    "reporter_id": report.reporter_id,
-                    "reporter_name": report.reporter.username,
-                    "reason": report.reason,
-                    "description": report.description,
-                    "created_at": report.created_at,
-                }
-            )
+            item = {
+                "id": report.id,
+                "reporter_id": report.reporter_id,
+                "reporter_name": report.reporter.username if report.reporter else "Unknown",
+                "reason": report.reason,
+                "description": report.description,
+                "created_at": report.created_at,
+                "type": "unknown",
+            }
+
+            if report.post:
+                item["type"] = "post"
+                item["post_id"] = report.post_id
+                item["post_content"] = report.post.content
+                item["post_author"] = report.post.author.username if report.post.author else "Unknown"
+            elif report.target_user:
+                item["type"] = "user"
+                item["target_user_id"] = report.target_user_id
+                item["target_user_name"] = report.target_user.username if report.target_user else "Unknown"
+            elif report.reply:
+                item["type"] = "reply"
+                item["reply_id"] = report.reply_id
+                item["reply_content"] = report.reply.content
+                item["reply_author"] = report.reply.author.username if report.reply and report.reply.author else "Unknown"
+
+            report_responses.append(item)
 
         return {
             "reports": report_responses,
@@ -357,7 +373,8 @@ async def get_reports(
             "current_page": page,
         }
 
-    except Exception:
+    except Exception as e:
+        print(f"Error getting reports: {e}")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="通報一覧の取得に失敗しました",
