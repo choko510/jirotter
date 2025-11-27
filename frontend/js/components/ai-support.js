@@ -100,7 +100,24 @@ const AiSupportComponent = {
                 this.removeMessage(loadingId);
 
                 if (!response.ok) {
-                    throw new Error('Network response was not ok');
+                    let errorMessage = 'エラーが発生しました。';
+
+                    // ステータスコードに応じたエラーメッセージ
+                    if (response.status === 401) {
+                        errorMessage = '質問するにはログインが必要です。';
+                        // ログインページへの誘導などの処理を追加可能
+                    } else if (response.status === 403) {
+                        const errorData = await response.json();
+                        errorMessage = errorData.detail || '利用が制限されています。';
+                    } else if (response.status === 429) {
+                        errorMessage = '質問の回数が多すぎます。しばらく待ってから再度お試しください。';
+                    } else if (response.status === 400) {
+                        const errorData = await response.json();
+                        errorMessage = errorData.detail || '質問内容が不適切か、空です。';
+                    }
+
+                    this.appendMessage(errorMessage, 'ai', true);
+                    return;
                 }
 
                 const data = await response.json();
@@ -109,7 +126,7 @@ const AiSupportComponent = {
             } catch (error) {
                 console.error('Error:', error);
                 this.removeMessage(loadingId);
-                this.appendMessage('申し訳ありません。エラーが発生しました。もう一度お試しください。', 'ai', true);
+                this.appendMessage('申し訳ありません。通信エラーが発生しました。もう一度お試しください。', 'ai', true);
             }
         };
 
@@ -180,11 +197,11 @@ const AiSupportComponent = {
 
     escapeHtml(unsafe) {
         return unsafe
-            .replace(/&/g, "&amp;")
-            .replace(/</g, "&lt;")
-            .replace(/>/g, "&gt;")
-            .replace(/"/g, "&quot;")
-            .replace(/'/g, "&#039;");
+            .replace(/&/g, "&")
+            .replace(/</g, "<")
+            .replace(/>/g, ">")
+            .replace(/"/g, """)
+                .replace(/'/g, "&#039;");
     }
 };
 

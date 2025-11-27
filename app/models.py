@@ -46,6 +46,11 @@ class User(Base):
     moderated_by_id = Column(String(80), nullable=True)
     is_admin = Column(Boolean, nullable=False, default=False)
 
+    @property
+    def is_banned(self):
+        """アカウントがBANされているか確認する"""
+        return self.account_status in ('banned', 'suspended')
+
     # Relationships
     posts = relationship('Post', backref='author', lazy=True, cascade='all, delete-orphan')
     likes = relationship('Like', backref='user', lazy=True, cascade='all, delete-orphan')
