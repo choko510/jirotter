@@ -65,13 +65,17 @@ const StampRallyComponent = {
 
     // イベントバインド
     bindEvents() {
+        document.addEventListener('change', (e) => {
+            if (e.target.id === 'brandSelect') {
+                this.filterByBrand(e.target.value);
+            }
+            if (e.target.id === 'prefectureSelect') {
+                this.filterByPrefecture(e.target.value);
+            }
+        });
+
         document.addEventListener('click', (e) => {
-            if (e.target.classList.contains('brand-filter-btn')) {
-                this.filterByBrand(e.target.dataset.brand);
-            }
-            if (e.target.classList.contains('prefecture-filter-btn')) {
-                this.filterByPrefecture(e.target.dataset.prefecture);
-            }
+            // view-switch-btn and load-more-shops logic
             if (e.target.closest('.view-switch-btn')) {
                 this.switchView(e.target.closest('.view-switch-btn').dataset.view);
             }
@@ -142,48 +146,46 @@ const StampRallyComponent = {
                 
                 .filter-section {
                     margin-bottom: 30px;
-                }
-                
-                .filter-header {
-                    margin-bottom: 15px;
-                }
-                
-                .filter-header h3 {
-                    margin: 0;
-                    font-size: 18px;
-                    color: var(--color-primary);
-                }
-                
-                .brand-filters {
                     display: flex;
-                    justify-content: center;
-                    gap: 10px;
-                    margin-bottom: 20px;
                     flex-wrap: wrap;
-                }
-                
-                .prefecture-filters {
+                    gap: 20px;
                     background: #f9f9f9;
-                    border-radius: 8px;
-                    padding: 10px;
-                    margin-bottom: 20px;
+                    border-radius: 12px;
+                    padding: 20px;
+                    align-items: center;
+                    justify-content: center;
                 }
-
-                .region-details {
-                    margin-bottom: 5px;
-                }
-
-                .region-summary {
-                    font-weight: bold;
-                    cursor: pointer;
-                    padding: 5px;
-                }
-
-                .prefecture-buttons {
+                
+                .filter-group {
                     display: flex;
-                    flex-wrap: wrap;
+                    flex-direction: column;
                     gap: 8px;
-                    padding: 10px;
+                    min-width: 200px;
+                    flex: 1;
+                }
+
+                .filter-group label {
+                    font-weight: bold;
+                    color: var(--color-primary);
+                    font-size: 14px;
+                }
+
+                .filter-select {
+                    width: 100%;
+                    padding: 10px 12px;
+                    border-radius: 8px;
+                    border: 1px solid #e0e0e0;
+                    background-color: white;
+                    font-size: 14px;
+                    color: #333;
+                    cursor: pointer;
+                    transition: border-color 0.2s, box-shadow 0.2s;
+                }
+
+                .filter-select:focus {
+                    outline: none;
+                    border-color: var(--color-primary);
+                    box-shadow: 0 0 0 2px var(--color-primary-soft);
                 }
 
                 .progress-accordion {
@@ -216,30 +218,6 @@ const StampRallyComponent = {
 
                 .region-progress-details .progress-grid {
                     padding: 16px;
-                }
-                
-                .brand-filter-btn,
-                .prefecture-filter-btn {
-                    background: #ffffff;
-                    border: 1px solid #e0e0e0;
-                    color: #666;
-                    padding: 8px 16px;
-                    border-radius: 20px;
-                    cursor: pointer;
-                    transition: all 0.2s;
-                    font-size: 14px;
-                }
-                
-                .brand-filter-btn:hover,
-                .prefecture-filter-btn:hover {
-                    background: #f5f5f5;
-                }
-                
-                .brand-filter-btn.active,
-                .prefecture-filter-btn.active {
-                    background: var(--color-primary);
-                    border-color: var(--color-primary);
-                    color: white;
                 }
                 
                 .shops-grid {
@@ -587,6 +565,10 @@ const StampRallyComponent = {
                         grid-template-columns: 1fr;
                         gap: 15px;
                     }
+                    .filter-section {
+                        flex-direction: column;
+                        align-items: stretch;
+                    }
                 }
             </style>
             
@@ -622,13 +604,17 @@ const StampRallyComponent = {
             </div>
 
             <div class="filter-section">
-                <div class="filter-header"><h3>ブランド</h3></div>
-                <div class="brand-filters" id="brandFilters">
-                    ${this.renderBrandFilters()}
+                <div class="filter-group">
+                    <label for="brandSelect">ブランド</label>
+                    <select id="brandSelect" class="filter-select">
+                        ${this.renderBrandFilters()}
+                    </select>
                 </div>
-                <div class="filter-header"><h3>都道府県</h3></div>
-                <div class="prefecture-filters" id="prefectureFilters">
-                    ${this.renderPrefectureFilters()}
+                <div class="filter-group">
+                    <label for="prefectureSelect">都道府県</label>
+                    <select id="prefectureSelect" class="filter-select">
+                        ${this.renderPrefectureFilters()}
+                    </select>
                 </div>
             </div>
 
@@ -839,57 +825,39 @@ const StampRallyComponent = {
 
     // ブランドフィルターをレンダリング
     renderBrandFilters() {
-        let buttonsHtml = `
-            <button class="brand-filter-btn ${this.state.selectedBrand === 'all' ? 'active' : ''}" data-brand="all">
-                すべて
-            </button>
-        `;
+        let optionsHtml = `<option value="all" ${this.state.selectedBrand === 'all' ? 'selected' : ''}>すべて</option>`;
 
         for (const [brandKey, brandConfig] of Object.entries(this.BRAND_CONFIG)) {
             if (brandKey === 'other') continue;
             
-            buttonsHtml += `
-                <button class="brand-filter-btn ${this.state.selectedBrand === brandKey ? 'active' : ''}" data-brand="${brandKey}">
+            optionsHtml += `
+                <option value="${brandKey}" ${this.state.selectedBrand === brandKey ? 'selected' : ''}>
                     ${brandConfig.name}
-                </button>
+                </option>
             `;
         }
 
-        return buttonsHtml;
+        return optionsHtml;
     },
 
     // 都道府県フィルターをレンダリング
     renderPrefectureFilters() {
-        let buttonsHtml = `
-            <button class="prefecture-filter-btn ${this.state.selectedPrefecture === 'all' ? 'active' : ''}" data-prefecture="all">
-                全国
-            </button>
-        `;
+        let optionsHtml = `<option value="all" ${this.state.selectedPrefecture === 'all' ? 'selected' : ''}>全国</option>`;
 
         for (const region in this.REGION_PREFECTURES) {
-            // 「全国」選択時は全て閉じる（shouldOpen=false）
-            const shouldOpen = this.state.selectedPrefecture !== 'all'
-                && this.REGION_PREFECTURES[region].includes(this.state.selectedPrefecture);
+            optionsHtml += `<optgroup label="${this.escapeHtml(region)}">`;
 
-            buttonsHtml += `
-                <details class="region-details"${shouldOpen ? ' open' : ''}>
-                    <summary class="region-summary">${this.escapeHtml(region)}</summary>
-                    <div class="prefecture-buttons">
-            `;
             this.REGION_PREFECTURES[region].forEach(prefecture => {
-                buttonsHtml += `
-                    <button class="prefecture-filter-btn ${this.state.selectedPrefecture === prefecture ? 'active' : ''}" data-prefecture="${prefecture}">
+                optionsHtml += `
+                    <option value="${prefecture}" ${this.state.selectedPrefecture === prefecture ? 'selected' : ''}>
                         ${prefecture}
-                    </button>
+                    </option>
                 `;
             });
-            buttonsHtml += `
-                    </div>
-                </details>
-            `;
+            optionsHtml += `</optgroup>`;
         }
 
-        return buttonsHtml;
+        return optionsHtml;
     },
 
     // 指定した店舗の訪問画像一覧を取得
@@ -1017,22 +985,70 @@ const StampRallyComponent = {
         this.state.currentPage = 1;
         this.state.hasMoreShops = true;
 
-        // アクティブ状態を更新
-        document.querySelectorAll('.brand-filter-btn').forEach(btn => {
-            btn.classList.remove('active');
-            if (btn.dataset.brand === brand) {
-                btn.classList.add('active');
-            }
-        });
+        // Note: With select box, we don't need to manually update class names for buttons
+        // but we might want to ensure the select value matches state (already handled by render or onchange)
 
-        // 再レンダリング
+        // 再レンダリング (Grid only if just client side filter? No, brand is client side, prefecture is server side)
+        // If we change brand, we re-filter the *currently loaded* shops.
+        // But if prefecture is set, shops are loaded for that prefecture.
+
         const shopsGrid = document.getElementById('shopsGrid');
         if (shopsGrid) {
             shopsGrid.innerHTML = this.renderShopsGrid();
         }
 
+        // If we want to reload data (in case we change logic later), we can call loadData()
+        // But currently brand filtering is purely client side on the fetched list.
+        // HOWEVER, as noted in thought process, client side filtering on paginated data is problematic.
+        // For now, I will keep the behavior consistent with existing code but remove the prefecture reset logic in loadData.
+
+        // If I want to support "Jiro in Tokyo", I should reload data if I change Brand?
+        // No, `loadShops` does NOT take brand.
+        // So `loadData` fetches by prefecture. Then `renderShopsGrid` filters by brand.
+        // So changing brand only requires re-rendering grid.
+
+        // Wait, if I have `loadData()` here it triggers full reload.
+        // The previous code did:
+        /*
         if (this.state.currentView === 'list') {
             this.loadData();
+        }
+        */
+        // But `loadData` previously reset prefecture to 'all'.
+        // Now I removed that reset in `loadData` (see below).
+        // So if I call `loadData`, it fetches shops for current prefecture again?
+        // If prefecture hasn't changed, `loadData` fetches the same list.
+        // So `loadData` is redundant unless we want to refresh.
+        // BUT `renderShopsGrid` uses `this.state.shops`.
+
+        // So simply re-rendering grid is enough if `this.state.shops` is already populated for the current prefecture.
+        // Yes.
+
+        // However, if I change brand, I might want to reset page?
+        // `this.state.currentPage = 1;` was set.
+        // `this.state.hasMoreShops = true;` was set.
+        // If I don't reload data, `this.state.shops` might contain pages 1..N.
+        // If I filter by brand, I filter from `this.state.shops`.
+        // This is fine.
+
+        // But wait, the previous code CALLED `loadData()`. Why?
+        // Because if `brand !== 'all'`, it forced `prefecture = 'all'`.
+        // So it HAD to fetch new data (all prefectures).
+        // Now, if I select a brand, I KEEP the current prefecture.
+        // So I don't need to fetch new data. I just filter what I have.
+        // UNLESS the user wants to fetch *more* data to find that brand?
+        // That's the pagination issue.
+
+        // I will stick to re-rendering grid only, to be efficient,
+        // UNLESS the previous behavior of "switching brand resets everything" was desired.
+        // But we want "intuitive" UI.
+
+        // Let's stick to: Change Brand -> Filter current list.
+        // But if I change prefecture -> Fetch new list.
+
+        const shopsGridEl = document.getElementById('shopsGrid');
+        if (shopsGridEl) {
+            shopsGridEl.innerHTML = this.renderShopsGrid();
         }
     },
 
@@ -1042,15 +1058,7 @@ const StampRallyComponent = {
         this.state.currentPage = 1;
         this.state.hasMoreShops = true;
         
-        // アクティブ状態を更新
-        document.querySelectorAll('.prefecture-filter-btn').forEach(btn => {
-            btn.classList.remove('active');
-            if (btn.dataset.prefecture === prefecture) {
-                btn.classList.add('active');
-            }
-        });
-        
-        // 新しいデータで再読み込み
+        // 新しいデータで再読み込み (Prefecture filtering is server side)
         await this.loadData();
     },
 
@@ -1072,9 +1080,11 @@ const StampRallyComponent = {
                 this.state.progressMessage = '';
                 this.state.visitedMessage = '';
                 const perPage = 20;
-                const prefectureFilter = this.state.selectedBrand === 'all'
-                    ? this.state.selectedPrefecture
-                    : 'all';
+
+                // MODIFIED: Do NOT force prefecture to 'all' if brand is selected.
+                // Allow both filters.
+                const prefectureFilter = this.state.selectedPrefecture;
+
                 const [shopsResponse, checkinsResponse, visitsResponse] = await Promise.all([
                     this.loadShops(1, perPage, prefectureFilter),
                     this.loadCheckins(),
@@ -1197,9 +1207,9 @@ const StampRallyComponent = {
         this.state.isLoading = true;
         
         try {
-            const prefectureFilter = this.state.selectedBrand === 'all'
-                ? this.state.selectedPrefecture
-                : 'all';
+            // MODIFIED: Use current selected prefecture
+            const prefectureFilter = this.state.selectedPrefecture;
+
             const newShops = await this.loadShops(this.state.currentPage, 20, prefectureFilter);
 
             if (newShops.length === 0) {
