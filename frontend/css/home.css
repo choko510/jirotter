@@ -499,7 +499,7 @@ body {
 .bottom-nav-content {
     display: flex;
     justify-content: space-between;
-    align-items: flex-end;
+    align-items: center;
     max-width: 600px;
     margin: 0 auto;
     padding: 0 16px;

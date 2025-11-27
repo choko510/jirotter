@@ -100,10 +100,6 @@ class Post(Base):
     replies = relationship('Reply', backref='post', lazy=True, cascade='all, delete-orphan')
     shop = relationship('RamenShop', backref='posts')
 
-    @property
-    def author_username(self):
-        # username は任意入力なので None の場合は id を返す
-        return self.author.username or self.author.id
 
     @property
     def likes_count(self):
@@ -112,6 +108,11 @@ class Post(Base):
     @property
     def replies_count(self):
         return len(self.replies)
+
+    @property
+    def author_username(self):
+        # username は任意入力なので None の場合は id を返す
+        return self.author.username or self.author.id
 
     @property
     def author_profile_image_url(self):

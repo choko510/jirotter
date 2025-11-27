@@ -89,7 +89,7 @@ async def register(user_data: UserCreate, db: Session = Depends(get_db), request
     if validation_errors:
         print(f"バリデーションエラー: {validation_errors}")
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=validation_errors
         )
     
@@ -141,7 +141,7 @@ async def login(login_data: UserLogin, db: Session = Depends(get_db), request: R
         error_message = " ".join(error_messages)
         
         raise HTTPException(
-            status_code=status.HTTP_422_UNPROCESSABLE_ENTITY,
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
             detail=error_message
         )
     

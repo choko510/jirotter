@@ -95,7 +95,7 @@ def get_ip_location(request: Request) -> Optional[Dict[str, Any]]:
 
         response = httpx.get(
             f"https://ipinfo.io/{ip}/json",
-            timeout=httpx.Timeout(2.0, connect=2.0),
+            timeout=httpx.Timeout(timeout=2.0, connect=2.0),
             follow_redirects=False,
         )
         if response.status_code == 200:

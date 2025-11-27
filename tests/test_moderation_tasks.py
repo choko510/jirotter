@@ -67,10 +67,10 @@ def spam_post():
     return post
 
 
-@pytest.mark.asyncio
 class TestModerationTasks:
     """モデレーションタスクのテスト"""
 
+    @pytest.mark.asyncio
     @patch('app.utils.moderation_tasks.content_moderator')
     @patch('app.utils.moderation_tasks.joinedload')
     async def test_moderate_normal_post_high_score_user(self, mock_joinedload, mock_moderator, mock_session_factory, sample_user, sample_post):
@@ -100,6 +100,7 @@ class TestModerationTasks:
         mock_moderator.analyze_content.assert_not_called()
         mock_db.commit.assert_not_called()
 
+    @pytest.mark.asyncio
     @patch('app.utils.moderation_tasks.content_moderator')
     @patch('app.utils.moderation_tasks.joinedload')
     async def test_moderate_normal_post_low_score_user(self, mock_joinedload, mock_moderator, mock_session_factory, low_score_user, sample_post):
@@ -129,6 +130,7 @@ class TestModerationTasks:
         mock_moderator.analyze_content.assert_called_once()
         mock_db.commit.assert_called_once()
 
+    @pytest.mark.asyncio
     @patch('app.utils.moderation_tasks.content_moderator')
     @patch('app.utils.moderation_tasks.joinedload')
     async def test_moderate_spam_post_high_score_user(self, mock_joinedload, mock_moderator, mock_session_factory, sample_user, spam_post):
@@ -158,6 +160,7 @@ class TestModerationTasks:
         mock_moderator.analyze_content.assert_called_once()
         mock_db.commit.assert_called_once()
 
+    @pytest.mark.asyncio
     @patch('app.utils.moderation_tasks.content_moderator')
     @patch('app.utils.moderation_tasks.joinedload')
     async def test_moderate_violation_post_creates_report(self, mock_joinedload, mock_moderator, mock_session_factory, low_score_user, sample_post):
@@ -198,6 +201,7 @@ class TestModerationTasks:
         assert hasattr(added_object, 'reporter_id')
         assert hasattr(added_object, 'reason')
 
+    @pytest.mark.asyncio
     @patch('app.utils.moderation_tasks.content_moderator')
     @patch('app.utils.moderation_tasks.joinedload')
     async def test_moderate_post_not_found(self, mock_joinedload, mock_moderator, mock_session_factory):
@@ -237,6 +241,7 @@ class TestModerationTasks:
         # create_taskが呼ばれたことを確認
         mock_create_task.assert_called_once()
 
+    @pytest.mark.asyncio
     @patch('app.utils.moderation_tasks.content_moderator')
     @patch('app.utils.moderation_tasks.joinedload')
     async def test_moderate_low_spam_score_post(self, mock_joinedload, mock_moderator, mock_session_factory, sample_user, sample_post):
@@ -267,6 +272,7 @@ class TestModerationTasks:
         mock_moderator.analyze_content.assert_called_once()
         mock_db.commit.assert_called_once()
 
+    @pytest.mark.asyncio
     @patch('app.utils.moderation_tasks.content_moderator')
     @patch('app.utils.moderation_tasks.joinedload')
     async def test_moderate_medium_spam_score_post(self, mock_joinedload, mock_moderator, mock_session_factory, sample_user, sample_post):
@@ -297,6 +303,7 @@ class TestModerationTasks:
         mock_moderator.analyze_content.assert_called_once()
         mock_db.commit.assert_called_once()
 
+    @pytest.mark.asyncio
     @patch('app.utils.moderation_tasks.content_moderator')
     @patch('app.utils.moderation_tasks.joinedload')
     async def test_moderate_high_spam_score_post(self, mock_joinedload, mock_moderator, mock_session_factory, sample_user, sample_post):
@@ -327,6 +334,7 @@ class TestModerationTasks:
         mock_moderator.analyze_content.assert_called_once()
         mock_db.commit.assert_called_once()
 
+    @pytest.mark.asyncio
     @patch('app.utils.moderation_tasks.content_moderator')
     @patch('app.utils.moderation_tasks.apply_penalty')
     @patch('app.utils.moderation_tasks.joinedload')
