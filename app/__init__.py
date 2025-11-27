@@ -448,18 +448,42 @@ def create_app():
     if settings.DEBUG:
         app.add_middleware(CacheBustingMiddleware)
 
-    app.add_middleware(CSRFMiddleware, secret=settings.SESSION_SECRET_KEY)
+    app.add_middleware(CSRFMiddleware, secret=settings.SESSION_SECRET_KEY, header_name="X-CSRF-Token")
 
     # CORSミドルウェアの設定
-    app.add_middleware(
-        CORSMiddleware,
-        allow_origins=["*"],  # 本番環境では適切なオリジンに制限
-        allow_credentials=True,
-        allow_methods=["*"],
-        allow_headers=["*"],
-        expose_headers=["*"],
-        max_age=600,
-    )
+    cors_config = {
+        "allow_credentials": True,
+        "max_age": 600,
+    }
+    
+    if settings.DEBUG:
+        # 開発環境: すべてのオリジンを許可
+        cors_config.update({
+            "allow_origins": ["*"],
+            "allow_methods": ["*"],
+            "allow_headers": ["*"],
+            "expose_headers": ["*"],
+        })
+    else:
+        # 本番環境: 設定に基づいて制限
+        if not settings.ALLOWED_ORIGINS:
+            print("Warning: ALLOWED_ORIGINS is not set. CORS is disabled.")
+            # 本番環境では安全のためデフォルトで空リストを使用
+            cors_config.update({
+                "allow_origins": [],
+                "allow_methods": getattr(settings, "ALLOWED_METHODS", ["GET", "POST", "PUT", "DELETE"]),
+                "allow_headers": getattr(settings, "ALLOWED_HEADERS", []),
+                "expose_headers": getattr(settings, "EXPOSED_HEADERS", []),
+            })
+        else:
+            cors_config.update({
+                "allow_origins": settings.ALLOWED_ORIGINS,
+                "allow_methods": getattr(settings, "ALLOWED_METHODS", ["GET", "POST", "PUT", "DELETE"]),
+                "allow_headers": getattr(settings, "ALLOWED_HEADERS", []),
+                "expose_headers": getattr(settings, "EXPOSED_HEADERS", []),
+            })
+    
+    app.add_middleware(CORSMiddleware, **cors_config)
     
     # 静的ファイルの提供設定（JSは専用エンドポイントで難読化）
     if settings.DEBUG:

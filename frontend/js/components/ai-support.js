@@ -76,7 +76,7 @@ const AiSupportComponent = {
             const question = input.value.trim();
             if (!question) return;
 
-            // ユーザーの質問を表示
+            // ユーザーの質問を显示
             this.appendMessage(question, 'user');
 
             // 入力をクリア
@@ -92,6 +92,7 @@ const AiSupportComponent = {
                     method: 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'X-CSRF-Token': API.getCookie('csrftoken')
                     },
                     body: JSON.stringify({ question }),
                 });
@@ -197,11 +198,11 @@ const AiSupportComponent = {
 
     escapeHtml(unsafe) {
         return unsafe
-            .replace(/&/g, "&")
-            .replace(/</g, "<")
-            .replace(/>/g, ">")
-            .replace(/"/g, """)
-                .replace(/'/g, "&#039;");
+            .replace(/&/g, "&amp;")
+            .replace(/</g, "&lt;")
+            .replace(/>/g, "&gt;")
+            .replace(/"/g, "&quot;")
+            .replace(/'/g, "&#039;");
     }
 };
 

@@ -46,6 +46,13 @@
     }
   }
 
+  function getCookie(name) {
+    const value = `; ${document.cookie}`;
+    const parts = value.split(`; ${name}=`);
+    if (parts.length === 2) return parts.pop().split(';').shift();
+    return null;
+  }
+
   function showNotification(message, type = "notice") {
     if (!els.notificationArea) return;
     const div = document.createElement("div");
@@ -318,6 +325,7 @@
             method: "PATCH",
             headers: {
               "Content-Type": "application/json",
+              "X-CSRF-Token": getCookie("csrftoken"),
             },
             credentials: "include",
             body: JSON.stringify(payload),
@@ -576,7 +584,7 @@
   function bindEvents() {
     if (els.reloadBtn) {
       els.reloadBtn.addEventListener("click", () => {
-        fetchShops().catch(() => {});
+        fetchShops().catch(() => { });
       });
     }
     if (els.searchInput) {

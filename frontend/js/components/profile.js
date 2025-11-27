@@ -1519,59 +1519,6 @@ const ProfileComponent = {
         const submitBtn = document.createElement('button');
         submitBtn.type = 'button';
         submitBtn.textContent = '通報を送信';
-        submitBtn.style.padding = '8px 16px';
-        submitBtn.style.borderRadius = '999px';
-        submitBtn.style.border = 'none';
-        submitBtn.style.background = '#ef4444';
-        submitBtn.style.color = '#fff';
-        submitBtn.style.fontWeight = '600';
-        submitBtn.addEventListener('click', async () => {
-            const reason = (reasonSelect.value || '').trim();
-            const description = detailInput.value.trim();
-
-            if (!reason) {
-                Utils.showNotification('通報理由を入力してください', 'warning');
-                return;
-            }
-
-            submitBtn.disabled = true;
-            submitBtn.textContent = '送信中...';
-
-            try {
-                const apiBase = (typeof API !== 'undefined' && API.baseUrl) ? API.baseUrl : '/api/v1';
-                const res = await fetch(`${apiBase}/users/${encodeURIComponent(targetUser.id)}/report`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'Authorization': `Bearer ${token}`
-                    },
-                    body: JSON.stringify({
-                        reason,
-                        description
-                    })
-                });
-
-                const data = await res.json().catch(() => ({}));
-
-                if (!res.ok) {
-                    const msg = data.detail || data.message || '通報の送信に失敗しました';
-                    throw new Error(msg);
-                }
-
-                Utils.showNotification('通報を受け付けました。ご協力ありがとうございます。', 'success');
-                document.body.removeChild(overlay);
-            } catch (err) {
-                console.error('Failed to report user', err);
-                Utils.showNotification(`通報に失敗しました: ${err.message || err}`, 'error');
-                submitBtn.disabled = false;
-                submitBtn.textContent = '通報を送信';
-            }
-        });
-        actions.appendChild(submitBtn);
-
-        modal.appendChild(actions);
-        overlay.appendChild(modal);
-
         overlay.addEventListener('click', (e) => {
             if (e.target === overlay) {
                 document.body.removeChild(overlay);
