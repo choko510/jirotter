@@ -17,8 +17,7 @@ const GuideComponent = {
         const tabs = [
             { id: 'usage', name: 'ご利用ガイド', icon: 'fas fa-book' },
             { id: 'beginner', name: '初心者ガイド', icon: 'fas fa-graduation-cap' },
-            { id: 'explanation', name: '説明', icon: 'fas fa-graduation-cap' },
-            { id: 'ai', name: 'AI Q&A', icon: 'fas fa-robot' }
+            { id: 'explanation', name: '説明', icon: 'fas fa-graduation-cap' }
         ];
 
         const tabButtons = document.createElement('div');
@@ -341,88 +340,6 @@ const GuideComponent = {
         return guideContent;
     },
 
-    async createAiGuide() {
-        const guideContent = document.createElement('div');
-        guideContent.className = 'guide-section';
-        guideContent.id = 'ai-guide';
-
-        // ヘッダー
-        const header = document.createElement('div');
-        header.className = 'guide-header';
-        header.innerHTML = `
-            <h2><i class="fas fa-robot"></i> AI Q&A</h2>
-            <p>二郎ラーメンに関する質問にAIがお答えします</p>
-        `;
-        guideContent.appendChild(header);
-
-        // 質問フォーム
-        const formSection = document.createElement('div');
-        formSection.className = 'guide-section-block';
-        formSection.innerHTML = `
-            <h3><i class="fas fa-question-circle"></i> 質問する</h3>
-            <p>二郎のルールやマナー、専門用語など、わからないことがあれば聞いてみてください。</p>
-            <div class="ai-question-form">
-                <textarea id="ai-question-input" placeholder="例：コールって何ですか？" rows="3"></textarea>
-                <button id="ai-question-submit" class="btn-primary">
-                    <i class="fas fa-paper-plane"></i> 質問する
-                </button>
-            </div>
-        `;
-        guideContent.appendChild(formSection);
-
-        // 回答エリア
-        const answerSection = document.createElement('div');
-        answerSection.className = 'guide-section-block';
-        answerSection.id = 'ai-answer-section';
-        answerSection.style.display = 'none';
-        answerSection.innerHTML = `
-            <h3><i class="fas fa-comment-dots"></i> AIの回答</h3>
-            <div id="ai-answer-content" class="ai-answer-content"></div>
-        `;
-        guideContent.appendChild(answerSection);
-
-        // イベントリスナー
-        const submitBtn = formSection.querySelector('#ai-question-submit');
-        const input = formSection.querySelector('#ai-question-input');
-
-        submitBtn.addEventListener('click', async () => {
-            const question = input.value.trim();
-            if (!question) return;
-
-            submitBtn.disabled = true;
-            submitBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> 考え中...';
-
-            try {
-                const response = await fetch('/api/v1/guide/ask', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                    },
-                    body: JSON.stringify({ question }),
-                });
-
-                if (!response.ok) {
-                    throw new Error('Network response was not ok');
-                }
-
-                const data = await response.json();
-
-                const answerContent = document.getElementById('ai-answer-content');
-                answerContent.textContent = data.answer;
-                answerSection.style.display = 'block';
-
-            } catch (error) {
-                console.error('Error:', error);
-                alert('エラーが発生しました。もう一度お試しください。');
-            } finally {
-                submitBtn.disabled = false;
-                submitBtn.innerHTML = '<i class="fas fa-paper-plane"></i> 質問する';
-            }
-        });
-
-        return guideContent;
-    },
-
     async switchTab(tabId) {
         // タブボタンのアクティブ状態を切り替え
         document.querySelectorAll('.guide-tab-button').forEach(btn => {
@@ -444,8 +361,6 @@ const GuideComponent = {
             contentArea.appendChild(await this.createBeginnerGuide());
         } else if (tabId === 'explanation') {
             contentArea.appendChild(await this.createExplanationGuide());
-        } else if (tabId === 'ai') {
-            contentArea.appendChild(await this.createAiGuide());
         }
     }
 };
