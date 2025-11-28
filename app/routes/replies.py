@@ -1,5 +1,5 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from sqlalchemy.orm import Session
+from sqlalchemy.orm import Session, joinedload
 from typing import List, Optional
 
 from database import get_db
@@ -99,7 +99,13 @@ async def get_replies_for_post(
     db: Session = Depends(get_db)
 ):
     """返信一覧取得エンドポイント"""
-    post = db.query(Post).filter(Post.id == post_id).first()
+    # 投稿の存在確認 (N+1を防ぐため、返信と著者も一緒にロードする)
+    # Post.replies は lazy=True だが、ここで joinedload を指定することで
+    # 1回のクエリで取得する。さらに Reply.author も取得する。
+    post = db.query(Post).options(
+        joinedload(Post.replies).joinedload(Reply.author)
+    ).filter(Post.id == post_id).first()
+
     if not post:
         raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="Post not found")
 

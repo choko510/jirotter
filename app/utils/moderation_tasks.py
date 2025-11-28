@@ -137,8 +137,9 @@ async def schedule_task(coro) -> None:
     - テスト環境などイベントループ未存在時: 新規イベントループで実行
     """
     try:
-        loop = asyncio.get_running_loop()
-        loop.create_task(coro)
+        # 現在のループがあるか確認
+        asyncio.get_running_loop()
+        asyncio.create_task(coro)
     except RuntimeError:
         # 実行中のイベントループが無い場合（同期コンテキストなど）は新規ループで実行
         try:
@@ -155,9 +156,4 @@ async def schedule_post_moderation(post_id: int, db_session: Session) -> None:
 
     session_factory = sessionmaker(autocommit=False, autoflush=False, bind=bind)
 
-    try:
-        asyncio.create_task(_moderate_post(post_id, session_factory))
-    except RuntimeError:
-        # テスト環境などでイベントループが存在しない場合は同期的に実行
-        with suppress(Exception):
-            asyncio.run(_moderate_post(post_id, session_factory))
+    await schedule_task(_moderate_post(post_id, session_factory))

@@ -52,7 +52,7 @@ class User(Base):
         return self.account_status in ('banned', 'suspended')
 
     # Relationships
-    posts = relationship('Post', backref='author', lazy=True, cascade='all, delete-orphan')
+    posts = relationship('Post', back_populates='author', lazy=True, cascade='all, delete-orphan')
     likes = relationship('Like', backref='user', lazy=True, cascade='all, delete-orphan')
     replies = relationship('Reply', backref='author', lazy=True, cascade='all, delete-orphan')
     shop_reviews = relationship('ShopReview', back_populates='author', lazy=True, cascade='all, delete-orphan')
@@ -101,6 +101,7 @@ class Post(Base):
     spam_score = Column(Float, nullable=True, default=0.0)  # スパム検出スコア
 
     # Relationships
+    author = relationship('User', back_populates='posts')
     likes = relationship('Like', backref='post', lazy=True, cascade='all, delete-orphan')
     replies = relationship('Reply', backref='post', lazy=True, cascade='all, delete-orphan')
     shop = relationship('RamenShop', backref='posts')
