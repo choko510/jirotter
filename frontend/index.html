@@ -8,6 +8,9 @@
     <meta name="description" content="Jirotterとは、全国の二郎系ラーメンを仲間のジロリアンと共に情報共有をしたり、ランキングで競ったりするジロリアンのためのコミュニティです。">
     <link rel="canonical" href="https://jirotter.site/">
     <link rel="shortcut icon" href="assets/favicon.ico">
+    <link rel="manifest" href="assets/manifest.json">
+    <meta name="theme-color" content="#e6ad27">
+    <link rel="apple-touch-icon" href="assets/baseicon.png">
     <!-- OGP -->
     <meta property="og:type" content="website">
     <meta property="og:title" content="二郎系ラーメン専用SNS|地図で店舗を探し、他のジロリアンと競うコミュニティ">
@@ -173,11 +176,11 @@
             </div>
             <div class="bottom-nav-item" data-route="stamp-rally">
                 <div class="bottom-nav-icon"><i class="fa-solid fa-stamp"></i></div>
-                <span>スタンプラリー</span>
+                <span>足跡</span>
             </div>
             <div class="bottom-nav-item" id="bottomNavProfile" onclick="Utils.goToCurrentUserProfile()">
                 <div class="bottom-nav-icon"><i class="fas fa-user"></i></div>
-                <span>プロフィール</span>
+                <span>マイページ</span>
             </div>
         </div>
     </nav>
@@ -204,6 +207,19 @@
     <script src="js/components/external-link.js"></script>
     <script src="js/components/right-sidebar.js"></script>
     <script src="js/app.js"></script>
+    <script>
+        if ('serviceWorker' in navigator) {
+            window.addEventListener('load', () => {
+                navigator.serviceWorker.register('./sw.js')
+                    .then(registration => {
+                        console.log('ServiceWorker registration successful');
+                    })
+                    .catch(err => {
+                        console.log('ServiceWorker registration failed: ', err);
+                    });
+            });
+        }
+    </script>
 </body>
 
 </html>

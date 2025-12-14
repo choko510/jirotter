@@ -1,0 +1,22 @@
+{
+    "name": "Jirotter",
+    "short_name": "Jirotter",
+    "start_url": "/",
+    "scope": "/",
+    "display": "standalone",
+    "background_color": "#ffffff",
+    "theme_color": "#e6ad27",
+    "description": "二郎系ラーメン専用SNS",
+    "icons": [
+        {
+            "src": "baseicon.png",
+            "sizes": "192x192",
+            "type": "image/png"
+        },
+        {
+            "src": "icon.svg",
+            "sizes": "any",
+            "type": "image/svg+xml"
+        }
+    ]
+}
