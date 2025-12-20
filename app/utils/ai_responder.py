@@ -88,6 +88,51 @@ class GeminiResponder:
             print(f"AIガイド回答生成中にエラーが発生しました: {exc}")
             return "申し訳ありません。エラーが発生しました。"
 
+    async def ask_about_shop(self, question: str, shop_info: dict) -> str:
+        """店舗情報をコンテキストとして含めて質問に回答する"""
+        if not self.client:
+            return "申し訳ありません。現在AI機能は利用できません。"
+
+        # 店舗情報をコンテキストとして構築
+        shop_context = f"""
+【店舗情報】
+店名: {shop_info.get('name', '不明')}
+住所: {shop_info.get('address', '不明')}
+営業時間: {shop_info.get('business_hours', '不明')}
+定休日: {shop_info.get('closed_day', '不明')}
+座席: {shop_info.get('seats', '不明')}
+
+【ユーザーの質問】
+{question}
+"""
+
+        try:
+            response = await self.client.aio.models.generate_content(
+                model="gemini-flash-latest",
+                contents=shop_context,
+                config=types.GenerateContentConfig(
+                    system_instruction=(
+                        "あなたはラーメン二郎・二郎系ラーメン店に精通したフレンドリーなアシスタントです。"
+                        "提供された店舗情報を参考にして、ユーザーの質問に丁寧に回答してください。"
+                        "店舗固有のルールや注意点がある場合は、一般的な二郎系店舗の情報も踏まえて回答してください。"
+                        "初心者にもわかりやすい言葉を選び、威圧感を与えないようにしてください。"
+                        "回答は簡潔で実用的な内容を心がけてください。"
+                        "もし店舗やラーメンに関係のない質問が来た場合は、丁寧に「この店舗やラーメンに関する質問をお願いします」と返してください。"
+                    ),
+                    temperature=0.7,
+                    response_mime_type="text/plain",
+                ),
+            )
+
+            if response and response.text:
+                return response.text.strip()
+            
+            return "申し訳ありません。回答を生成できませんでした。"
+
+        except Exception as exc:
+            print(f"店舗AI回答生成中にエラーが発生しました: {exc}")
+            return "申し訳ありません。エラーが発生しました。"
+
 
 _responder = GeminiResponder()
 
@@ -169,3 +214,8 @@ async def generate_ai_reply(post_content: str, author_id: str) -> str:
 async def ask_ai_guide(question: str) -> str:
     """ガイドへの質問に対してAI回答を生成する。"""
     return await _responder.ask_guide(question)
+
+
+async def ask_shop_question(question: str, shop_info: dict) -> str:
+    """店舗情報をコンテキストとして含めてAI回答を生成する。"""
+    return await _responder.ask_about_shop(question, shop_info)

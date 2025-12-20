@@ -94,6 +94,13 @@ const MapComponent = {
         searchQuery: '',
         searchResults: [],
 
+        // 追加フィルター関連
+        openNowFilter: false,        // 営業中フィルター
+        visitStatusFilter: 'all',    // 'all', 'visited', 'not_visited'
+        visitedShopIds: new Set(),   // 訪問済み店舗IDセット
+        visitedShopsLoaded: false,   // 訪問済み店舗読み込み済みフラグ
+        shopDataCache: new Map(),    // 店舗データキャッシュ（営業時間判定用）
+
         // キャッシュ関連
         cache: {
             shopCache: new Map(),
@@ -238,6 +245,85 @@ const MapComponent = {
     // ブランドごとの店舗数をカウントする関数
     countShopsByBrand(shops) {
         return MapUtils.countShopsByBrand(shops, this.BRAND_CONFIG, MapUtils.determineBrand);
+    },
+
+    // 営業時間を解析して現在営業中かどうか判定する関数
+    isShopOpenNow(businessHours) {
+        if (!businessHours || typeof businessHours !== 'string') {
+            return null; // 不明
+        }
+
+        try {
+            const now = new Date();
+            const currentHour = now.getHours();
+            const currentMinute = now.getMinutes();
+            const currentTimeMinutes = currentHour * 60 + currentMinute;
+
+            // 営業時間のパターンを解析
+            // 例: "11:00~14:30 17:00~21:00", "11:00-14:30", "11:00～21:00"
+            const timeRangePattern = /(\d{1,2}):(\d{2})\s*[~\-～]\s*(\d{1,2}):(\d{2})/g;
+            const matches = [...businessHours.matchAll(timeRangePattern)];
+
+            if (matches.length === 0) {
+                return null; // 解析できない
+            }
+
+            for (const match of matches) {
+                const openHour = parseInt(match[1], 10);
+                const openMinute = parseInt(match[2], 10);
+                const closeHour = parseInt(match[3], 10);
+                const closeMinute = parseInt(match[4], 10);
+
+                const openTimeMinutes = openHour * 60 + openMinute;
+                // 閉店が翌日にまたがる場合（例: 22:00~02:00）
+                let closeTimeMinutes = closeHour * 60 + closeMinute;
+                if (closeTimeMinutes < openTimeMinutes) {
+                    closeTimeMinutes += 24 * 60;
+                }
+
+                // 現在時刻も翌日判定に対応
+                let checkTime = currentTimeMinutes;
+                if (currentTimeMinutes < openTimeMinutes && closeTimeMinutes > 24 * 60) {
+                    checkTime += 24 * 60;
+                }
+
+                if (checkTime >= openTimeMinutes && checkTime < closeTimeMinutes) {
+                    return true;
+                }
+            }
+
+            return false;
+        } catch (error) {
+            console.warn('営業時間の解析に失敗:', businessHours, error);
+            return null;
+        }
+    },
+
+    // 訪問済み店舗を読み込む関数
+    async loadVisitedShops() {
+        const currentUser = API.getCurrentUser();
+        if (!currentUser) {
+            this.state.visitedShopIds.clear();
+            this.state.visitedShopsLoaded = true;
+            return;
+        }
+
+        try {
+            const data = await API.request('/api/v1/stamps/visited', { includeAuth: true });
+            this.state.visitedShopIds.clear();
+
+            if (data && data.visited_shops) {
+                for (const prefectureData of data.visited_shops) {
+                    for (const shop of prefectureData.shops) {
+                        this.state.visitedShopIds.add(shop.id);
+                    }
+                }
+            }
+            this.state.visitedShopsLoaded = true;
+        } catch (error) {
+            console.warn('訪問済み店舗の取得に失敗:', error);
+            this.state.visitedShopsLoaded = true;
+        }
     },
 
     // ブランドフィルターUIを生成する関数
@@ -622,6 +708,106 @@ const MapComponent = {
                 background: #f0f0f0;
             }
             
+            /* 追加フィルターセクション */
+            .extra-filters {
+                display: flex;
+                flex-wrap: wrap;
+                gap: 8px;
+                padding: 12px 0;
+                border-top: 1px solid #e8e8e8;
+                margin-top: 12px;
+            }
+            
+            .extra-filter-chip {
+                display: inline-flex;
+                align-items: center;
+                gap: 6px;
+                padding: 6px 12px;
+                background: white;
+                border: 1px solid #e0e0e0;
+                border-radius: 20px;
+                font-size: 13px;
+                cursor: pointer;
+                transition: all 0.2s ease;
+                user-select: none;
+                white-space: nowrap;
+            }
+            
+            .extra-filter-chip:hover {
+                background: #f5f5f5;
+                border-color: #ccc;
+            }
+            
+            .extra-filter-chip.active {
+                background: var(--color-primary);
+                border-color: var(--color-primary);
+                color: white;
+            }
+            
+            .extra-filter-chip.active i {
+                color: white;
+            }
+            
+            .extra-filter-chip i {
+                font-size: 12px;
+                color: #666;
+            }
+            
+            /* 訪問状況フィルターのセグメント */
+            .visit-filter-segment {
+                display: inline-flex;
+                border: 1px solid #e0e0e0;
+                border-radius: 20px;
+                overflow: hidden;
+                background: white;
+            }
+            
+            .visit-filter-option {
+                padding: 6px 12px;
+                font-size: 13px;
+                cursor: pointer;
+                border: none;
+                background: transparent;
+                transition: all 0.2s ease;
+                display: flex;
+                align-items: center;
+                gap: 4px;
+            }
+            
+            .visit-filter-option:not(:last-child) {
+                border-right: 1px solid #e0e0e0;
+            }
+            
+            .visit-filter-option:hover {
+                background: #f5f5f5;
+            }
+            
+            .visit-filter-option.active {
+                background: var(--color-primary);
+                color: white;
+            }
+            
+            .visit-filter-option i {
+                font-size: 11px;
+            }
+            
+            .filter-section-label {
+                font-size: 12px;
+                color: #666;
+                margin-bottom: 6px;
+                display: flex;
+                align-items: center;
+                gap: 4px;
+            }
+            
+            .filter-divider {
+                width: 1px;
+                height: 24px;
+                background: #e0e0e0;
+                margin: 0 4px;
+            }
+            
+            
             .map-content {
                 flex: 1;
                 position: relative;
@@ -761,6 +947,30 @@ const MapComponent = {
                             .filter-action-btn {
                                 font-size: 11px;
                                 padding: 3px 8px;
+                            }
+                            
+                            /* 追加フィルターのモバイル対応 */
+                            .extra-filters {
+                                padding: 10px 0;
+                                gap: 6px;
+                            }
+                            
+                            .extra-filter-chip {
+                                padding: 5px 10px;
+                                font-size: 12px;
+                            }
+                            
+                            .visit-filter-segment {
+                                flex-wrap: wrap;
+                            }
+                            
+                            .visit-filter-option {
+                                padding: 5px 8px;
+                                font-size: 11px;
+                            }
+                            
+                            .filter-divider {
+                                display: none;
                             }
                             
                             /* スマホ環境では凡例を非表示にする */
@@ -1312,6 +1522,54 @@ const MapComponent = {
         filterActions.appendChild(clearBtn);
         brandFilters.appendChild(filterActions);
 
+        // 追加フィルター（営業中・訪問状況）
+        const extraFilters = document.createElement('div');
+        extraFilters.className = 'extra-filters';
+        extraFilters.id = 'extraFilters';
+
+        // 営業中フィルター
+        const openNowChip = document.createElement('button');
+        openNowChip.className = 'extra-filter-chip';
+        openNowChip.id = 'openNowFilter';
+        openNowChip.onclick = () => this.toggleOpenNowFilter();
+        openNowChip.innerHTML = '<i class="fas fa-clock"></i> 営業中';
+        extraFilters.appendChild(openNowChip);
+
+        // 区切り
+        const divider = document.createElement('span');
+        divider.className = 'filter-divider';
+        extraFilters.appendChild(divider);
+
+        // 訪問状況フィルター（セグメント）
+        const visitFilterSegment = document.createElement('div');
+        visitFilterSegment.className = 'visit-filter-segment';
+        visitFilterSegment.id = 'visitFilterSegment';
+
+        const visitAllOption = document.createElement('button');
+        visitAllOption.className = 'visit-filter-option active';
+        visitAllOption.dataset.value = 'all';
+        visitAllOption.onclick = () => this.setVisitStatusFilter('all');
+        visitAllOption.innerHTML = 'すべて';
+
+        const visitedOption = document.createElement('button');
+        visitedOption.className = 'visit-filter-option';
+        visitedOption.dataset.value = 'visited';
+        visitedOption.onclick = () => this.setVisitStatusFilter('visited');
+        visitedOption.innerHTML = '<i class="fas fa-check-circle"></i> 訪問済み';
+
+        const notVisitedOption = document.createElement('button');
+        notVisitedOption.className = 'visit-filter-option';
+        notVisitedOption.dataset.value = 'not_visited';
+        notVisitedOption.onclick = () => this.setVisitStatusFilter('not_visited');
+        notVisitedOption.innerHTML = '<i class="far fa-circle"></i> 未訪問';
+
+        visitFilterSegment.appendChild(visitAllOption);
+        visitFilterSegment.appendChild(visitedOption);
+        visitFilterSegment.appendChild(notVisitedOption);
+        extraFilters.appendChild(visitFilterSegment);
+
+        brandFilters.appendChild(extraFilters);
+
         collapsibleContainer.appendChild(brandFilters);
         header.appendChild(collapsibleContainer);
         container.appendChild(header);
@@ -1366,6 +1624,11 @@ const MapComponent = {
     async initializeMap() {
         try {
             this.showLoading(true);
+
+            // 訪問済み店舗をバックグラウンドで読み込む（ログイン時のみ）
+            if (API.getCurrentUser() && !this.state.visitedShopsLoaded) {
+                this.loadVisitedShops();
+            }
 
             // 既存のマップを破棄
             if (this.state.map) {
@@ -1985,6 +2248,9 @@ const MapComponent = {
                 description: `${shop.address}<br>営業時間: ${shop.business_hours || '不明'}<br>定休日: ${shop.closed_day || '不明'}${shop.distance !== undefined ? `<br>距離: 約${shop.distance}km` : ''}`
             };
 
+            // 店舗データをキャッシュに保存（営業中フィルター用）
+            this.state.shopDataCache.set(shop.id, shopData);
+
             const shopId = shop.id;
             newShopIds.add(shopId);
 
@@ -2077,6 +2343,25 @@ const MapComponent = {
             // 早期フィルタリング：フィルターに合致しない場合はスキップ
             if (hasActiveFilters && !this.state.activeFilters.has(brand)) {
                 // 表示範囲外またはフィルターに合致しない場合、マーカーを非表示
+                try {
+                    if (this.state.clusterEnabled && this.state.brandClusters[brand]) {
+                        if (this.state.brandClusters[brand].hasLayer(marker)) {
+                            this.state.brandClusters[brand].removeLayer(marker);
+                        }
+                    } else {
+                        if (this.state.markerLayerGroup.hasLayer(marker)) {
+                            this.state.markerLayerGroup.removeLayer(marker);
+                        }
+                    }
+                } catch (error) {
+                    console.error(`マーカーの非表示に失敗しました (店舗ID: ${shopId}):`, error);
+                }
+                this.state.visibleMarkers.delete(shopId);
+                continue;
+            }
+
+            // 追加フィルターのチェック（営業中・訪問状況）
+            if (!this.passesExtraFilters(shopId, marker)) {
                 try {
                     if (this.state.clusterEnabled && this.state.brandClusters[brand]) {
                         if (this.state.brandClusters[brand].hasLayer(marker)) {
@@ -2487,6 +2772,80 @@ const MapComponent = {
 
         // マーカーの表示を更新（すべての店舗を表示）
         this.updateMarkerVisibility();
+    },
+
+    // 営業中フィルターのトグル
+    toggleOpenNowFilter() {
+        this.state.openNowFilter = !this.state.openNowFilter;
+
+        // UIを更新
+        const openNowBtn = document.getElementById('openNowFilter');
+        if (openNowBtn) {
+            if (this.state.openNowFilter) {
+                openNowBtn.classList.add('active');
+            } else {
+                openNowBtn.classList.remove('active');
+            }
+        }
+
+        // マーカーの表示を更新
+        this.updateMarkerVisibility();
+    },
+
+    // 訪問状況フィルターの設定
+    setVisitStatusFilter(status) {
+        // ログインしていない場合は訪問済み/未訪問を選択不可
+        const currentUser = API.getCurrentUser();
+        if (!currentUser && status !== 'all') {
+            // ログインを促すメッセージを表示
+            alert('訪問履歴でフィルタリングするにはログインが必要です');
+            return;
+        }
+
+        this.state.visitStatusFilter = status;
+
+        // UIを更新
+        const options = document.querySelectorAll('.visit-filter-option');
+        options.forEach(option => {
+            if (option.dataset.value === status) {
+                option.classList.add('active');
+            } else {
+                option.classList.remove('active');
+            }
+        });
+
+        // マーカーの表示を更新
+        this.updateMarkerVisibility();
+    },
+
+    // 店舗が追加フィルター条件を満たすか判定
+    passesExtraFilters(shopId, marker) {
+        // 営業中フィルター
+        if (this.state.openNowFilter) {
+            const shopData = this.state.shopDataCache.get(shopId);
+            if (shopData && shopData.business_hours) {
+                const isOpen = this.isShopOpenNow(shopData.business_hours);
+                // isOpenがnull（判定不能）の場合は表示を許可
+                if (isOpen === false) {
+                    return false;
+                }
+            }
+            // 営業時間情報がない場合は表示を許可（除外しない）
+        }
+
+        // 訪問状況フィルター
+        if (this.state.visitStatusFilter !== 'all') {
+            const isVisited = this.state.visitedShopIds.has(shopId);
+
+            if (this.state.visitStatusFilter === 'visited' && !isVisited) {
+                return false;
+            }
+            if (this.state.visitStatusFilter === 'not_visited' && isVisited) {
+                return false;
+            }
+        }
+
+        return true;
     },
 
     // 店舗詳細表示

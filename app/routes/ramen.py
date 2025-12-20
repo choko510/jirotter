@@ -8,8 +8,11 @@ import os
 from datetime import datetime, timedelta, timezone
 
 from database import get_db
-from app.models import RamenShop, Checkin
+from app.models import RamenShop, Checkin, User
 from app.schemas import RamenShopResponse, RamenShopsResponse
+from app.utils.auth import get_current_user
+from app.utils.ai_responder import ask_shop_question
+from app.utils.rate_limiter import rate_limiter
 
 router = APIRouter(tags=["ramen"])
 
@@ -314,3 +317,76 @@ async def update_waittime(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail=f"待ち時間の更新に失敗しました: {str(e)}"
         )
+
+
+from pydantic import BaseModel
+import re
+
+class ShopQuestion(BaseModel):
+    question: str
+
+# プロンプトインジェクション対策用パターン
+MALICIOUS_PATTERNS = [
+    r"ignore all previous instructions",
+    r"system prompt",
+    r"システムプロンプト",
+    r"命令を無視",
+    r"制限を解除",
+    r"jailbreak",
+    r"dan mode",
+    r"roleplay as",
+]
+
+MALICIOUS_REGEX = re.compile("|".join(MALICIOUS_PATTERNS), re.IGNORECASE)
+
+
+@router.post("/ramen/{shop_id}/ask")
+async def ask_shop_ai_question(
+    shop_id: int,
+    body: ShopQuestion,
+    current_user: User = Depends(get_current_user),
+    db: Session = Depends(get_db)
+):
+    """店舗についてAIに質問するエンドポイント"""
+    
+    # BAN済みユーザーの拒否
+    if current_user.is_banned:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="アカウントの利用が制限されています。"
+        )
+    
+    # レート制限 (1分間に5回まで)
+    rate_limit_key = f"shop_ask:{current_user.id}"
+    await rate_limiter.hit(rate_limit_key, limit=5, window_seconds=60)
+    
+    question = body.question.strip()
+    if not question:
+        raise HTTPException(status_code=400, detail="質問内容が空です")
+    
+    # プロンプトインジェクション対策
+    if MALICIOUS_REGEX.search(question):
+        raise HTTPException(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            detail="不適切な質問内容は受け付けられません。"
+        )
+    
+    # 店舗情報を取得
+    shop = db.query(RamenShop).filter(RamenShop.id == shop_id).first()
+    if not shop:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND,
+            detail="指定されたラーメン店が見つかりません"
+        )
+    
+    # 店舗情報をdict形式で渡す
+    shop_info = {
+        "name": shop.name,
+        "address": shop.address,
+        "business_hours": shop.business_hours or "不明",
+        "closed_day": shop.closed_day or "不明",
+        "seats": shop.seats or "不明"
+    }
+    
+    answer = await ask_shop_question(question, shop_info)
+    return {"answer": answer}

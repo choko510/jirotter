@@ -9,6 +9,7 @@ const urlsToCache = [
     './css/ai-support.css',
     './js/app.js',
     './js/router.js',
+    './js/utils/ai-chat-utils.js',
     './js/components/ai-support.js',
     './js/components/auth.js',
     './js/components/checkin.js',
