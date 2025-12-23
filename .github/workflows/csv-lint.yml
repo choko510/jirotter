@@ -1,0 +1,88 @@
+name: CSV Syntax Check
+
+on:
+  pull_request:
+    paths:
+      - '**/*.csv'
+  push:
+    paths:
+      - '**/*.csv'
+
+jobs:
+  csv-lint:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get changed files
+        id: changed-files
+        uses: tj-actions/changed-files@v45
+        with:
+          files: '**/*.csv'
+
+      - name: Set up Python
+        if: steps.changed-files.outputs.any_changed == 'true'
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+
+      - name: CSV syntax validation
+        if: steps.changed-files.outputs.any_changed == 'true'
+        env:
+          ALL_CHANGED_FILES: ${{ steps.changed-files.outputs.all_changed_files }}
+        run: |
+          python << 'EOF'
+          import csv
+          import sys
+          import os
+          from pathlib import Path
+
+          def lint_csv(path: Path) -> bool:
+              has_error = False
+              try:
+                  # utf-8-sig はBOMがあってもなくても読める
+                  with path.open(newline='', encoding='utf-8-sig') as f:
+                      reader = csv.reader(f)
+                      expected_len = None
+                      
+                      for i, row in enumerate(reader, start=1):
+                          if not row: continue # 空行はスキップする場合
+                          
+                          if expected_len is None:
+                              expected_len = len(row)
+                          elif len(row) != expected_len:
+                              msg = f"カラム数不一致 (expected={expected_len}, actual={len(row)})"
+                              print(f"::error file={path},line={i}::{msg}")
+                              has_error = True
+                              
+              except csv.Error as e:
+                  print(f"::error file={path}::CSV構文エラー: {e}")
+                  has_error = True
+              except UnicodeDecodeError as e:
+                  print(f"::error file={path}::文字コードエラー(UTF-8ではありません): {e}")
+                  has_error = True
+              except Exception as e:
+                  print(f"::error file={path}::予期せぬエラー: {e}")
+                  has_error = True
+              
+              return has_error
+
+          # 環境変数からスペース区切りでファイルパスを取得
+          files_str = os.environ.get('ALL_CHANGED_FILES', '')
+          if not files_str:
+              print("チェック対象のCSVファイルはありません")
+              sys.exit(0)
+
+          failed = False
+          for f_path in files_str.split():
+              p = Path(f_path)
+              if p.exists(): # ファイルが削除された場合を除外
+                  if lint_csv(p):
+                      failed = True
+
+          if failed:
+              sys.exit(1)
+              
+          print("✅ すべてのCSVは文法的に正常です")
+          EOF
