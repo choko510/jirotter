@@ -1,4 +1,4 @@
-# ラーメンSNS
+# 二郎系SNS Jirotter
 
 ラーメン好きのためのソーシャルネットワーキングサービス（SNS）です。
 お気に入りのラーメン店を見つけ、チェックインし、レビューを投稿し、他のユーザーと交流することができます。
@@ -43,8 +43,8 @@
 
 1.  リポジトリをクローンします。
     ```bash
-    git clone <repository-url>
-    cd <repository-directory>
+    git clone https://github.com/choko510/jirotter/
+    cd jirotter
     ```
 
 2.  依存関係をインストールします。
