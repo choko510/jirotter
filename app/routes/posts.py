@@ -38,7 +38,7 @@ MENTION_PATTERN = re.compile(r"@([A-Za-z0-9_]{1,30})")
 
 @router.post("/posts", response_model=PostResponse, status_code=status.HTTP_201_CREATED)
 async def create_post(
-    content: str = Form(...),
+    content: Optional[str] = Form(None),
     image: Optional[UploadFile] = File(None),
     video: Optional[UploadFile] = File(None),
     video_duration: Optional[float] = Form(None),

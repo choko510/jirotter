@@ -89,7 +89,7 @@ const StampRallyComponent = {
     async render(params = []) {
         await this.init(); // renderの前にinitを完了させる
         const contentArea = document.getElementById('contentArea');
-        
+
         contentArea.innerHTML = `
             <style>
                 .stamp-rally-container {
@@ -100,74 +100,115 @@ const StampRallyComponent = {
                 
                 .stamp-rally-header {
                     text-align: center;
-                    margin-bottom: 30px;
+                    margin-bottom: 16px;
                 }
                 
                 .stamp-rally-title {
-                    font-size: 28px;
+                    font-size: 22px;
                     font-weight: bold;
-                    margin-bottom: 10px;
+                    margin-bottom: 4px;
                     color: var(--color-primary);
                 }
                 
                 .stamp-rally-subtitle {
-                    color: #666;
-                    font-size: 16px;
+                    color: #888;
+                    font-size: 13px;
                 }
                 
+                /* 統計セクション - コンパクトな横一列 + 円グラフ */
                 .stamp-stats {
                     display: flex;
+                    align-items: center;
                     justify-content: center;
-                    gap: 30px;
-                    margin-bottom: 30px;
-                    flex-wrap: wrap;
+                    gap: 16px;
+                    margin-bottom: 16px;
+                    padding: 16px;
+                    background: linear-gradient(135deg, #fef9f3, #fdf5ec);
+                    border-radius: 12px;
                 }
                 
-                .stat-card {
-                    background: #f9f9f9;
-                    border-radius: 12px;
-                    padding: 20px;
-                    text-align: center;
-                    min-width: 150px;
-                    box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+                .stat-item {
+                    display: flex;
+                    flex-direction: column;
+                    align-items: center;
+                    gap: 2px;
                 }
                 
                 .stat-number {
-                    font-size: 32px;
+                    font-size: 24px;
                     font-weight: bold;
                     color: var(--color-primary);
-                    margin-bottom: 5px;
                 }
                 
                 .stat-label {
                     color: #666;
+                    font-size: 11px;
+                    text-transform: uppercase;
+                    letter-spacing: 0.05em;
+                }
+                
+                .stat-divider {
+                    width: 1px;
+                    height: 40px;
+                    background: rgba(0,0,0,0.1);
+                }
+                
+                /* 円グラフ（達成率） */
+                .progress-circle {
+                    position: relative;
+                    width: 70px;
+                    height: 70px;
+                }
+                
+                .progress-circle svg {
+                    transform: rotate(-90deg);
+                }
+                
+                .progress-circle-bg {
+                    fill: none;
+                    stroke: #e8e0d5;
+                    stroke-width: 6;
+                }
+                
+                .progress-circle-fill {
+                    fill: none;
+                    stroke: var(--color-primary);
+                    stroke-width: 6;
+                    stroke-linecap: round;
+                    transition: stroke-dashoffset 0.5s ease;
+                }
+                
+                .progress-circle-text {
+                    position: absolute;
+                    top: 50%;
+                    left: 50%;
+                    transform: translate(-50%, -50%);
                     font-size: 14px;
+                    font-weight: bold;
+                    color: var(--color-primary);
                 }
                 
                 .filter-section {
-                    margin-bottom: 30px;
+                    margin-bottom: 16px;
                     display: flex;
                     flex-wrap: wrap;
-                    gap: 20px;
-                    background: #f9f9f9;
-                    border-radius: 12px;
-                    padding: 20px;
+                    gap: 12px;
                     align-items: center;
-                    justify-content: center;
                 }
                 
                 .filter-group {
                     display: flex;
                     flex-direction: column;
-                    gap: 8px;
-                    min-width: 200px;
+                    gap: 4px;
+                    min-width: 140px;
                     flex: 1;
+                    max-width: 200px;
                 }
 
                 .filter-group label {
-                    font-weight: bold;
-                    color: var(--color-primary);
-                    font-size: 14px;
+                    font-weight: 600;
+                    color: #555;
+                    font-size: 12px;
                 }
 
                 .filter-select {
@@ -418,25 +459,29 @@ const StampRallyComponent = {
                 .view-switcher {
                     display: flex;
                     justify-content: center;
-                    margin-bottom: 20px;
-                    border: 1px solid var(--color-primary);
-                    border-radius: 20px;
-                    overflow: hidden;
+                    margin-bottom: 16px;
+                    background: #f5f5f5;
+                    border-radius: 10px;
+                    padding: 4px;
+                    gap: 4px;
                 }
 
                 .view-switch-btn {
-                    padding: 10px 20px;
+                    padding: 8px 20px;
                     cursor: pointer;
                     border: none;
                     background-color: transparent;
-                    color: var(--color-primary);
-                    font-weight: bold;
+                    color: #666;
+                    font-weight: 600;
+                    font-size: 14px;
+                    border-radius: 8px;
                     transition: all 0.2s;
                 }
 
                 .view-switch-btn.active {
-                    background-color: var(--color-primary);
-                    color: white;
+                    background-color: #fff;
+                    color: var(--color-primary);
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
                 }
 
                 .progress-grid {
@@ -540,34 +585,61 @@ const StampRallyComponent = {
 
                 @media (max-width: 768px) {
                     .stamp-rally-container {
-                        padding: 16px;
+                        padding: 12px;
+                    }
+                    
+                    .stamp-rally-title {
+                        font-size: 18px;
+                    }
+                    
+                    .stamp-rally-subtitle {
+                        font-size: 12px;
                     }
                     
                     .stamp-stats {
-                        gap: 15px;
-                    }
-                    
-                    .stat-card {
-                        min-width: 120px;
-                        padding: 15px;
+                        gap: 12px;
+                        padding: 12px;
                     }
                     
                     .stat-number {
-                        font-size: 24px;
+                        font-size: 20px;
+                    }
+                    
+                    .stat-label {
+                        font-size: 10px;
+                    }
+                    
+                    .progress-circle {
+                        width: 56px;
+                        height: 56px;
+                    }
+                    
+                    .progress-circle svg {
+                        width: 56px;
+                        height: 56px;
+                    }
+                    
+                    .progress-circle-text {
+                        font-size: 12px;
+                    }
+                    
+                    .view-switch-btn {
+                        padding: 6px 14px;
+                        font-size: 13px;
+                    }
+                    
+                    .filter-group {
+                        max-width: none;
                     }
                     
                     .shops-grid {
                         grid-template-columns: 1fr;
-                        gap: 15px;
+                        gap: 12px;
                     }
                     
                     .visited-shops-grid {
                         grid-template-columns: 1fr;
-                        gap: 15px;
-                    }
-                    .filter-section {
-                        flex-direction: column;
-                        align-items: stretch;
+                        gap: 12px;
                     }
                 }
             </style>
@@ -579,15 +651,12 @@ const StampRallyComponent = {
                 </div>
 
                 <div class="view-switcher">
-                    <button class="view-switch-btn ${this.state.currentView === 'list' ? 'active' : ''}" data-view="list">店舗リスト</button>
-                    <button class="view-switch-btn ${this.state.currentView === 'progress' ? 'active' : ''}" data-view="progress">進捗マップ</button>
-                    <button class="view-switch-btn ${this.state.currentView === 'visited' ? 'active' : ''}" data-view="visited">訪問済み</button>
+                    <button class="view-switch-btn ${this.state.currentView === 'list' ? 'active' : ''}" data-view="list">リスト</button>
+                    <button class="view-switch-btn ${this.state.currentView === 'progress' ? 'active' : ''}" data-view="progress">マップ</button>
                 </div>
                 
                 <div id="stampRallyContent">
-                    ${this.state.currentView === 'list' ? this.renderListView() :
-                      this.state.currentView === 'progress' ? this.renderProgressView() :
-                      this.renderVisitedView()}
+                    ${this.state.currentView === 'list' ? this.renderListView() : this.renderProgressView()}
                 </div>
             </div>
         `;
@@ -605,15 +674,23 @@ const StampRallyComponent = {
 
             <div class="filter-section">
                 <div class="filter-group">
-                    <label for="brandSelect">ブランド</label>
+                    <label for="brandSelect">系列</label>
                     <select id="brandSelect" class="filter-select">
                         ${this.renderBrandFilters()}
                     </select>
                 </div>
                 <div class="filter-group">
-                    <label for="prefectureSelect">都道府県</label>
+                    <label for="prefectureSelect">エリア</label>
                     <select id="prefectureSelect" class="filter-select">
                         ${this.renderPrefectureFilters()}
+                    </select>
+                </div>
+                <div class="filter-group">
+                    <label for="visitedFilter">訪問状況</label>
+                    <select id="visitedFilter" class="filter-select">
+                        <option value="all">すべて</option>
+                        <option value="visited">訪問済み</option>
+                        <option value="unvisited">未訪問</option>
                     </select>
                 </div>
             </div>
@@ -669,8 +746,8 @@ const StampRallyComponent = {
                     </summary>
                     <div class="progress-grid">
                         ${regionItems.map(item => {
-                            const percentage = item.total_shops > 0 ? (item.visited_shops / item.total_shops) * 100 : 0;
-                            return `
+                const percentage = item.total_shops > 0 ? (item.visited_shops / item.total_shops) * 100 : 0;
+                return `
                                 <div class="progress-card">
                                     <h4>${this.escapeHtml(item.prefecture)}</h4>
                                     <div class="progress-bar-container">
@@ -679,7 +756,7 @@ const StampRallyComponent = {
                                     <p>${item.visited_shops} / ${item.total_shops} 店舗</p>
                                 </div>
                             `;
-                        }).join('')}
+            }).join('')}
                     </div>
                 </details>
             `;
@@ -698,8 +775,8 @@ const StampRallyComponent = {
                     </summary>
                     <div class="progress-grid">
                         ${remainingItems.map(item => {
-                            const percentage = item.total_shops > 0 ? (item.visited_shops / item.total_shops) * 100 : 0;
-                            return `
+                const percentage = item.total_shops > 0 ? (item.visited_shops / item.total_shops) * 100 : 0;
+                return `
                                 <div class="progress-card">
                                     <h4>${this.escapeHtml(item.prefecture)}</h4>
                                     <div class="progress-bar-container">
@@ -708,7 +785,7 @@ const StampRallyComponent = {
                                     <p>${item.visited_shops} / ${item.total_shops} 店舗</p>
                                 </div>
                             `;
-                        }).join('')}
+            }).join('')}
                     </div>
                 </details>
             `;
@@ -801,24 +878,36 @@ const StampRallyComponent = {
         `;
     },
 
-    // 統計情報をレンダリング
+    // 統計情報をレンダリング（円グラフ付き）
     renderStats() {
         const totalShops = this.state.shops.length;
         const checkedShops = this.state.checkins.length;
         const completionRate = totalShops > 0 ? Math.round((checkedShops / totalShops) * 100) : 0;
 
+        // 円グラフ用のSVG計算
+        const radius = 28;
+        const circumference = 2 * Math.PI * radius;
+        const offset = circumference - (completionRate / 100) * circumference;
+
         return `
-            <div class="stat-card">
+            <div class="stat-item">
                 <div class="stat-number">${totalShops}</div>
                 <div class="stat-label">対象店舗</div>
             </div>
-            <div class="stat-card">
+            <div class="stat-divider"></div>
+            <div class="stat-item">
                 <div class="stat-number">${checkedShops}</div>
                 <div class="stat-label">訪問済み</div>
             </div>
-            <div class="stat-card">
-                <div class="stat-number">${completionRate}%</div>
-                <div class="stat-label">達成率</div>
+            <div class="stat-divider"></div>
+            <div class="progress-circle">
+                <svg width="70" height="70" viewBox="0 0 70 70">
+                    <circle class="progress-circle-bg" cx="35" cy="35" r="${radius}"></circle>
+                    <circle class="progress-circle-fill" cx="35" cy="35" r="${radius}" 
+                        stroke-dasharray="${circumference}" 
+                        stroke-dashoffset="${offset}"></circle>
+                </svg>
+                <div class="progress-circle-text">${completionRate}%</div>
             </div>
         `;
     },
@@ -829,7 +918,7 @@ const StampRallyComponent = {
 
         for (const [brandKey, brandConfig] of Object.entries(this.BRAND_CONFIG)) {
             if (brandKey === 'other') continue;
-            
+
             optionsHtml += `
                 <option value="${brandKey}" ${this.state.selectedBrand === brandKey ? 'selected' : ''}>
                     ${brandConfig.name}
@@ -969,7 +1058,7 @@ const StampRallyComponent = {
     determineBrand(shopName) {
         for (const [brandKey, brandConfig] of Object.entries(this.BRAND_CONFIG)) {
             if (brandKey === 'other') continue;
-            
+
             for (const keyword of brandConfig.keywords) {
                 if (shopName.includes(keyword)) {
                     return brandKey;
@@ -1057,7 +1146,7 @@ const StampRallyComponent = {
         this.state.selectedPrefecture = prefecture;
         this.state.currentPage = 1;
         this.state.hasMoreShops = true;
-        
+
         // 新しいデータで再読み込み (Prefecture filtering is server side)
         await this.loadData();
     },
@@ -1153,7 +1242,7 @@ const StampRallyComponent = {
             if (!token) {
                 return [];
             }
-            
+
             const user = JSON.parse(decodeURIComponent(API.getCookie('user')));
             const data = await API.request(`/api/v1/users/${user.id}/checkins`);
             return data.checkins || [];
@@ -1202,10 +1291,10 @@ const StampRallyComponent = {
     // さらに店舗を読み込み
     async loadMoreShops() {
         if (!this.state.hasMoreShops || this.state.isLoading) return;
-        
+
         this.state.currentPage++;
         this.state.isLoading = true;
-        
+
         try {
             // MODIFIED: Use current selected prefecture
             const prefectureFilter = this.state.selectedPrefecture;
@@ -1221,7 +1310,7 @@ const StampRallyComponent = {
                 }
                 this.updateUI();
             }
-            
+
             this.state.isLoading = false;
         } catch (error) {
             console.error('追加店舗読み込みエラー:', error);

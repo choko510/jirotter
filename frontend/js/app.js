@@ -754,6 +754,25 @@ const API = {
         }
     },
 
+    // ユーザーを通報する
+    async reportUser({ userId, reason, detail }) {
+        try {
+            const body = { reason };
+            if (detail) {
+                body.description = detail;
+            }
+
+            const data = await this.request(`/api/v1/users/${userId}/report`, {
+                method: 'POST',
+                body: body
+            });
+            return { success: true, report: data };
+        } catch (error) {
+            console.error('ユーザーの通報に失敗しました:', error);
+            return { success: false, error: error.message };
+        }
+    },
+
     // 返信を通報する
     async reportReply(replyId, reason) {
         try {

@@ -45,42 +45,72 @@ const ProfileComponent = {
 
                 .profile-header {
                     display: flex;
-                    align-items: flex-start;
-                    gap: 24px;
+                    flex-direction: column;
+                    gap: 16px;
                     background: var(--profile-surface);
                     border: 1px solid var(--profile-border);
                     border-radius: var(--profile-radius-large);
-                    padding: 28px;
+                    padding: 20px;
                     box-shadow: var(--profile-shadow);
+                    position: relative;
+                }
+
+                .profile-user-section {
+                    display: flex;
+                    align-items: center;
+                    gap: 14px;
                 }
 
                 .profile-avatar {
-                    width: 96px;
-                    height: 96px;
+                    width: 72px;
+                    height: 72px;
                     border-radius: 50%;
                     object-fit: cover;
-                    border: 2px solid var(--profile-border);
-                    box-shadow: 0 12px 24px rgba(15, 23, 42, 0.12);
-                    background: var(--profile-surface-muted);
+                    border: 3px solid #d4a574;
+                    box-shadow: 0 6px 12px rgba(212, 165, 116, 0.2);
+                    background: linear-gradient(135deg, #fef3e2, #fce7c6);
                     flex-shrink: 0;
+                }
+
+                .profile-user-info {
+                    display: flex;
+                    flex-direction: column;
+                    gap: 2px;
+                    flex: 1;
+                    min-width: 0;
+                }
+
+                .profile-name-row {
+                    display: flex;
+                    align-items: center;
+                    gap: 10px;
+                    flex-wrap: wrap;
                 }
 
                 .profile-info {
                     display: flex;
                     flex-direction: column;
-                    gap: 12px;
+                    gap: 8px;
                     flex: 1;
                 }
 
+                .profile-header-row {
+                    display: flex;
+                    align-items: center;
+                    justify-content: space-between;
+                    gap: 16px;
+                }
+
                 .profile-rank-card {
-                    border-radius: var(--profile-radius-large);
-                    border: 1px solid var(--profile-border);
-                    background: var(--profile-surface);
-                    padding: 20px 22px;
-                    box-shadow: var(--profile-shadow);
+                    border-radius: var(--profile-radius-medium);
+                    border: none;
+                    background: linear-gradient(135deg, #fef9f3, #fdf5ec);
+                    padding: 16px;
+                    box-shadow: none;
                     display: flex;
                     flex-direction: column;
-                    gap: 14px;
+                    gap: 12px;
+                    text-align: center;
                 }
 
                 .rank-card-header {
@@ -113,16 +143,17 @@ const ProfileComponent = {
 
                 .rank-description {
                     margin: 0;
-                    color: var(--profile-muted);
+                    color: #4a4a4a;
                     font-size: 14px;
-                    line-height: 1.6;
+                    line-height: 1.7;
+                    text-align: center;
                 }
 
                 .rank-progress-bar {
                     position: relative;
                     width: 100%;
-                    height: 8px;
-                    background: var(--profile-surface-muted);
+                    height: 12px;
+                    background: linear-gradient(to right, #f5f0e8, #ebe4d8);
                     border: 1px solid var(--profile-border);
                     border-radius: 999px;
                     overflow: hidden;
@@ -131,14 +162,16 @@ const ProfileComponent = {
                 .rank-progress-bar-fill {
                     height: 100%;
                     border-radius: 999px;
-                    background: var(--profile-accent);
-                    transition: width 0.3s ease;
+                    background: linear-gradient(90deg, #f59e0b, #f97316, #ef4444);
+                    transition: width 0.5s cubic-bezier(0.4, 0, 0.2, 1);
+                    box-shadow: 0 2px 8px rgba(249, 115, 22, 0.4);
                 }
 
                 .rank-progress-label {
-                    font-size: 12px;
-                    color: var(--profile-muted);
-                    letter-spacing: 0.04em;
+                    font-size: 13px;
+                    color: #4a4a4a;
+                    letter-spacing: 0.02em;
+                    font-weight: 500;
                 }
 
                 .rank-status.rank-status--warning {
@@ -219,23 +252,37 @@ const ProfileComponent = {
 
                 @media (max-width: 640px) {
                     .profile-page {
-                        padding: 20px 16px;
+                        padding: 16px 12px;
                     }
 
                     .profile-header {
-                        flex-direction: column;
-                        align-items: center;
-                        text-align: center;
-                        padding: 20px;
+                        padding: 16px;
                     }
 
-                    .profile-info {
-                        align-items: center;
-                        text-align: center;
+                    .profile-user-section {
+                        gap: 12px;
+                    }
+
+                    .profile-avatar {
+                        width: 60px;
+                        height: 60px;
                     }
 
                     .profile-name {
-                        font-size: 22px;
+                        font-size: 18px;
+                    }
+
+                    .profile-id {
+                        font-size: 13px;
+                    }
+
+                    .profile-name-row {
+                        gap: 8px;
+                    }
+
+                    .profile-action-button {
+                        padding: 6px 12px;
+                        font-size: 12px;
                     }
 
                     .profile-featured-title {
@@ -255,19 +302,14 @@ const ProfileComponent = {
                         text-align: center;
                     }
 
-                    .profile-action-button {
-                        width: 100%;
-                        justify-content: center;
-                    }
-
                     .profile-stats {
                         width: 100%;
-                        justify-content: center;
                     }
 
                     .profile-stat {
-                        flex: 1 1 calc(50% - 12px);
-                        min-width: 140px;
+                        flex: 1;
+                        min-width: 0;
+                        padding: 12px 8px;
                     }
 
                     .profile-tabs {
@@ -400,37 +442,52 @@ const ProfileComponent = {
                 }
 
                 .profile-name {
-                    font-size: 26px;
-                    font-weight: 600;
+                    font-size: 20px;
+                    font-weight: 700;
                     color: var(--profile-text);
                 }
 
                 .profile-id {
                     color: var(--profile-muted);
-                    font-size: 15px;
+                    font-size: 14px;
                 }
 
                 .profile-bio {
-                    font-size: 15px;
-                    color: var(--profile-muted);
-                    line-height: 1.7;
+                    font-size: 14px;
+                    color: #555;
+                    line-height: 1.6;
                     white-space: pre-wrap;
                     word-break: break-word;
                 }
 
+                .profile-header-actions {
+                    position: absolute;
+                    top: 23px;
+                    right: 16px;
+                    display: flex;
+                    flex-direction: column;
+                    gap: 8px;
+                    align-items: flex-end;
+                    pointer-events: none; /* Let clicks pass through to container if needed, but buttons invoke pointer-events: auto */
+                    z-index: 10;
+                }
+
                 .profile-action-button {
-                    margin-top: 6px;
-                    align-self: flex-start;
-                    padding: 10px 22px;
+                    pointer-events: auto;
+                    /* position: absolute; removed */
+                    /* top: 23px; removed */
+                    /* right: 16px; removed */
+                    padding: 8px 16px;
                     border-radius: 999px;
-                    border: 1px solid transparent;
+                    border: 1px solid #ddd;
                     font-weight: 600;
+                    font-size: 13px;
                     letter-spacing: 0.02em;
-                    background: #000000;
-                    color: #ffffff;
+                    background: #ffffff;
+                    color: #333;
                     cursor: pointer;
-                    box-shadow: none;
-                    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease, border-color 0.2s ease, opacity 0.2s ease;
+                    box-shadow: 0 2px 8px rgba(0,0,0,0.08);
+                    transition: transform 0.2s ease, box-shadow 0.2s ease, background 0.2s ease;
                 }
 
                 .profile-action-button:hover {
@@ -452,28 +509,46 @@ const ProfileComponent = {
                 }
 
                 .profile-action-button.is-edit {
-                    background: #000000;
                     border-color: #000000;
+                    font-size: 12px;
+                    padding: 6px 14px;
+                }
+
+                .profile-action-button--report {
+                    background: rgba(0, 0, 0, 0.05);
+                    color: #64748b;
+                    border: 1px solid transparent;
+                    font-size: 11px;
+                    padding: 4px 10px;
+                    box-shadow: none;
+                }
+                .profile-action-button--report:hover {
+                    background: rgba(0, 0, 0, 0.1);
+                    color: #334155;
+                    opacity: 1;
+                    transform: none;
+                    box-shadow: none;
                 }
 
                 .profile-stats {
                     display: flex;
-                    flex-wrap: wrap;
-                    gap: 16px;
-                    margin-top: 10px;
+                    gap: 10px;
+                    margin-top: 4px;
+                    width: 100%;
                 }
 
                 .profile-stat {
-                    min-width: 120px;
-                    padding: 16px 18px;
-                    border-radius: var(--profile-radius-large);
+                    flex: 1;
+                    padding: 12px 8px;
+                    border-radius: var(--profile-radius-medium);
                     border: 1px solid var(--profile-border);
                     background: var(--profile-surface);
                     display: flex;
                     flex-direction: column;
-                    gap: 6px;
+                    align-items: center;
+                    gap: 2px;
                     transition: transform 0.2s ease, box-shadow 0.2s ease;
-                    box-shadow: var(--profile-shadow);
+                    box-shadow: none;
                 }
 
                 .profile-stat--clickable {
@@ -491,15 +566,15 @@ const ProfileComponent = {
                 }
 
                 .profile-stat-value {
-                    font-size: 22px;
-                    font-weight: 600;
+                    font-size: 24px;
+                    font-weight: 700;
                     color: var(--profile-text);
                 }
 
                 .profile-stat-label {
-                    font-size: 12px;
+                    font-size: 11px;
                     text-transform: uppercase;
-                    letter-spacing: 0.08em;
+                    letter-spacing: 0.06em;
                     color: var(--profile-muted);
                 }
 
@@ -860,30 +935,67 @@ const ProfileComponent = {
             const header = document.createElement('div');
             header.className = 'profile-header';
 
+            // ユーザーセクション（アイコン + 名前・ID・ボタン を横並び）
+            const userSection = document.createElement('div');
+            userSection.className = 'profile-user-section';
+
             const avatar = document.createElement('img');
             avatar.className = 'profile-avatar';
             avatar.src = this.state.user.profile_image_url || 'assets/baseicon.png';
             avatar.alt = `${username}のアバター`;
-            header.appendChild(avatar);
+            userSection.appendChild(avatar);
 
-            const infoDiv = document.createElement('div');
+            // ユーザー情報（名前・ID）
+            const userInfo = document.createElement('div');
+            userInfo.className = 'profile-user-info';
 
             const displayName = username && username.trim() !== '' ? username : id;
 
             const nameDiv = document.createElement('div');
             nameDiv.className = 'profile-name';
             nameDiv.textContent = displayName;
-            infoDiv.appendChild(nameDiv);
+            userInfo.appendChild(nameDiv);
 
             const idDiv = document.createElement('div');
             idDiv.className = 'profile-id';
             idDiv.textContent = `@${id}`;
-            infoDiv.appendChild(idDiv);
+            userInfo.appendChild(idDiv);
+
+            userSection.appendChild(userInfo);
+            header.appendChild(userSection);
+
+            // 編集/フォローボタンエリア
+            const actionContainer = document.createElement('div');
+            actionContainer.className = 'profile-header-actions';
+
+            const actionButton = document.createElement('button');
+            actionButton.className = 'profile-action-button';
+            if (isOwnProfile) {
+                actionButton.textContent = 'プロフィールを編集';
+                actionButton.classList.add('is-edit');
+                actionButton.addEventListener('click', () => this.showEditModal());
+                actionContainer.appendChild(actionButton);
+            } else {
+                actionButton.id = 'followBtn';
+                actionButton.textContent = is_following ? 'フォロー中' : 'フォローする';
+                actionButton.classList.toggle('is-following', Boolean(is_following));
+                actionButton.setAttribute('aria-pressed', Boolean(is_following));
+                actionButton.addEventListener('click', () => this.toggleFollow(id));
+                actionContainer.appendChild(actionButton);
+
+                // 通報ボタン（フォローボタンの下に配置）
+                const reportBtn = document.createElement('button');
+                reportBtn.className = 'profile-action-button profile-action-button--report';
+                reportBtn.textContent = '通報';
+                reportBtn.addEventListener('click', () => this.openUserReportDialog(this.state.user));
+                actionContainer.appendChild(reportBtn);
+            }
+            header.appendChild(actionContainer);
 
             const bioDiv = document.createElement('div');
             bioDiv.className = 'profile-bio';
             bioDiv.textContent = this.state.user.bio || '';
-            infoDiv.appendChild(bioDiv);
+            header.appendChild(bioDiv);
 
             const badgeColor = rank_color || '#f59e0b';
             const progress = Math.min(100, Math.max(0, Number(rank_progress_percentage) || 0));
@@ -918,7 +1030,7 @@ const ProfileComponent = {
 
                 ${isBAN}
             `;
-            infoDiv.appendChild(rankCard);
+            header.appendChild(rankCard);
 
             const statsDiv = document.createElement('div');
             statsDiv.className = 'profile-stats';
@@ -964,38 +1076,9 @@ const ProfileComponent = {
                 id: 'followingCount',
                 onClick: isOwnProfile ? () => this.activateTab('following') : null
             }));
-            infoDiv.appendChild(statsDiv);
+            header.appendChild(statsDiv);
 
-            const actionButton = document.createElement('button');
-            actionButton.className = 'profile-action-button';
-            if (isOwnProfile) {
-                actionButton.textContent = 'プロフィールを編集';
-                actionButton.classList.add('is-edit');
-                actionButton.addEventListener('click', () => this.showEditModal());
-            } else {
-                actionButton.id = 'followBtn';
-                actionButton.textContent = is_following ? 'フォロー解除' : 'フォローする';
-                actionButton.classList.toggle('is-following', Boolean(is_following));
-                actionButton.setAttribute('aria-pressed', Boolean(is_following));
-                actionButton.addEventListener('click', () => this.toggleFollow(id));
-            }
-            infoDiv.appendChild(actionButton);
-
-            // 通報ボタン（他人のプロフィールのみ、目立たない場所に配置）
-            if (!isOwnProfile) {
-                const reportBtn = document.createElement('button');
-                reportBtn.className = 'profile-action-button';
-                reportBtn.style.marginTop = '8px';
-                reportBtn.style.background = '#000000';
-                reportBtn.style.fontSize = '12px';
-                reportBtn.style.padding = '6px 12px';
-                reportBtn.style.opacity = '0.6';
-                reportBtn.style.boxShadow = 'none';
-                reportBtn.textContent = '通報';
-                reportBtn.addEventListener('click', () => this.openUserReportDialog(this.state.user));
-                infoDiv.appendChild(reportBtn);
-            }
-            header.appendChild(infoDiv);
+            // 通報ボタンは上に移動しました
             profilePage.appendChild(header);
 
             // Tabs
@@ -1603,6 +1686,46 @@ const ProfileComponent = {
         const submitBtn = document.createElement('button');
         submitBtn.type = 'button';
         submitBtn.textContent = '通報を送信';
+        submitBtn.className = 'submit-button'; // Add class if needed, or style inline
+        submitBtn.style.padding = '8px 14px';
+        submitBtn.style.borderRadius = '999px';
+        submitBtn.style.border = 'none';
+        submitBtn.style.background = '#ef4444';
+        submitBtn.style.color = '#fff';
+        submitBtn.style.fontWeight = '600';
+        submitBtn.style.cursor = 'pointer';
+
+        submitBtn.addEventListener('click', async () => {
+            const reason = reasonSelect.value;
+            const detail = detailInput.value;
+
+            if (!reason) {
+                alert('通報理由を選択してください'); // Simple alert for now, or use notification
+                return;
+            }
+
+            try {
+                const result = await API.reportUser({
+                    userId: targetUser.id,
+                    reason: reason,
+                    detail: detail
+                });
+                if (result.success) {
+                    Utils.showNotification('通報を送信しました。', 'success');
+                    document.body.removeChild(overlay);
+                } else {
+                    alert(result.error || '通報の送信に失敗しました');
+                }
+            } catch (e) {
+                console.error(e);
+                alert('エラーが発生しました');
+            }
+        });
+
+        actions.appendChild(submitBtn);
+        modal.appendChild(actions); // Added missing append
+        overlay.appendChild(modal); // Added missing append
+
         overlay.addEventListener('click', (e) => {
             if (e.target === overlay) {
                 document.body.removeChild(overlay);

@@ -910,7 +910,7 @@ const MapComponent = {
             
             @media (max-width: 768px) {
                             .map-container {
-                                height: calc(100vh - 100px);
+                                height: calc(100vh - 80px);
                                 width: 100vw;
                                 max-width: 100%;
                             }

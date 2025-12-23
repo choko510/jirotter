@@ -40,6 +40,7 @@ from app.routes.admin import router as admin_router
 from app.routes.guide import router as guide_router
 from app.routes.shop_editor_ws import router as shop_editor_ws_router
 from app.routes.url_safety import router as url_safety_router
+from app.routes.search import router as search_router
 from app.models import User
 from app.utils.auth import verify_token
 
@@ -522,6 +523,7 @@ def create_app():
     app.include_router(admin_router, prefix=settings.API_V1_STR)
     app.include_router(guide_router, prefix=settings.API_V1_STR)
     app.include_router(url_safety_router, prefix=settings.API_V1_STR)
+    app.include_router(search_router, prefix=settings.API_V1_STR)
 
     def _no_cache_headers() -> dict[str, str]:
         return {

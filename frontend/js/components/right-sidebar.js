@@ -42,10 +42,11 @@ const RightSidebar = {
 
     // setupEventListeners: イベントリスナーを設定
     setupEventListeners() {
-        const searchInput = document.getElementById('searchInput');
-        if (searchInput) {
-            searchInput.addEventListener('input', this.debounce(this.handleSearchInput.bind(this), 300));
-        }
+        // 検索入力はグローバル検索に移行したため、ここでのリスナーは不要
+        // const searchInput = document.getElementById('searchInput');
+        // if (searchInput) {
+        //     searchInput.addEventListener('input', this.debounce(this.handleSearchInput.bind(this), 300));
+        // }
 
         // Filter buttons
         document.querySelectorAll('.filter-btn').forEach(btn => {

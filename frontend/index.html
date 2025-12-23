@@ -51,6 +51,9 @@
     <!-- AIサポート用CSS -->
     <link rel="stylesheet" href="css/ai-support.css">
 
+    <!-- グローバル検索用CSS -->
+    <link rel="stylesheet" href="css/global-search.css">
+
     <!-- Maplibre GL -->
     <script src="https://cdn.jsdelivr.net/npm/maplibre-gl@5.13.0/dist/maplibre-gl.min.js" defer></script>
     <link href="https://cdn.jsdelivr.net/npm/maplibre-gl@5.13.0/dist/maplibre-gl.min.css" rel="stylesheet">
@@ -99,15 +102,6 @@
                 </div>
             </nav>
 
-            <div class="sidebar-footer"
-                style="padding: 15px 25px; font-size: 0.75rem; color: var(--color-text-soft); display: flex; flex-direction: column; gap: 5px;">
-                <div style="display: flex; gap: 10px;">
-                    <a href="/terms" style="text-decoration: none; color: inherit;">利用規約</a>
-                    <a href="/privacy" style="text-decoration: none; color: inherit;">プライバシーポリシー</a>
-                </div>
-                <div style="margin-top: 5px;">&copy; 2024 Jirotter</div>
-            </div>
-
             <div class="user-profile" id="userProfile">
                 <!-- ユーザープロフィールがここに表示される -->
             </div>
@@ -124,6 +118,9 @@
                             <div class="tab" data-tab="following">フォロー中</div>
                         </div>
                     </div>
+                    <button class="mobile-search-btn" onclick="GlobalSearch.openModal()" aria-label="検索">
+                        <i class="fas fa-search"></i>
+                    </button>
                 </div>
             </header>
 
@@ -136,9 +133,12 @@
 
         <!-- 右サイドバー -->
         <aside class="right-sidebar">
-            <div class="search-box">
+            <div class="search-box searchable" onclick="GlobalSearch.openModal()" style="cursor: pointer;">
                 <i class="fas fa-search"></i>
-                <input type="text" class="search-input" placeholder="店の名前を検索" id="searchInput">
+                <input type="text" class="search-input" placeholder="店舗・ポスト・ユーザーを検索" id="searchInput" readonly
+                    style="cursor: pointer;">
+                <kbd
+                    style="background: rgba(0,0,0,0.05); padding: 2px 6px; border-radius: 4px; font-size: 0.75rem; color: #786c5f;">Ctrl+K</kbd>
             </div>
 
             <div class="filters">
@@ -180,7 +180,7 @@
             </div>
             <div class="bottom-nav-item" id="bottomNavProfile" onclick="Utils.goToCurrentUserProfile()">
                 <div class="bottom-nav-icon"><i class="fas fa-user"></i></div>
-                <span>マイページ</span>
+                <span>アカウント</span>
             </div>
         </div>
     </nav>
@@ -206,6 +206,7 @@
     <script src="js/components/profile.js"></script>
     <script src="js/components/shop-detail.js"></script>
     <script src="js/components/external-link.js"></script>
+    <script src="js/components/global-search.js"></script>
     <script src="js/components/right-sidebar.js"></script>
     <script src="js/app.js"></script>
     <script>
