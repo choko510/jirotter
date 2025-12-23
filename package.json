@@ -1,0 +1,31 @@
+{
+  "name": "app",
+  "version": "1.0.0",
+  "description": "ラーメン好きのためのソーシャルネットワーキングサービス（SNS）です。 お気に入りのラーメン店を見つけ、チェックインし、レビューを投稿し、他のユーザーと交流することができます。",
+  "main": "index.js",
+  "directories": {
+    "test": "tests"
+  },
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/choko510/jirotter.git"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs",
+  "bugs": {
+    "url": "https://github.com/choko510/jirotter/issues"
+  },
+  "homepage": "https://github.com/choko510/jirotter#readme",
+  "dependencies": {
+    "glob": "^13.0.0",
+    "javascript-obfuscator": "^5.1.0",
+    "webpack": "^5.104.1",
+    "webpack-cli": "^6.0.1",
+    "webpack-obfuscator": "^3.6.0"
+  }
+}
