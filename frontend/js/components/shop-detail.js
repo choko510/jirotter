@@ -3,6 +3,49 @@ const ShopDetailComponent = {
     // 店舗詳細データ
     shopData: null,
     reviewStats: null,
+    isHoliday: false,
+
+    // 祝日・年末年始判定
+    async checkIfHoliday() {
+        const today = new Date();
+        const month = today.getMonth() + 1;
+        const date = today.getDate();
+
+        // 年末年始 (12/30 - 1/4)
+        if ((month === 12 && date >= 30) || (month === 1 && date <= 4)) {
+            return true;
+        }
+
+        try {
+            const cacheKey = 'holiday_data';
+            const cacheTimeKey = 'holiday_data_timestamp';
+            const cached = localStorage.getItem(cacheKey);
+            const timestamp = localStorage.getItem(cacheTimeKey);
+
+            let holidays = {};
+            const now = Date.now();
+
+            // Cache valid for 1 day
+            if (cached && timestamp && (now - parseInt(timestamp) < 24 * 60 * 60 * 1000)) {
+                holidays = JSON.parse(cached);
+            } else {
+                const response = await fetch('https://holidays-jp.github.io/api/v1/date.json');
+                if (!response.ok) return false;
+                holidays = await response.json();
+                localStorage.setItem(cacheKey, JSON.stringify(holidays));
+                localStorage.setItem(cacheTimeKey, now.toString());
+            }
+
+            // YYYY-MM-DD format
+            const year = today.getFullYear();
+            const formattedDate = `${year}-${String(month).padStart(2, '0')}-${String(date).padStart(2, '0')}`;
+
+            return !!holidays[formattedDate];
+        } catch (e) {
+            console.error('Failed to fetch holiday data', e);
+            return false;
+        }
+    },
 
     // レンダリング
     async render(params) {
@@ -16,13 +59,19 @@ const ShopDetailComponent = {
         contentArea.innerHTML = '<div class="loading">読み込み中...</div>';
 
         try {
-            // 店舗詳細データを取得
-            const result = await API.getShopDetail(shopId);
-            if (result.success) {
-                this.shopData = result.shop;
+            // 店舗詳細データと祝日情報を並行して取得
+            const [shopResult, isHoliday] = await Promise.all([
+                API.getShopDetail(shopId),
+                this.checkIfHoliday()
+            ]);
+
+            this.isHoliday = isHoliday;
+
+            if (shopResult.success) {
+                this.shopData = shopResult.shop;
                 this.renderShopDetail();
             } else {
-                this.renderError(result.error || '店舗情報の取得に失敗しました');
+                this.renderError(shopResult.error || '店舗情報の取得に失敗しました');
             }
         } catch (error) {
             console.error('店舗詳細の取得に失敗しました:', error);
@@ -81,7 +130,15 @@ const ShopDetailComponent = {
                         ${this.shopData.business_hours ? `
                         <div class="shop-info-item">
                             <i class="fas fa-clock"></i>
-                            <span>${this.escapeHtml(this.shopData.business_hours)}</span>
+                            <div>
+                                <span>${this.escapeHtml(this.shopData.business_hours)}</span>
+                                ${this.isHoliday ? `
+                                <div class="holiday-warning">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    ※祝日・年末年始のため、営業時間が変更の可能性があります
+                                </div>
+                                ` : ''}
+                            </div>
                         </div>
                         ` : ''}
                         
@@ -780,6 +837,19 @@ shopDetailStyles.textContent = `
     
     .ai-ask-btn:hover {
         background: linear-gradient(135deg, #4f46e5 0%, #7c3aed 100%);
+    }
+
+    .holiday-warning {
+        margin-top: 4px;
+        color: #d32f2f;
+        font-size: 0.9em;
+        font-weight: bold;
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        background: #ffebee;
+        padding: 4px 8px;
+        border-radius: 4px;
     }
     
     /* Shop AI Chat Modal */
