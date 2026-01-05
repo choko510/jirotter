@@ -1,6 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine
+from sqlalchemy import create_engine, text
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import StaticPool
 import subprocess
@@ -8,12 +8,22 @@ import time
 import os
 import signal
 import sys
+import httpx
+import uuid
 
 from app import create_app
 from database import Base, get_db
 
-# Use an in-memory SQLite database for tests
-TEST_DATABASE_URL = "sqlite:///:memory:"
+# Use a file-based SQLite database for tests to allow sharing with subprocess
+# Use a unique filename to avoid conflicts if running multiple sessions
+TEST_DB_FILE = f"test_db_{uuid.uuid4().hex}.sqlite"
+TEST_DATABASE_URL = f"sqlite:///{TEST_DB_FILE}"
+
+# Set the environment variable so the subprocess picks it up
+os.environ["DATABASE_URL"] = TEST_DATABASE_URL
+# Also set other required env vars for the subprocess if needed
+os.environ["TESTING"] = "1"
+
 engine = create_engine(
     TEST_DATABASE_URL,
     connect_args={"check_same_thread": False},
@@ -22,7 +32,17 @@ engine = create_engine(
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 @pytest.fixture(scope="session", autouse=True)
-def live_server():
+def cleanup_db_file():
+    """Ensure the test database file is removed after the session."""
+    yield
+    if os.path.exists(TEST_DB_FILE):
+        try:
+            os.remove(TEST_DB_FILE)
+        except OSError:
+            pass
+
+@pytest.fixture(scope="session", autouse=True)
+def live_server(cleanup_db_file):
     """
     Fixture to run the FastAPI application in a live server as a separate process.
     This allows Playwright tests to access the application.
@@ -34,25 +54,53 @@ def live_server():
             ["uvicorn", "app:create_app", "--host", "0.0.0.0", "--port", "8000", "--factory"],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP
+            creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
+            env=os.environ.copy()
         )
     else:  # Unix/Linux/macOS
         proc = subprocess.Popen(
             ["uvicorn", "app:create_app", "--host", "0.0.0.0", "--port", "8000", "--factory"],
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
-            preexec_fn=os.setsid
+            preexec_fn=os.setsid,
+            env=os.environ.copy()
         )
     
-    # Wait for the server to be ready
-    time.sleep(5)
+    # Wait for the server to be ready with a health check loop
+    start_time = time.time()
+    max_retries = 30  # 30 * 0.5 = 15 seconds max
+    server_ready = False
+
+    for _ in range(max_retries):
+        try:
+            response = httpx.get("http://localhost:8000/docs", timeout=1.0)
+            if response.status_code == 200:
+                server_ready = True
+                break
+        except httpx.RequestError:
+            pass
+        time.sleep(0.5)
+
+    if not server_ready:
+        # Kill process and print stderr
+        if os.name == 'nt':
+            proc.terminate()
+        else:
+            os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+        stdout, stderr = proc.communicate()
+        print(f"Server failed to start:\nStdout: {stdout.decode()}\nStderr: {stderr.decode()}")
+        pytest.fail("Live server failed to start")
+
     yield
     
     # Terminate server process
     if os.name == 'nt':  # Windows
         proc.terminate()
     else:  # Unix/Linux/macOS
-        os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+        try:
+            os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+        except ProcessLookupError:
+            pass
     proc.wait()
 
 
@@ -63,12 +111,16 @@ def test_db():
     It creates all tables before the test and drops them afterwards,
     ensuring test isolation.
     """
+    # Create tables
     Base.metadata.create_all(bind=engine)
+
+    # Create session
     db = TestingSessionLocal()
     try:
         yield db
     finally:
         db.close()
+        # Drop tables to clean up
         Base.metadata.drop_all(bind=engine)
 
 @pytest.fixture(scope="function")
@@ -102,8 +154,6 @@ def test_client(test_db: Session):
         yield client
     
     app.dependency_overrides.clear()
-
-import uuid
 
 @pytest.fixture(scope="function")
 def auth_headers(test_client):
