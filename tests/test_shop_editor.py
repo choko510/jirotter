@@ -120,8 +120,8 @@ def test_patch_shop_records_history(test_client: TestClient, test_db: Session, s
 
     res = test_client.patch(
         f"/api/v1/admin/shops/{sample_shop.id}",
-        data=json.dumps(payload),
-        headers={**auth_header_for_admin, "Content-Type": "application/json"},
+        json=payload,
+        headers=auth_header_for_admin,
     )
     assert res.status_code == 200
     data = res.json()

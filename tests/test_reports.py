@@ -76,8 +76,27 @@ def test_report_nonexistent_post(test_client, test_db):
 
 
 def test_create_user_report(test_client, test_db):
-    """ユーザー通報エンドポイントが現状 500 を返しているため、一旦スキップ"""
-    pytest.skip("create_user_report 実装が 500 を返しているため、このテストはスキップします")
+    """ユーザー通報エンドポイントのテスト"""
+    # ユーザー作成
+    reporter_token = create_user_and_get_token(test_client, "user_reporter", "user_reporter@example.com")
+    target_token = create_user_and_get_token(test_client, "user_target", "user_target@example.com")
+
+    # ターゲットユーザーの投稿を作成しておく（サマリ生成用）
+    create_post(test_client, target_token, "Target user post 1")
+
+    headers = {"Authorization": f"Bearer {reporter_token}"}
+    report_data = {
+        "reason": "スパム・広告",
+        "description": "User is spamming"
+    }
+
+    # 通報を作成
+    response = test_client.post("/api/v1/users/user_target/report", json=report_data, headers=headers)
+    assert response.status_code == 201
+    created_report = response.json()
+    assert created_report["target_user_id"] == "user_target"
+    assert created_report["reporter_id"] == "user_reporter"
+    assert created_report["reason"] == "スパム・広告"
 
 
 def test_report_self_user(test_client, test_db):
@@ -103,5 +122,18 @@ def test_report_nonexistent_user(test_client, test_db):
 
 
 def test_report_same_user_twice(test_client, test_db):
-    """ユーザー通報(重複ケース)は create_user_report の不安定実装に依存するため一旦スキップ"""
-    pytest.skip("create_user_report 実装が安定していないため、このテストはスキップします")
+    """同じユーザーを2回通報するテスト"""
+    reporter_token = create_user_and_get_token(test_client, "user_reporter3", "user_reporter3@example.com")
+    target_token = create_user_and_get_token(test_client, "user_target3", "user_target3@example.com")
+
+    headers = {"Authorization": f"Bearer {reporter_token}"}
+    report_data = {"reason": "個人攻撃", "description": ""}
+
+    # 1回目の通報
+    response = test_client.post("/api/v1/users/user_target3/report", json=report_data, headers=headers)
+    assert response.status_code == 201
+
+    # 2回目の通報
+    response = test_client.post("/api/v1/users/user_target3/report", json=report_data, headers=headers)
+    assert response.status_code == 400
+    assert "このユーザーは既に通報済みです" in response.json()["detail"]

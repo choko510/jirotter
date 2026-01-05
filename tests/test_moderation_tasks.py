@@ -5,10 +5,6 @@ from sqlalchemy.orm import Session, sessionmaker, joinedload
 from app.utils.moderation_tasks import _moderate_post, schedule_post_moderation
 from app.models import Post, Report, User
 
-# Post.authorリレーションシップをモック
-Post.author = Mock()
-
-
 @pytest.fixture
 def mock_db():
     """モックデータベースセッション"""
