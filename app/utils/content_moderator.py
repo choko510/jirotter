@@ -395,7 +395,13 @@ class ContentModerator:
         # AIでコンテンツを分析
         if media_path and media_type:
             print(f"メディアを含むコンテンツを分析します: {media_type}")
-            analysis = await self.analyze_multimodal_content(post.content, media_path, media_type, reason, user_history)
+            analysis = await self.analyze_multimodal_content(
+                content=post.content,
+                media_path=media_path,
+                media_type=media_type,
+                reason=reason,
+                user_history=user_history
+            )
         else:
             print("テキストのみのコンテンツを分析します")
             analysis = await self.analyze_content(post.content, reason, user_history)
