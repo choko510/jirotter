@@ -653,7 +653,7 @@ def create_app():
             # 管理者以外には存在しないページとして扱う
             raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ページが見つかりません")
 
-        return render_html("shop-editor.html")
+        return render_html("AdminPanel/shop-editor.html")
 
     @app.get("/admin/dashboard", response_class=HTMLResponse)
     async def admin_dashboard_page(request: Request):
@@ -674,7 +674,28 @@ def create_app():
         finally:
             db.close()
 
-        return render_html("admin-dashboard.html")
+        return render_html("AdminPanel/admin-dashboard.html")
+
+    @app.get("/admin/review", response_class=HTMLResponse)
+    async def admin_review_page(request: Request):
+        """管理者向けレビューページを返すエンドポイント"""
+        token = request.cookies.get("authToken")
+        if not token:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ページが見つかりません")
+
+        user_id = verify_token(token)
+        if user_id is None:
+            raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ページが見つかりません")
+
+        db = SessionLocal()
+        try:
+            user = db.query(User).filter(User.id == user_id).first()
+            if not user or not getattr(user, "is_admin", False):
+                raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail="ページが見つかりません")
+        finally:
+            db.close()
+
+        return render_html("AdminPanel/admin-review.html")
 
     @app.get("/robots.txt", include_in_schema=False)
     async def robots_txt():
