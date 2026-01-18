@@ -1,11 +1,25 @@
 // ユーティリティ関数
 const MapUtils = {
+    // ブランド設定（共通）
+    BRAND_CONFIG: {
+        butayama: { name: '豚山', color: '#fcd700ff', textColor: 'black', markerText: '豚', keywords: ['豚山'] },
+        ramenso: { name: 'ラーメン荘', color: '#3498db', textColor: 'white', markerText: '荘', keywords: ['ラーメン荘'] },
+        rakeiko: { name: 'ら・けいこ', color: '#2ecc71', textColor: 'white', keywords: ['ら・けいこ'] },
+        ahare: { name: '麺屋あっ晴れ', color: '#e74c3c', textColor: 'white', keywords: ['あっ晴れ'] },
+        tachikawa: { name: '立川マシマシ', color: '#9b59b6', textColor: 'white', keywords: ['立川マシマシ'] },
+        tsukemensha: { name: 'つけめん舎', color: '#1abc9c', textColor: 'white', keywords: ['つけめん舎'] },
+        jiro: { name: '直系二郎', color: 'var(--color-primary)', textColor: 'white', markerText: '直', keywords: ['ラーメン二郎'] },
+        butakin: { name: 'BUTAKIN', color: '#fcd700ff', textColor: 'black', markerText: 'B', keywords: ['BUTAKIN'] },
+        other: { name: 'その他', color: '#95a5a6', textColor: 'white', keywords: [] }
+    },
+
     // 店名からブランドを判定する関数
-    determineBrand(shopName, brandConfig) {
-        for (const [brandKey, config] of Object.entries(brandConfig)) {
+    determineBrand(shopName, brandConfig = null) {
+        const config = brandConfig || this.BRAND_CONFIG;
+        for (const [brandKey, brandData] of Object.entries(config)) {
             if (brandKey === 'other') continue;
 
-            for (const keyword of config.keywords) {
+            for (const keyword of brandData.keywords) {
                 if (shopName.includes(keyword)) {
                     return brandKey;
                 }
@@ -14,18 +28,26 @@ const MapUtils = {
         return 'other';
     },
 
+    // ブランド設定を取得する関数
+    getBrandConfig(brand) {
+        return this.BRAND_CONFIG[brand] || this.BRAND_CONFIG.other;
+    },
+
     // ブランドごとの店舗数をカウントする関数
-    countShopsByBrand(shops, brandConfig, determineBrandFunc) {
+    countShopsByBrand(shops, brandConfig = null, determineBrandFunc = null) {
+        const config = brandConfig || this.BRAND_CONFIG;
         const counts = {};
 
         // すべてのブランドを初期化
-        for (const brandKey of Object.keys(brandConfig)) {
+        for (const brandKey of Object.keys(config)) {
             counts[brandKey] = 0;
         }
 
         // 店舗をブランドごとにカウント
         shops.forEach(shop => {
-            const brand = determineBrandFunc(shop.name, brandConfig);
+            const brand = determineBrandFunc
+                ? determineBrandFunc(shop.name, config)
+                : this.determineBrand(shop.name, config);
             counts[brand]++;
         });
 
@@ -53,17 +75,9 @@ const MapUtils = {
 
 // MAPコンポーネント
 const MapComponent = {
-    // ブランド設定
-    BRAND_CONFIG: {
-        butayama: { name: '豚山', color: '#fcd700ff', textColor: 'black', markerText: '豚', keywords: ['豚山'] },
-        ramenso: { name: 'ラーメン荘', color: '#3498db', textColor: 'white', markerText: '荘', keywords: ['ラーメン荘'] },
-        rakeiko: { name: 'ら・けいこ', color: '#2ecc71', textColor: 'white', keywords: ['ら・けいこ'] },
-        ahare: { name: '麺屋あっ晴れ', color: '#e74c3c', textColor: 'white', keywords: ['あっ晴れ'] },
-        tachikawa: { name: '立川マシマシ', color: '#9b59b6', textColor: 'white', keywords: ['立川マシマシ'] },
-        tsukemensha: { name: 'つけめん舎', color: '#1abc9c', textColor: 'white', keywords: ['つけめん舎'] },
-        jiro: { name: '直系二郎', color: 'var(--color-primary)', textColor: 'white', markerText: '直', keywords: ['ラーメン二郎'] },
-        butakin: { name: 'BUTAKIN', color: '#fcd700ff', textColor: 'black', markerText: 'B', keywords: ['BUTAKIN'] },
-        other: { name: 'その他', color: '#95a5a6', textColor: 'white', keywords: [] }
+    // ブランド設定（MapUtilsから参照）
+    get BRAND_CONFIG() {
+        return MapUtils.BRAND_CONFIG;
     },
 
     // 状態管理
@@ -71,6 +85,8 @@ const MapComponent = {
         // マップ関連
         map: null,
         userLocation: null,
+        userMarker: null,        // ユーザー位置マーカー（重複防止用）
+        gpsWatchId: null,        // GPS監視ID（自動更新用）
         isLoading: false,
         lastCenter: null,
         debounceTimer: null,
@@ -448,21 +464,15 @@ const MapComponent = {
         const isHeaderVisible = mainHeader && mainHeader.style.display !== 'none';
         const mapHeight = isHeaderVisible ? 'calc(100vh - 60px)' : '100vh';
 
-        // DocumentFragmentを使用してDOMを効率的に構築
-        const fragment = document.createDocumentFragment();
-
-        // スタイル要素を作成
-        const styleElement = document.createElement('style');
-        styleElement.textContent = this.getMapStyles(mapHeight);
-        fragment.appendChild(styleElement);
+        // CSS変数で高さを設定（外部CSSファイルで参照）
+        document.documentElement.style.setProperty('--map-height', mapHeight);
 
         // コンテナ要素を作成
         const containerElement = this.getMapContainerElement();
-        fragment.appendChild(containerElement);
 
-        // 一度にDOMに追加
+        // DOMに追加
         contentArea.innerHTML = '';
-        contentArea.appendChild(fragment);
+        contentArea.appendChild(containerElement);
 
         // DOM再生成時はキャッシュしている参照をリセット
         this.state.filterButtons.clear();
@@ -481,964 +491,6 @@ const MapComponent = {
         this.initializeResizeObserver();
     },
 
-    // マップのスタイルを取得
-    getMapStyles(mapHeight) {
-        return `
-            .map-container {
-                padding: 0;
-                height: ${mapHeight};
-                width: 100%;
-                display: flex;
-                flex-direction: column;
-            }
-            
-            .map-header {
-                padding: 16px;
-                background: white;
-                border-bottom: 1px solid #e0e0e0;
-                z-index: 1000;
-                position: relative;
-            }
-            
-            .map-title-container {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-bottom: 8px;
-            }
-
-            .map-title {
-                font-size: 20px;
-                font-weight: bold;
-                margin: 0;
-                display: flex;
-                align-items: center;
-                gap: 8px;
-            }
-
-            .toggle-filters-btn {
-                background: transparent;
-                border: none;
-                font-size: 18px;
-                cursor: pointer;
-                padding: 4px;
-                transition: transform 0.3s ease;
-            }
-
-            .toggle-filters-btn.collapsed {
-                transform: rotate(180deg);
-            }
-
-            .collapsible-filters {
-                max-height: none; /* 高さ制限を解除し、すべてのフィルターが表示されるようにする */
-                overflow: hidden;
-                transition: max-height 0.5s ease-in-out;
-                margin-top: 12px;
-            }
-
-            .collapsible-filters.collapsed {
-                max-height: 0;
-                margin-top: 0;
-            }
-            
-            .map-controls {
-                display: flex;
-                gap: 12px;
-                margin-top: 12px;
-            }
-
-            .map-controls--persistent {
-                justify-content: flex-end;
-                margin-top: 0;
-            }
-            
-            .map-search {
-                flex: 1;
-                position: relative;
-            }
-            
-            .map-search-input-container {
-                flex: 1;
-                position: relative;
-            }
-            
-            .map-search-input {
-                width: 100%;
-                padding: 8px 36px 8px 12px;
-                border: 1px solid #e0e0e0;
-                border-radius: 20px;
-                font-size: 14px;
-                outline: none;
-                background: #f5f5f5;
-            }
-            
-            .map-search-input:focus {
-                border-color: var(--color-primary);
-                background: white;
-            }
-            
-            .map-search-btn {
-                position: absolute;
-                right: 8px;
-                top: 50%;
-                transform: translateY(-50%);
-                background: transparent;
-                border: none;
-                color: #666;
-                cursor: pointer;
-                padding: 4px;
-            }
-            
-            .map-search-results {
-                position: absolute;
-                top: 100%;
-                left: 0;
-                right: 0;
-                background: white;
-                border: 1px solid #e0e0e0;
-                border-radius: 8px;
-                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-                max-height: 200px;
-                overflow-y: auto;
-                z-index: 1000;
-                margin-top: 4px;
-            }
-            
-            .search-result-item {
-                padding: 10px 12px;
-                cursor: pointer;
-                border-bottom: 1px solid #f0f0f0;
-            }
-            
-            .search-result-item:last-child {
-                border-bottom: none;
-            }
-            
-            .search-result-item:hover {
-                background: #f5f5f5;
-            }
-            
-            .search-result-name {
-                font-weight: bold;
-                font-size: 14px;
-                margin-bottom: 4px;
-            }
-            
-            .search-result-address {
-                font-size: 12px;
-                color: #666;
-                margin-bottom: 4px;
-            }
-            
-            .search-result-brand {
-                font-size: 11px;
-                font-weight: bold;
-                padding: 2px 6px;
-                border-radius: 10px;
-                background: rgba(212, 165, 116, 0.1);
-                display: inline-block;
-            }
-            
-            .search-no-results, .search-error {
-                padding: 10px 12px;
-                font-size: 14px;
-                color: #666;
-                text-align: center;
-            }
-            
-            .map-filter-btn {
-                padding: 8px 16px;
-                background: #f5f5f5;
-                border: 1px solid #e0e0e0;
-                border-radius: 20px;
-                font-size: 14px;
-                cursor: pointer;
-                transition: all 0.2s;
-                white-space: nowrap;
-            }
-            
-            .map-filter-btn:hover {
-                background: var(--color-primary);
-                border-color: var(--color-primary);
-                color: white;
-            }
-            
-            .map-filter-btn.active {
-                background: var(--color-primary);
-                border-color: var(--color-primary);
-                color: white;
-            }
-            
-            .brand-filters {
-                padding: 12px 16px;
-                background: #f9f9f9;
-                border-bottom: 1px solid #e0e0e0;
-            }
-            
-            .filter-title {
-                font-size: 14px;
-                font-weight: bold;
-                margin-bottom: 8px;
-                color: #333;
-            }
-            
-            .filter-buttons {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 8px;
-                margin-bottom: 12px;
-            }
-            
-            .filter-actions {
-                display: flex;
-                gap: 8px;
-            }
-            
-            .filter-action-btn {
-                padding: 4px 12px;
-                background: white;
-                border: 1px solid #e0e0e0;
-                border-radius: 16px;
-                font-size: 12px;
-                cursor: pointer;
-                transition: all 0.2s;
-            }
-            
-            .filter-action-btn:hover {
-                background: #f0f0f0;
-            }
-            
-            /* 追加フィルターセクション */
-            .extra-filters {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 8px;
-                padding: 12px 0;
-                border-top: 1px solid #e8e8e8;
-                margin-top: 12px;
-            }
-            
-            .extra-filter-chip {
-                display: inline-flex;
-                align-items: center;
-                gap: 6px;
-                padding: 6px 12px;
-                background: white;
-                border: 1px solid #e0e0e0;
-                border-radius: 20px;
-                font-size: 13px;
-                cursor: pointer;
-                transition: all 0.2s ease;
-                user-select: none;
-                white-space: nowrap;
-            }
-            
-            .extra-filter-chip:hover {
-                background: #f5f5f5;
-                border-color: #ccc;
-            }
-            
-            .extra-filter-chip.active {
-                background: var(--color-primary);
-                border-color: var(--color-primary);
-                color: white;
-            }
-            
-            .extra-filter-chip.active i {
-                color: white;
-            }
-            
-            .extra-filter-chip i {
-                font-size: 12px;
-                color: #666;
-            }
-            
-            /* 訪問状況フィルターのセグメント */
-            .visit-filter-segment {
-                display: inline-flex;
-                border: 1px solid #e0e0e0;
-                border-radius: 20px;
-                overflow: hidden;
-                background: white;
-            }
-            
-            .visit-filter-option {
-                padding: 6px 12px;
-                font-size: 13px;
-                cursor: pointer;
-                border: none;
-                background: transparent;
-                transition: all 0.2s ease;
-                display: flex;
-                align-items: center;
-                gap: 4px;
-            }
-            
-            .visit-filter-option:not(:last-child) {
-                border-right: 1px solid #e0e0e0;
-            }
-            
-            .visit-filter-option:hover {
-                background: #f5f5f5;
-            }
-            
-            .visit-filter-option.active {
-                background: var(--color-primary);
-                color: white;
-            }
-            
-            .visit-filter-option i {
-                font-size: 11px;
-            }
-            
-            .filter-section-label {
-                font-size: 12px;
-                color: #666;
-                margin-bottom: 6px;
-                display: flex;
-                align-items: center;
-                gap: 4px;
-            }
-            
-            .filter-divider {
-                width: 1px;
-                height: 24px;
-                background: #e0e0e0;
-                margin: 0 4px;
-            }
-            
-            
-            .map-content {
-                flex: 1;
-                position: relative;
-                width: 100%;
-            }
-            
-            #map {
-                width: 100%;
-                height: 100%;
-                min-height: 100%;
-            }
-            
-            .map-loading {
-                position: absolute;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                background: white;
-                padding: 20px;
-                border-radius: 8px;
-                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-                text-align: center;
-                z-index: 1000;
-            }
-            
-            .map-spinner {
-                width: 32px;
-                height: 32px;
-                border: 3px solid #f3f3f3;
-                border-top: 3px solid var(--color-primary);
-                border-radius: 50%;
-                animation: spin 1s linear infinite;
-                margin: 0 auto 12px;
-            }
-            
-            @keyframes spin {
-                0% { transform: rotate(0deg); }
-                100% { transform: rotate(360deg); }
-            }
-            
-            .map-error {
-                position: absolute;
-                top: 50%;
-                left: 50%;
-                transform: translate(-50%, -50%);
-                background: white;
-                padding: 20px;
-                border-radius: 8px;
-                box-shadow: 0 2px 10px rgba(0, 0, 0, 0.1);
-                text-align: center;
-                z-index: 1000;
-                max-width: 300px;
-            }
-            
-            .map-error h3 {
-                color: #d32f2f;
-                margin-bottom: 8px;
-            }
-            
-            .map-error button {
-                margin-top: 12px;
-                padding: 8px 16px;
-                background: var(--color-primary);
-                color: white;
-                border: none;
-                border-radius: 4px;
-                cursor: pointer;
-            }
-            
-            .map-legend {
-                position: absolute;
-                bottom: 20px;
-                right: 20px;
-                background: white;
-                border-radius: 8px;
-                padding: 12px;
-                box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
-                z-index: 1000;
-            }
-            
-            .legend-title {
-                font-weight: bold;
-                margin-bottom: 8px;
-                font-size: 14px;
-            }
-            
-            .legend-item {
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                margin-bottom: 4px;
-                font-size: 12px;
-            }
-            
-            .marker-icon {
-                width: 16px;
-                height: 16px;
-                border-radius: 50%;
-            }
-            
-            @media (max-width: 768px) {
-                            .map-container {
-                                height: calc(100vh - 80px);
-                                width: 100vw;
-                                max-width: 100%;
-                            }
-                            
-                            .map-header {
-                                padding: 12px 16px;
-                            }
-                            
-                            .map-title {
-                                font-size: 18px;
-                            }
-                            
-                            .map-controls {
-                                gap: 8px;
-                            }
-                            
-                            .brand-filters {
-                                padding: 8px 12px;
-                            }
-                            
-                            .filter-buttons {
-                                gap: 6px;
-                            }
-                            
-                            .map-filter-btn {
-                                padding: 6px 12px;
-                                font-size: 12px;
-                            }
-                            
-                            .filter-actions {
-                                flex-wrap: wrap;
-                            }
-                            
-                            .filter-action-btn {
-                                font-size: 11px;
-                                padding: 3px 8px;
-                            }
-                            
-                            /* 追加フィルターのモバイル対応 */
-                            .extra-filters {
-                                padding: 10px 0;
-                                gap: 6px;
-                            }
-                            
-                            .extra-filter-chip {
-                                padding: 5px 10px;
-                                font-size: 12px;
-                            }
-                            
-                            .visit-filter-segment {
-                                flex-wrap: wrap;
-                            }
-                            
-                            .visit-filter-option {
-                                padding: 5px 8px;
-                                font-size: 11px;
-                            }
-                            
-                            .filter-divider {
-                                display: none;
-                            }
-                            
-                            /* スマホ環境では凡例を非表示にする */
-                            .map-legend {
-                                display: none !important;
-                            }
-                            
-                            .legend-item {
-                                font-size: 11px;
-                            }
-                        }
-
-            /* Shop Detail Panel */
-            .shop-detail-panel {
-                position: absolute;
-                top: 0;
-                left: 0;
-                width: 350px;
-                height: 100%;
-                background: white;
-                z-index: 5;
-                transform: translateX(-100%);
-                transition: transform 0.3s ease-in-out, z-index 0.3s ease-in-out;
-                box-shadow: 2px 0 10px rgba(0,0,0,0.1);
-                overflow-y: auto;
-                visibility: hidden;
-            }
-
-            .shop-detail-panel.show {
-                transform: translateX(0);
-                z-index: 1010;
-                visibility: visible;
-            }
-
-
-            .shop-info-card {
-                border: 1px solid #e0e0e0;
-                border-radius: 8px;
-                overflow: hidden;
-                margin-bottom: 12px;
-                background: white;
-            }
-
-            .shop-details {
-                padding: 12px;
-            }
-
-            .shop-brand-badge {
-                display: inline-flex;
-                align-items: center;
-                gap: 6px;
-                padding: 6px 12px;
-                border-radius: 999px;
-                font-size: 12px;
-                font-weight: bold;
-                margin-bottom: 12px;
-                box-shadow: 0 1px 2px rgba(0, 0, 0, 0.12);
-            }
-
-            .shop-brand-badge i {
-                font-size: 14px;
-            }
-
-            .shop-meta-grid {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-                gap: 12px;
-                margin-bottom: 12px;
-            }
-
-            .shop-meta-item {
-                background: #f9f9f9;
-                border: 1px solid #f0f0f0;
-                border-radius: 8px;
-                padding: 10px 12px;
-            }
-
-            .shop-meta-label {
-                display: block;
-                font-size: 12px;
-                color: #666;
-                margin-bottom: 4px;
-            }
-
-            .shop-meta-value {
-                font-size: 16px;
-                font-weight: bold;
-                color: #333;
-                display: flex;
-                align-items: center;
-                gap: 6px;
-                flex-wrap: wrap;
-            }
-
-            .shop-actions {
-                display: flex;
-                flex-wrap: wrap;
-                gap: 8px;
-                margin-top: 8px;
-            }
-
-            .shop-action-btn {
-                display: inline-flex;
-                align-items: center;
-                gap: 6px;
-                padding: 8px 12px;
-                border-radius: 6px;
-                border: 1px solid #e0e0e0;
-                background: white;
-                font-size: 13px;
-                color: #333;
-                text-decoration: none;
-                transition: all 0.2s ease-in-out;
-            }
-
-            .shop-action-btn:hover {
-                background: #f5f5f5;
-                border-color: var(--color-primary);
-                color: var(--color-primary);
-            }
-
-
-            @media (max-width: 768px) {
-                .shop-detail-panel {
-                    position: fixed;
-                    top: 0;
-                    left: 0;
-                    right: 0;
-                    bottom: 0;
-                    width: 100%;
-                    height: 100%;
-                    transform: translateY(100%);
-                    border: none;
-                    visibility: hidden;
-                    z-index: 2000; /* マップや凡例より前面に表示 */
-                }
-
-                .shop-detail-panel.show {
-                    transform: translateY(0);
-                    visibility: visible;
-                }
-
-            }
-
-            /* Marker Cluster Styles */
-            .marker-cluster {
-                background: rgba(255, 255, 255, 0.8);
-                border-radius: 50%;
-                text-align: center;
-                font-weight: bold;
-                font-family: Arial, sans-serif;
-                border: 2px solid rgba(0, 0, 0, 0.2);
-            }
-            .marker-cluster div {
-                width: 30px;
-                height: 30px;
-                margin-left: 5px;
-                margin-top: 5px;
-                border-radius: 50%;
-                text-align: center;
-                line-height: 30px;
-            }
-            .marker-cluster span {
-                line-height: 30px;
-            }
-            /* クラスターサイズ別スタイル */
-            .marker-cluster-small {
-                background-color: rgba(181, 226, 140, 0.6);
-            }
-            .marker-cluster-small div {
-                background-color: rgba(110, 204, 57, 0.6);
-            }
-            .marker-cluster-medium {
-                background-color: rgba(241, 211, 87, 0.6);
-            }
-            .marker-cluster-medium div {
-                background-color: rgba(240, 194, 12, 0.6);
-            }
-            .marker-cluster-large {
-                background-color: rgba(253, 156, 115, 0.6);
-            }
-            .marker-cluster-large div {
-                background-color: rgba(241, 128, 23, 0.6);
-            }
-            /* 豚山ブランド用のピンククラスタースタイル */
-            .marker-cluster-pink {
-                background-color: rgba(252, 215, 0, 0.3) !important;
-                border: 2px solid rgba(252, 215, 0, 0.8) !important;
-            }
-            .marker-cluster-pink div {
-                background-color: rgba(252, 215, 0, 0.8) !important;
-                color: black !important;
-            }
-            .marker-cluster-pink.marker-cluster-small {
-                background-color: rgba(252, 215, 0, 0.3) !important;
-            }
-            .marker-cluster-pink.marker-cluster-small div {
-                background-color: rgba(252, 215, 0, 0.6) !important;
-            }
-            .marker-cluster-pink.marker-cluster-medium {
-                background-color: rgba(252, 215, 0, 0.4) !important;
-            }
-            .marker-cluster-pink.marker-cluster-medium div {
-                background-color: rgba(252, 215, 0, 0.7) !important;
-            }
-            .marker-cluster-pink.marker-cluster-large {
-                background-color: rgba(252, 215, 0, 0.5) !important;
-            }
-            .marker-cluster-pink.marker-cluster-large div {
-                background-color: rgba(252, 215, 0, 0.9) !important;
-            }
-            /* 他のブランド用のクラスタースタイル */
-            .marker-cluster-ramenso {
-                background-color: rgba(52, 152, 219, 0.3) !important;
-                border: 2px solid rgba(52, 152, 219, 0.8) !important;
-            }
-            .marker-cluster-ramenso div {
-                background-color: rgba(52, 152, 219, 0.8) !important;
-                color: white !important;
-            }
-            .marker-cluster-rakeiko {
-                background-color: rgba(46, 204, 113, 0.3) !important;
-                border: 2px solid rgba(46, 204, 113, 0.8) !important;
-            }
-            .marker-cluster-rakeiko div {
-                background-color: rgba(46, 204, 113, 0.8) !important;
-                color: white !important;
-            }
-            .marker-cluster-ahare {
-                background-color: rgba(231, 76, 60, 0.3) !important;
-                border: 2px solid rgba(231, 76, 60, 0.8) !important;
-            }
-            .marker-cluster-ahare div {
-                background-color: rgba(231, 76, 60, 0.8) !important;
-                color: white !important;
-            }
-            .marker-cluster-tachikawa {
-                background-color: rgba(155, 89, 182, 0.3) !important;
-                border: 2px solid rgba(155, 89, 182, 0.8) !important;
-            }
-            .marker-cluster-tachikawa div {
-                background-color: rgba(155, 89, 182, 0.8) !important;
-                color: white !important;
-            }
-            .marker-cluster-tsukemensha {
-                background-color: rgba(26, 188, 156, 0.3) !important;
-                border: 2px solid rgba(26, 188, 156, 0.8) !important;
-            }
-            .marker-cluster-tsukemensha div {
-                background-color: rgba(26, 188, 156, 0.8) !important;
-                color: white !important;
-            }
-            .marker-cluster-jiro {
-                background-color: rgba(212, 165, 116, 0.3) !important;
-                border: 2px solid var(--color-primary) !important;
-            }
-            .marker-cluster-jiro div {
-                background-color: var(--color-primary) !important;
-                color: white !important;
-            }
-            .marker-cluster-other {
-                background-color: rgba(149, 165, 166, 0.3) !important;
-                border: 2px solid rgba(149, 165, 166, 0.8) !important;
-            }
-            .marker-cluster-other div {
-                background-color: rgba(149, 165, 166, 0.8) !important;
-                color: white !important;
-            }
-            
-            /* マップパネル用レビュースタイル */
-            .shop-reviews-section {
-                margin-top: 20px;
-            }
-            .shop-reviews-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: center;
-                margin-bottom: 12px;
-            }
-            .review-stats {
-                flex: 1;
-            }
-            .average-rating {
-                text-align: center;
-            }
-            .average-rating-value {
-                font-size: 24px;
-                font-weight: bold;
-                color: #d4a574;
-            }
-            .average-rating-label {
-                font-size: 14px;
-                color: #666;
-                margin-top: 4px;
-            }
-            .rating-breakdown {
-                margin-top: 8px;
-            }
-            .rating-row {
-                display: flex;
-                align-items: center;
-                gap: 8px;
-                margin-bottom: 4px;
-            }
-            .rating-label {
-                width: 20px;
-                text-align: right;
-                font-weight: bold;
-            }
-            .rating-bar {
-                flex: 1;
-                height: 8px;
-                background: #f0f0f0;
-                border-radius: 4px;
-                overflow: hidden;
-            }
-            .rating-bar-fill {
-                height: 100%;
-                background: linear-gradient(90deg, #d4a574, #f4d4a3);
-                border-radius: 4px;
-                transition: width 0.3s ease;
-            }
-            .rating-count {
-                font-size: 12px;
-                color: #666;
-                min-width: 30px;
-                text-align: right;
-            }
-            .no-reviews-hint {
-                font-size: 14px;
-                color: #999;
-                text-align: center;
-                padding: 20px;
-            }
-            .shop-review-list {
-                max-height: 300px;
-                overflow-y: auto;
-                margin-bottom: 16px;
-            }
-            .review-card {
-                padding: 12px;
-                border: 1px solid #e0e0e0;
-                border-radius: 8px;
-                margin-bottom: 12px;
-                background: white;
-            }
-            .review-card:last-child {
-                margin-bottom: 0;
-            }
-            .review-card-header {
-                display: flex;
-                justify-content: space-between;
-                align-items: flex-start;
-                margin-bottom: 8px;
-            }
-            .review-author {
-                display: flex;
-                gap: 8px;
-                align-items: center;
-                flex: 1;
-            }
-            .review-avatar {
-                width: 32px;
-                height: 32px;
-                border-radius: 50%;
-                overflow: hidden;
-                flex-shrink: 0;
-            }
-            .review-avatar img {
-                width: 100%;
-                height: 100%;
-                object-fit: cover;
-            }
-            .review-author-name {
-                font-weight: bold;
-                font-size: 14px;
-            }
-            .review-date {
-                font-size: 12px;
-                color: #666;
-            }
-            .review-rating {
-                display: flex;
-                gap: 2px;
-                flex-shrink: 0;
-            }
-            .review-rating i {
-                font-size: 14px;
-                color: #ffa500;
-            }
-            .review-comment {
-                line-height: 1.4;
-                color: #333;
-                margin: 0;
-            }
-            .shop-review-form {
-                background: #f9f9f9;
-                padding: 16px;
-                border-radius: 8px;
-            }
-            .review-form-card {
-                background: white;
-                padding: 16px;
-                border-radius: 8px;
-                border: 1px solid #e0e0e0;
-            }
-            .review-form-card h3 {
-                margin-top: 0;
-                font-size: 16px;
-            }
-            .review-form-guest, .review-form-disabled {
-                text-align: center;
-                padding: 20px;
-                color: #666;
-            }
-            .review-form-hint {
-                font-size: 12px;
-                color: #666;
-                margin-top: 8px;
-                text-align: center;
-            }
-            .form-row {
-                margin-bottom: 12px;
-            }
-            .review-input-label {
-                display: block;
-                font-weight: bold;
-                margin-bottom: 4px;
-                font-size: 14px;
-            }
-            #shopReviewRating {
-                width: 100%;
-                padding: 8px;
-                border: 1px solid #ddd;
-                border-radius: 4px;
-                background: white;
-            }
-            textarea#shopReviewComment {
-                width: 100%;
-                border: 1px solid #ddd;
-                border-radius: 4px;
-                padding: 8px;
-                resize: vertical;
-                font-family: inherit;
-            }
-            .review-form-feedback {
-                min-height: 20px;
-                margin-bottom: 12px;
-                font-size: 14px;
-            }
-            .error-text {
-                color: #d32f2f;
-            }
-            .success-text {
-                color: #2e7d32;
-            }
-            .loading {
-                text-align: center;
-                padding: 20px;
-                color: #666;
-            }
-            .error {
-                text-align: center;
-                padding: 20px;
-                color: #d32f2f;
-            }
-        `;
-    },
 
     // マップコンテナ要素を取得
     getMapContainerElement() {
@@ -1652,7 +704,7 @@ const MapComponent = {
             }).setView([location.lat, location.lng], 13);
 
             L.maplibreGL({
-                style: 'https://tiles.openfreemap.org/styles/liberty',
+                style: 'https://tile.openstreetmap.jp/styles/osm-bright-ja/style.json',
                 maxZoom: 18,
                 minZoom: 4  // 縮小の最大値を設定（最小ズームレベル）
             }).addTo(this.state.map)
@@ -1753,7 +805,7 @@ const MapComponent = {
         }
     },
 
-    // ユーザー位置マーカーを追加
+    // ユーザー位置マーカーを追加/更新
     addUserMarker(location) {
         const userIcon = L.divIcon({
             html: '<div style="background: #2196f3; width: 16px; height: 16px; border-radius: 50%; border: 2px solid white; box-shadow: 0 2px 4px rgba(0,0,0,0.3);"></div>',
@@ -1761,9 +813,16 @@ const MapComponent = {
             className: 'user-marker'
         });
 
-        L.marker([location.lat, location.lng], { icon: userIcon })
-            .addTo(this.state.map)
-            .bindPopup(`<b>現在地</b><br>${location.city}, ${location.country}`);
+        // 既存のマーカーがあれば位置を更新
+        if (this.state.userMarker) {
+            this.state.userMarker.setLatLng([location.lat, location.lng]);
+            this.state.userMarker.setPopupContent(`<b>現在地</b><br>${location.city || ''} ${location.country || ''}`);
+        } else {
+            // 新規作成
+            this.state.userMarker = L.marker([location.lat, location.lng], { icon: userIcon })
+                .addTo(this.state.map)
+                .bindPopup(`<b>現在地</b><br>${location.city || ''} ${location.country || ''}`);
+        }
     },
 
     // マップ移動を処理する関数
@@ -2578,34 +1637,75 @@ const MapComponent = {
         return marker;
     },
 
-    // 現在位置を取得
+    // 現在位置を取得（自動更新機能付き）
     async getCurrentLocation() {
-        if (navigator.geolocation) {
-            navigator.geolocation.getCurrentPosition(
-                async (position) => {
-                    const lat = position.coords.latitude;
-                    const lng = position.coords.longitude;
-
-                    this.state.userLocation = {
-                        lat,
-                        lng,
-                        city: '現在地',
-                        country: ''
-                    };
-
-                    this.state.map.setView([lat, lng], 15);
-                    this.addUserMarker({ lat, lng, city: '現在地', country: '' });
-
-                    // 現在位置周辺のラーメン店を再取得
-                    await this.addNearbyShops({ lat, lng });
-                },
-                (error) => {
-                    console.error('位置情報の取得に失敗しました:', error);
-                    this.showError('位置情報の取得に失敗しました');
-                }
-            );
-        } else {
+        if (!navigator.geolocation) {
             this.showError('お使いのブラウザは位置情報をサポートしていません');
+            return;
+        }
+
+        // 既存のwatch監視があればクリア
+        if (this.state.gpsWatchId !== null) {
+            navigator.geolocation.clearWatch(this.state.gpsWatchId);
+        }
+
+        // まず1回取得してマップを移動
+        navigator.geolocation.getCurrentPosition(
+            async (position) => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+
+                this.state.userLocation = {
+                    lat,
+                    lng,
+                    city: '現在地',
+                    country: ''
+                };
+
+                this.state.map.setView([lat, lng], 15);
+                this.addUserMarker({ lat, lng, city: '現在地', country: '' });
+
+                // 現在位置周辺のラーメン店を再取得
+                await this.addNearbyShops({ lat, lng });
+            },
+            (error) => {
+                console.error('位置情報の取得に失敗しました:', error);
+                this.showError('位置情報の取得に失敗しました');
+            }
+        );
+
+        // GPS位置を継続的に監視（自動更新）
+        this.state.gpsWatchId = navigator.geolocation.watchPosition(
+            (position) => {
+                const lat = position.coords.latitude;
+                const lng = position.coords.longitude;
+
+                this.state.userLocation = {
+                    lat,
+                    lng,
+                    city: '現在地',
+                    country: ''
+                };
+
+                // マーカーを更新（マップは移動しない）
+                this.addUserMarker({ lat, lng, city: '現在地', country: '' });
+            },
+            (error) => {
+                console.warn('GPS位置の更新に失敗:', error);
+            },
+            {
+                enableHighAccuracy: true,
+                timeout: 10000,
+                maximumAge: 5000
+            }
+        );
+    },
+
+    // GPS監視を停止
+    stopGpsWatch() {
+        if (this.state.gpsWatchId !== null) {
+            navigator.geolocation.clearWatch(this.state.gpsWatchId);
+            this.state.gpsWatchId = null;
         }
     },
 
@@ -2871,27 +1971,6 @@ const MapComponent = {
             const lng = typeof shop.longitude === 'number' ? shop.longitude : parseFloat(shop.longitude);
             const hasCoordinates = Number.isFinite(lat) && Number.isFinite(lng);
 
-            // 店舗詳細パネル表示時にマップが動かないようにコメントアウト
-            // if (this.state.map && hasCoordinates) {
-            //     const latLng = [lat, lng];
-            //     const isMobile = window.innerWidth <= 768;
-
-            //     this.state.map.setView(latLng, this.state.map.getZoom(), { animate: false });
-
-            //     setTimeout(() => {
-            //         if (isMobile) {
-            //             const mapHeight = this.state.map.getSize().y;
-            //             const panelHeight = mapHeight * 0.6; // Panel is 60% of height
-            //             const yOffset = panelHeight / 2;
-            //             this.state.map.panBy([0, -yOffset], { animate: true });
-            //         } else {
-            //             const panelWidth = 350; // Panel is 350px wide
-            //             const xOffset = panelWidth / 2;
-            //             this.state.map.panBy([xOffset, 0], { animate: true });
-            //         }
-            //     }, 100);
-            // }
-
             const metaItems = [
                 `
                 <div class="shop-meta-item">
@@ -3138,8 +2217,8 @@ const MapComponent = {
                 <div class="form-row">
                     <label class="review-input-label" for="mapShopReviewRating">評価</label>
                     <select id="mapShopReviewRating" required>
-                        <option value="5">★★★★★ とにかく最高</option>
-                        <option value="4">★★★★☆ かなり満足</option>
+                        <option value="5">★★★★★ とても良い</option>
+                        <option value="4">★★★★☆ 満足</option>
                         <option value="3">★★★☆☆ 普通</option>
                         <option value="2">★★☆☆☆ 改善の余地あり</option>
                         <option value="1">★☆☆☆☆ 期待外れ</option>

@@ -255,7 +255,7 @@ const ShopDetailComponent = {
 
                 // MapLibre GLを使用してmap.jsと同じスタイルに
                 L.maplibreGL({
-                    style: 'https://tiles.openfreemap.org/styles/liberty',
+                    style: 'https://tile.openstreetmap.jp/styles/osm-bright-ja/style.json',
                     maxZoom: 18
                 }).addTo(map);
 
@@ -314,45 +314,14 @@ const ShopDetailComponent = {
         }, 100);
     },
 
-    // 店名からブランドを判定する関数
+    // 店名からブランドを判定する関数（MapUtilsから参照）
     determineBrand(shopName) {
-        const BRAND_CONFIG = {
-            butayama: { name: '豚山', color: '#fcd700ff', textColor: 'black', markerText: '豚', keywords: ['豚山'] },
-            ramenso: { name: 'ラーメン荘', color: '#3498db', textColor: 'white', markerText: '荘', keywords: ['ラーメン荘'] },
-            rakeiko: { name: 'ら・けいこ', color: '#2ecc71', textColor: 'white', keywords: ['ら・けいこ'] },
-            ahare: { name: '麺屋あっ晴れ', color: '#e74c3c', textColor: 'white', keywords: ['あっ晴れ'] },
-            tachikawa: { name: '立川マシマシ', color: '#9b59b6', textColor: 'white', keywords: ['立川マシマシ'] },
-            tsukemensha: { name: 'つけめん舎', color: '#1abc9c', textColor: 'white', keywords: ['つけめん舎'] },
-            jiro: { name: '直系二郎', color: 'var(--color-primary)', textColor: 'white', markerText: '直', keywords: ['ラーメン二郎'] },
-            other: { name: 'その他', color: '#95a5a6', textColor: 'white', keywords: [] }
-        };
-
-        for (const [brandKey, config] of Object.entries(BRAND_CONFIG)) {
-            if (brandKey === 'other') continue;
-
-            for (const keyword of config.keywords) {
-                if (shopName.includes(keyword)) {
-                    return brandKey;
-                }
-            }
-        }
-        return 'other';
+        return MapUtils.determineBrand(shopName);
     },
 
-    // ブランド設定を取得する関数
+    // ブランド設定を取得する関数（MapUtilsから参照）
     getBrandConfig(brand) {
-        const BRAND_CONFIG = {
-            butayama: { name: '豚山', color: '#fcd700ff', textColor: 'black', markerText: '豚', keywords: ['豚山'] },
-            ramenso: { name: 'ラーメン荘', color: '#3498db', textColor: 'white', markerText: '荘', keywords: ['ラーメン荘'] },
-            rakeiko: { name: 'ら・けいこ', color: '#2ecc71', textColor: 'white', keywords: ['ら・けいこ'] },
-            ahare: { name: '麺屋あっ晴れ', color: '#e74c3c', textColor: 'white', keywords: ['あっ晴れ'] },
-            tachikawa: { name: '立川マシマシ', color: '#9b59b6', textColor: 'white', keywords: ['立川マシマシ'] },
-            tsukemensha: { name: 'つけめん舎', color: '#1abc9c', textColor: 'white', keywords: ['つけめん舎'] },
-            jiro: { name: '直系二郎', color: 'var(--color-primary)', textColor: 'white', markerText: '直', keywords: ['ラーメン二郎'] },
-            other: { name: 'その他', color: '#95a5a6', textColor: 'white', keywords: [] }
-        };
-
-        return BRAND_CONFIG[brand] || BRAND_CONFIG.other;
+        return MapUtils.getBrandConfig(brand);
     },
 
     async loadShopReviews() {
