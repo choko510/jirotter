@@ -67,6 +67,18 @@ async def create_post(
     shadow_ban_reason = " / ".join(spam_result.reasons) if spam_result.reasons else None
     spam_score = spam_result.score  # スパムスコアを保存
 
+    # 連投スパムチェック（10分以内に3回同じ投稿）
+    if sanitized_content:
+        is_repeated_spam = spam_detector.check_and_ban_repeated_posts(db, current_user.id, sanitized_content)
+        if is_repeated_spam:
+            is_shadow_banned = True
+            reason = "連投スパム検出(10分以内に3回)"
+            if shadow_ban_reason:
+                if reason not in shadow_ban_reason:
+                    shadow_ban_reason += f" / {reason}"
+            else:
+                shadow_ban_reason = reason
+
     mentioned_handles: Set[str] = set()
     ai_responder_user: Optional[User] = None
     if sanitized_content:

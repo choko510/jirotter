@@ -365,6 +365,42 @@ class SpamDetector:
         is_spam = (score >= self.cfg.threshold) or bool(reasons and any(r for r in reasons if "重複" in r or "過剰" in r))
         return SpamCheckResult(is_spam=is_spam, reasons=reasons, score=round(score, 2))
 
+    def check_and_ban_repeated_posts(self, db: Session, user_id: str, content: str) -> bool:
+        """
+        同一ユーザーが10分以内に同一内容の投稿を3回以上行った場合（今回を含む）、
+        それらの投稿（過去分含む）を全てシャドウバンする。
+        戻り値: 今回の投稿をシャドウバンすべきかどうか
+        """
+        # 直近10分の同じ内容の投稿を取得
+        window_start = datetime.now(JST) - timedelta(minutes=10)
+
+        # コンテンツの正規化をして比較するべきだが、今回は完全一致（元のcontent）で検索するか、
+        # あるいは_normalizeを通したものと比較するか。
+        # 要件は「同じ内容」なので、DBのcontentと直接比較する方が確実かつ高速。
+        # ただし、validate_post_content でサニタイズされた後の content が渡される前提。
+
+        existing_posts = (
+            db.query(Post)
+            .filter(
+                Post.user_id == user_id,
+                Post.content == content,
+                Post.created_at >= window_start
+            )
+            .all()
+        )
+
+        # 既に2件以上あれば、今回で3件目になる
+        if len(existing_posts) >= 2:
+            reason = "連投スパム検出(10分以内に3回)"
+            for post in existing_posts:
+                if not post.is_shadow_banned:
+                    post.is_shadow_banned = True
+                    post.shadow_ban_reason = reason
+                    # sessionに含まれているので、呼び出し元のcommitで反映される
+            return True
+
+        return False
+
     # -----------------------------
     # Normalization & common utils
     # -----------------------------
