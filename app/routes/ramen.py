@@ -3,8 +3,7 @@ from sqlalchemy.orm import Session
 from sqlalchemy import func
 from typing import Optional, Tuple
 import math
-import csv
-import os
+
 from datetime import datetime, timedelta, timezone
 
 from database import get_db
@@ -63,52 +62,15 @@ def _distance_expression(latitude: float, longitude: float):
 # この関数はDBで計算するため、APIロジックからは不要になる
 # def haversine_distance(lat1: float, lon1: float, lat2: float, lon2: float) -> float: ...
 
+
+from app.utils.ramen_data_sync import sync_ramen_data
+
 def load_ramen_data_on_startup(db: Session):
     """
-    【改善点】アプリケーション起動時に一度だけCSVを読み込む関数。
+    アプリケーション起動時に店舗データを同期する関数。
     main.pyのstartupイベントで呼び出す。
     """
-    if db.query(RamenShop).count() > 0:
-        print("Ramen data already exists. Resetting wait times to 0.")
-        # 既存のデータの待ち時間を0にリセット
-        db.query(RamenShop).update({RamenShop.wait_time: 0})
-        db.commit()
-        return
-    
-    csv_path = os.path.join(os.path.dirname(os.path.dirname(os.path.dirname(__file__))), "ramen.csv")
-    
-    try:
-        with open(csv_path, 'r', encoding='utf-8-sig') as file:
-            csv_reader = csv.DictReader(file)
-            shops_to_add = []
-            for row in csv_reader:
-                try:
-                    latitude = float(row['緯度'])
-                    longitude = float(row['経度'])
-                    # 待ち時間の初期値は0（データがない状態）として設定
-                    # 実際の待ち時間はチェックイン機能で更新される
-                    shops_to_add.append(
-                        RamenShop(
-                            name=row['店名'],
-                            address=row['住所'],
-                            business_hours=row['営業時間'],
-                            closed_day=row['定休日'],
-                            seats=row['座席'],
-                            latitude=latitude,
-                            longitude=longitude,
-                            wait_time=0
-                        )
-                    )
-                except (ValueError, KeyError) as e:
-                    print(f"Skipping row due to parsing error: {row} - {e}")
-                    continue
-            
-            db.bulk_save_objects(shops_to_add) # 1件ずつaddするより高速
-            db.commit()
-            print(f"Successfully loaded {len(shops_to_add)} ramen shops with wait time data.")
-    except Exception as e:
-        db.rollback()
-        print(f"Error loading ramen data: {e}")
+    sync_ramen_data(db)
 
 @router.get("/ramen/ranking", response_model=RamenShopsResponse)
 async def get_ramen_ranking(db: Session = Depends(get_db)):
