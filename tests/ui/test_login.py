@@ -45,7 +45,7 @@ def create_test_user():
     session.commit()
     session.close()
 
-def test_login_and_logout(page: Page):
+def test_login_and_logout(page: Page, live_server):
     """ログインとログアウトのUIテスト"""
     # アラートを自動的に閉じる
     page.on("dialog", lambda dialog: dialog.dismiss())

@@ -1,4 +1,5 @@
 import os
+import logging
 from datetime import datetime, timezone
 from typing import List, Optional
 
@@ -31,6 +32,7 @@ from app.utils.scoring import award_points, get_rank_snapshot, get_status_messag
 from app.utils.recommendations import get_user_recommendations
 
 router = APIRouter(tags=["users"])
+logger = logging.getLogger(__name__)
 
 
 def _build_ranking_entry(db: Session, user: User, position: int) -> UserRankingEntry:
@@ -297,7 +299,7 @@ async def upload_profile_icon(
             if os.path.exists(old_path):
                 os.remove(old_path)
         except Exception as exc:  # pragma: no cover - 失敗しても致命的ではない
-            print(f"旧プロフィールアイコンの削除に失敗: {exc}")
+            logger.warning("旧プロフィールアイコンの削除に失敗しました: %s", exc)
 
     return {"profile_image_url": icon_url}
 

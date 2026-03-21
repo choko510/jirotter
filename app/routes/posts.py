@@ -1,16 +1,17 @@
 from fastapi import APIRouter, Depends, HTTPException, status, Query, File, UploadFile, Form
 from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import desc, func, or_
-from typing import Dict, Any, List, Optional, Set
+from typing import Dict, List, Optional, Set
 import re
 import shutil
 import os
 import time
+import logging
 
 from database import get_db
 from app.models import Post, User, Like, Reply, RamenShop, Follow
-from app.schemas import PostCreate, PostResponse, PostsResponse
-from app.utils.auth import get_current_user, get_current_active_user, get_current_user_optional
+from app.schemas import PostResponse, PostsResponse
+from app.utils.auth import get_current_active_user, get_current_user_optional
 from app.utils.security import validate_post_content
 from app.utils.image_processor import process_image
 from app.utils.image_validation import validate_image_file
@@ -22,10 +23,10 @@ from app.utils.moderation_tasks import schedule_post_moderation
 from app.utils.ai_responder import (
     AI_USER_ID,
     ensure_ai_responder_user,
-    generate_ai_reply,
 )
 
 router = APIRouter(tags=["posts"])
+logger = logging.getLogger(__name__)
 
 
 
@@ -35,6 +36,73 @@ os.makedirs(UPLOAD_DIR, exist_ok=True)
 os.makedirs(VIDEO_DIR, exist_ok=True)
 
 MENTION_PATTERN = re.compile(r"@([A-Za-z0-9_]{1,30})")
+
+
+def _visible_replies(post: Post, current_user: Optional[User]) -> List[Reply]:
+    return [
+        reply
+        for reply in post.replies
+        if not reply.is_shadow_banned
+        or (current_user and reply.user_id == current_user.id)
+    ]
+
+
+def _build_post_response(
+    post: Post,
+    current_user: Optional[User],
+    likes_count: int,
+    is_liked_by_current_user: bool,
+) -> PostResponse:
+    visible_replies = _visible_replies(post, current_user)
+    response_data = {
+        "id": post.id,
+        "content": post.content,
+        "user_id": post.user_id,
+        # username は任意入力のため None の場合は id をフォールバック
+        "author_username": post.author.username or post.author.id,
+        "author_profile_image_url": post.author.profile_image_url,
+        "thumbnail_url": post.thumbnail_url,
+        "original_image_url": post.original_image_url,
+        "video_url": post.video_url,
+        "video_duration": post.video_duration,
+        "shop_id": post.shop_id,
+        "shop_name": post.shop.name if post.shop else None,
+        "shop_address": post.shop.address if post.shop else None,
+        "created_at": post.created_at,
+        "likes_count": likes_count,
+        "replies_count": len(visible_replies),
+        "replies": visible_replies,
+        "is_liked_by_current_user": is_liked_by_current_user,
+        "is_shadow_banned": post.is_shadow_banned,
+        "shadow_ban_reason": post.shadow_ban_reason,
+    }
+    return PostResponse.model_validate(response_data)
+
+
+def _get_likes_map(db: Session, post_ids: List[int]) -> Dict[int, int]:
+    if not post_ids:
+        return {}
+    likes_counts = (
+        db.query(Like.post_id, func.count(Like.id).label("likes_count"))
+        .filter(Like.post_id.in_(post_ids))
+        .group_by(Like.post_id)
+        .all()
+    )
+    return {post_id: count for post_id, count in likes_counts}
+
+
+def _get_liked_post_ids(db: Session, current_user: Optional[User], post_ids: List[int]) -> Set[int]:
+    if not current_user or not post_ids:
+        return set()
+    user_likes = (
+        db.query(Like.post_id)
+        .filter(
+            Like.user_id == current_user.id,
+            Like.post_id.in_(post_ids),
+        )
+        .all()
+    )
+    return {post_id for (post_id,) in user_likes}
 
 @router.post("/posts", response_model=PostResponse, status_code=status.HTTP_201_CREATED)
 async def create_post(
@@ -111,7 +179,6 @@ async def create_post(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 detail="指定された店舗が存在しません"
             )
-    image_url = None
     thumbnail_url = None
     original_image_url = None
     video_url = None
@@ -136,8 +203,8 @@ async def create_post(
                     detail="画像の処理に失敗しました"
                 )
             
-        except Exception as e:
-            print(f"画像処理エラー: {e}")
+        except Exception as exc:
+            logger.exception("画像処理エラー")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="画像の処理に失敗しました"
@@ -190,7 +257,8 @@ async def create_post(
             video.file.seek(0)
             with open(video_path, "wb") as buffer:
                 shutil.copyfileobj(video.file, buffer)
-        except Exception:
+        except OSError:
+            logger.exception("動画の保存に失敗")
             raise HTTPException(
                 status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
                 detail="動画の保存に失敗しました"
@@ -267,9 +335,9 @@ async def create_post(
                     )
                     db_session.add(ai_reply)
                     db_session.commit()
-                except Exception as e:
+                except Exception:
                     db_session.rollback()
-                    print(f"AI返信バックグラウンド処理中にエラーが発生しました: {e}")
+                    logger.exception("AI返信バックグラウンド処理中にエラーが発生しました")
                 finally:
                     db_session.close()
 
@@ -281,44 +349,63 @@ async def create_post(
                         current_user.id,
                     )
                 )
-            except Exception as e:
+            except Exception:
                 # AI返信生成は付加的機能のため、失敗しても投稿処理自体は継続
-                print(f"AI返信バックグラウンドスケジュールに失敗しました: {e}")
+                logger.exception("AI返信バックグラウンドスケジュールに失敗しました")
 
         db.commit()
         db.refresh(post)
 
         # スパム判定、低スコアユーザー、またはスパムスコアに基づく投稿のみモデレーションをスケジュール
         should_moderate = False
-        moderation_reason = ""
         
         if post.is_shadow_banned:
             should_moderate = True
-            moderation_reason = "スパム判定"
-            print(f"投稿ID {post.id} はスパム判定されているためモデレーションをスケジュールします")
+            logger.info(
+                "投稿ID %s はスパム判定されているためモデレーションをスケジュールします",
+                post.id,
+            )
         elif (current_user.internal_score or 100) <= 70:
             should_moderate = True
-            moderation_reason = "低スコアユーザー"
-            print(f"ユーザーID {current_user.id} は低スコア(internal_score: {current_user.internal_score})のためモデレーションをスケジュールします")
+            logger.info(
+                "ユーザーID %s は低スコア(internal_score: %s)のためモデレーションをスケジュールします",
+                current_user.id,
+                current_user.internal_score,
+            )
         elif spam_score >= 1.5:  # 閾値を1.5に引き下げて低リスクも含める
             should_moderate = True
-            moderation_reason = f"スパムスコア({spam_score})"
             if spam_score >= 3.5:
-                print(f"投稿ID {post.id} は高スパムスコア({spam_score})のためモデレーションをスケジュールします")
+                logger.info(
+                    "投稿ID %s は高スパムスコア(%s)のためモデレーションをスケジュールします",
+                    post.id,
+                    spam_score,
+                )
             elif spam_score >= 2.5:
-                print(f"投稿ID {post.id} は中スパムスコア({spam_score})のためモデレーションをスケジュールします")
+                logger.info(
+                    "投稿ID %s は中スパムスコア(%s)のためモデレーションをスケジュールします",
+                    post.id,
+                    spam_score,
+                )
             else:
-                print(f"投稿ID {post.id} は低スパムスコア({spam_score})のためモデレーションをスケジュールします")
+                logger.info(
+                    "投稿ID %s は低スパムスコア(%s)のためモデレーションをスケジュールします",
+                    post.id,
+                    spam_score,
+                )
         
         if should_moderate:
             await schedule_post_moderation(post.id, db)
         else:
-            print(f"投稿ID {post.id} はモデレーション対象外です")
+            logger.info("投稿ID %s はモデレーション対象外です", post.id)
 
         return post
         
-    except Exception as e:
+    except HTTPException:
         db.rollback()
+        raise
+    except Exception:
+        db.rollback()
+        logger.exception("投稿作成に失敗しました")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="投稿に失敗しました"
@@ -419,68 +506,34 @@ async def get_posts(
         posts = posts_query.order_by(desc(Post.created_at)).offset(
             (page - 1) * per_page
         ).limit(per_page).all()
-        
+
         post_ids = [post.id for post in posts]
+        likes_map = _get_likes_map(db, post_ids)
+        liked_post_ids = _get_liked_post_ids(db, current_user, post_ids)
 
-        # いいね数を一括で取得
-        likes_counts = db.query(
-            Like.post_id, func.count(Like.id).label('likes_count')
-        ).filter(Like.post_id.in_(post_ids)).group_by(Like.post_id).all()
-        likes_map = {post_id: count for post_id, count in likes_counts}
+        post_responses = [
+            _build_post_response(
+                post=post,
+                current_user=current_user,
+                likes_count=likes_map.get(post.id, 0),
+                is_liked_by_current_user=post.id in liked_post_ids,
+            )
+            for post in posts
+        ]
 
-        # 現在のユーザーがいいねした投稿IDを一括で取得
-        liked_post_ids = set()
-        if current_user:
-            user_likes = db.query(Like.post_id).filter(
-                Like.user_id == current_user.id,
-                Like.post_id.in_(post_ids)
-            ).all()
-            liked_post_ids = {like.post_id for like in user_likes}
-
-        # Pydanticモデルに直接マッピング
-        post_responses = []
-        for post in posts:
-            visible_replies = [
-                reply
-                for reply in post.replies
-                if not reply.is_shadow_banned
-                or (current_user and reply.user_id == current_user.id)
-            ]
-            response_data = {
-                "id": post.id,
-                "content": post.content,
-                "user_id": post.user_id,
-                # username は任意入力のため None の場合は id をフォールバック
-                "author_username": post.author.username or post.author.id,
-                "author_profile_image_url": post.author.profile_image_url,
-                "thumbnail_url": post.thumbnail_url,
-                "original_image_url": post.original_image_url,
-                "video_url": post.video_url,
-                "video_duration": post.video_duration,
-                "shop_id": post.shop_id,
-                "shop_name": post.shop.name if post.shop else None,
-                "shop_address": post.shop.address if post.shop else None,
-                "created_at": post.created_at,
-                "likes_count": likes_map.get(post.id, 0),
-                "replies_count": len(visible_replies),
-                "replies": visible_replies,
-                "is_liked_by_current_user": post.id in liked_post_ids,
-                "is_shadow_banned": post.is_shadow_banned,
-                "shadow_ban_reason": post.shadow_ban_reason,
-            }
-            post_responses.append(PostResponse.model_validate(response_data))
-        
         return PostsResponse(
             posts=post_responses,
             total=total,
             pages=pages,
             current_page=page
         )
-        
-    except Exception as e:
+    except HTTPException:
+        raise
+    except Exception as exc:
+        logger.exception("投稿一覧取得に失敗しました")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"投稿の取得に失敗しました: {e}"
+            detail=f"投稿の取得に失敗しました: {exc}"
         )
 
 @router.get("/posts/{post_id}", response_model=PostResponse)
@@ -509,7 +562,7 @@ async def get_post(
         )
 
     # いいね数を取得
-    likes_count = db.query(Like).filter(Like.post_id == post_id).count()
+    likes_count = db.query(func.count(Like.id)).filter(Like.post_id == post_id).scalar() or 0
 
     # 現在のユーザーがいいねしているか
     is_liked = False
@@ -519,37 +572,12 @@ async def get_post(
             Like.post_id == post_id
         ).first() is not None
 
-    visible_replies = [
-        reply
-        for reply in post.replies
-        if not reply.is_shadow_banned
-        or (current_user and reply.user_id == current_user.id)
-    ]
-
-    response_data = {
-        "id": post.id,
-        "content": post.content,
-        "user_id": post.user_id,
-        # username は任意入力のため None の場合は id をフォールバック
-        "author_username": post.author.username or post.author.id,
-        "author_profile_image_url": post.author.profile_image_url,
-        "thumbnail_url": post.thumbnail_url,
-        "original_image_url": post.original_image_url,
-        "video_url": post.video_url,
-        "video_duration": post.video_duration,
-        "shop_id": post.shop_id,
-        "shop_name": post.shop.name if post.shop else None,
-        "shop_address": post.shop.address if post.shop else None,
-        "created_at": post.created_at,
-        "likes_count": likes_count,
-        "replies_count": len(visible_replies),
-        "replies": visible_replies,
-        "is_liked_by_current_user": is_liked,
-        "is_shadow_banned": post.is_shadow_banned,
-        "shadow_ban_reason": post.shadow_ban_reason,
-    }
-    
-    return PostResponse.model_validate(response_data)
+    return _build_post_response(
+        post=post,
+        current_user=current_user,
+        likes_count=likes_count,
+        is_liked_by_current_user=is_liked,
+    )
 
 @router.delete("/posts/{post_id}", response_model=Dict[str, str])
 async def delete_post(
@@ -578,8 +606,9 @@ async def delete_post(
         
         return {"message": "投稿を削除しました"}
         
-    except Exception as e:
+    except Exception:
         db.rollback()
+        logger.exception("投稿削除に失敗しました")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
             detail="投稿の削除に失敗しました"
@@ -620,63 +649,30 @@ async def get_user_posts(
         ).limit(per_page).all()
 
         post_ids = [post.id for post in posts]
+        likes_map = _get_likes_map(db, post_ids)
+        liked_post_ids = _get_liked_post_ids(db, current_user, post_ids)
 
-        likes_counts = db.query(
-            Like.post_id, func.count(Like.id).label('likes_count')
-        ).filter(Like.post_id.in_(post_ids)).group_by(Like.post_id).all()
-        likes_map = {post_id: count for post_id, count in likes_counts}
+        post_responses = [
+            _build_post_response(
+                post=post,
+                current_user=current_user,
+                likes_count=likes_map.get(post.id, 0),
+                is_liked_by_current_user=post.id in liked_post_ids,
+            )
+            for post in posts
+        ]
 
-        liked_post_ids = set()
-        if current_user:
-            user_likes = db.query(Like.post_id).filter(
-                Like.user_id == current_user.id,
-                Like.post_id.in_(post_ids)
-            ).all()
-            liked_post_ids = {like.post_id for like in user_likes}
-
-        post_responses = []
-        for post in posts:
-            visible_replies = [
-                reply
-                for reply in post.replies
-                if not reply.is_shadow_banned
-                or (current_user and reply.user_id == current_user.id)
-            ]
-            response_data = {
-                "id": post.id,
-                "content": post.content,
-                "user_id": post.user_id,
-                # username は任意入力のため None の場合は id をフォールバック
-                "author_username": post.author.username or post.author.id,
-                "author_profile_image_url": post.author.profile_image_url,
-                "thumbnail_url": post.thumbnail_url,
-                "original_image_url": post.original_image_url,
-                "video_url": post.video_url,
-                "video_duration": post.video_duration,
-                "shop_id": post.shop_id,
-                "shop_name": post.shop.name if post.shop else None,
-                "shop_address": post.shop.address if post.shop else None,
-                "created_at": post.created_at,
-                "likes_count": likes_map.get(post.id, 0),
-                "replies_count": len(visible_replies),
-                "replies": visible_replies,
-                "is_liked_by_current_user": post.id in liked_post_ids,
-                "is_shadow_banned": post.is_shadow_banned,
-                "shadow_ban_reason": post.shadow_ban_reason,
-            }
-            post_responses.append(PostResponse.model_validate(response_data))
-        
         return PostsResponse(
             posts=post_responses,
             total=total,
             pages=pages,
             current_page=page
         )
-        
-    except Exception as e:
+    except Exception as exc:
+        logger.exception("ユーザー投稿の取得に失敗しました")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"ユーザー投稿の取得に失敗しました: {e}"
+            detail=f"ユーザー投稿の取得に失敗しました: {exc}"
         )
 
 @router.delete("/posts/user/{user_id}", response_model=Dict[str, str])
@@ -702,25 +698,26 @@ async def delete_all_user_posts(
         )
     
     try:
-        # ユーザーの全投稿を削除
-        deleted_count = db.query(Post).filter(Post.user_id == user_id).count()
-        db.query(Post).filter(Post.user_id == user_id).delete()
-        
-        # 関連するいいねも削除（cascade設定で自動削除されるが明示的に実行）
-        db.query(Like).filter(Like.post_id.in_(
-            db.query(Post.id).filter(Post.user_id == user_id)
-        )).delete(synchronize_session=False)
-        
+        post_ids = [
+            post_id
+            for (post_id,) in db.query(Post.id).filter(Post.user_id == user_id).all()
+        ]
+        deleted_count = len(post_ids)
+
+        if post_ids:
+            db.query(Like).filter(Like.post_id.in_(post_ids)).delete(synchronize_session=False)
+            db.query(Post).filter(Post.id.in_(post_ids)).delete(synchronize_session=False)
+
         db.commit()
-        
+
         return {
             "message": f"ユーザー {user_id} の全投稿を削除しました",
             "deleted_count": deleted_count
         }
-        
-    except Exception as e:
+    except Exception as exc:
         db.rollback()
+        logger.exception("ユーザー全投稿の削除に失敗しました")
         raise HTTPException(
             status_code=status.HTTP_500_INTERNAL_SERVER_ERROR,
-            detail=f"投稿の削除に失敗しました: {e}"
+            detail=f"投稿の削除に失敗しました: {exc}"
         )

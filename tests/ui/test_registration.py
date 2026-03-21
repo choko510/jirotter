@@ -14,7 +14,7 @@ TEST_USER_ID = f"testuser_{uuid.uuid4().hex[:8]}"
 TEST_USER_EMAIL = f"{TEST_USER_ID}@example.com"
 TEST_USER_PASSWORD = "password123!"
 
-def test_user_registration(page: Page):
+def test_user_registration(page: Page, live_server):
     """ユーザー登録のUIテスト"""
     # 1. 登録ページにアクセス
     page.goto("http://localhost:8000/#auth/register")

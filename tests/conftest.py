@@ -1,6 +1,6 @@
 import pytest
 from fastapi.testclient import TestClient
-from sqlalchemy import create_engine, text
+from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker, Session
 from sqlalchemy.pool import StaticPool
 import subprocess
@@ -41,17 +41,29 @@ def cleanup_db_file():
         except OSError:
             pass
 
-@pytest.fixture(scope="session", autouse=True)
+@pytest.fixture(scope="session")
 def live_server(cleanup_db_file):
     """
     Fixture to run the FastAPI application in a live server as a separate process.
     This allows Playwright tests to access the application.
     The server is started before the test session and terminated afterwards.
     """
+    command = [
+        sys.executable,
+        "-m",
+        "uvicorn",
+        "app:create_app",
+        "--host",
+        "0.0.0.0",
+        "--port",
+        "8000",
+        "--factory",
+    ]
+
     # WindowsとUnixでプロセス作成方法を分岐
     if os.name == 'nt':  # Windows
         proc = subprocess.Popen(
-            ["uvicorn", "app:create_app", "--host", "0.0.0.0", "--port", "8000", "--factory"],
+            command,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             creationflags=subprocess.CREATE_NEW_PROCESS_GROUP,
@@ -59,7 +71,7 @@ def live_server(cleanup_db_file):
         )
     else:  # Unix/Linux/macOS
         proc = subprocess.Popen(
-            ["uvicorn", "app:create_app", "--host", "0.0.0.0", "--port", "8000", "--factory"],
+            command,
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             preexec_fn=os.setsid,
@@ -83,25 +95,31 @@ def live_server(cleanup_db_file):
 
     if not server_ready:
         # Kill process and print stderr
-        if os.name == 'nt':
-            proc.terminate()
-        else:
-            os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
-        stdout, stderr = proc.communicate()
-        print(f"Server failed to start:\nStdout: {stdout.decode()}\nStderr: {stderr.decode()}")
+        if proc.poll() is None:
+            if os.name == 'nt':
+                proc.terminate()
+            else:
+                os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+        stdout, stderr = proc.communicate(timeout=5)
+        print(
+            "Server failed to start:\n"
+            f"Stdout: {stdout.decode(errors='replace')}\n"
+            f"Stderr: {stderr.decode(errors='replace')}"
+        )
         pytest.fail("Live server failed to start")
 
     yield
     
     # Terminate server process
-    if os.name == 'nt':  # Windows
-        proc.terminate()
-    else:  # Unix/Linux/macOS
-        try:
-            os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
-        except ProcessLookupError:
-            pass
-    proc.wait()
+    if proc.poll() is None:
+        if os.name == 'nt':  # Windows
+            proc.terminate()
+        else:  # Unix/Linux/macOS
+            try:
+                os.killpg(os.getpgid(proc.pid), signal.SIGTERM)
+            except ProcessLookupError:
+                pass
+        proc.wait()
 
 
 @pytest.fixture(scope="function")

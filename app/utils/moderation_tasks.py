@@ -1,12 +1,13 @@
 import asyncio
-from contextlib import suppress
-from datetime import datetime
+import logging
 
 from sqlalchemy.orm import Session, joinedload, sessionmaker
 
 from app.models import Post, Report, User
 from app.utils.content_moderator import content_moderator
 from app.utils.scoring import apply_penalty
+
+logger = logging.getLogger(__name__)
 
 
 async def _moderate_post(post_id: int, session_factory: sessionmaker) -> None:
@@ -34,31 +35,47 @@ async def _moderate_post(post_id: int, session_factory: sessionmaker) -> None:
             if (post.author.internal_score or 100) <= 70:
                 should_moderate = True
                 moderation_level = "high"
-                print(f"ユーザーID {post.author.id} は低スコア(internal_score: {post.author.internal_score})のため高優先度審査対象")
+                logger.info(
+                    "ユーザーID %s は低スコア(internal_score: %s)のため高優先度審査対象",
+                    post.author.id,
+                    post.author.internal_score,
+                )
             
             # 2. スパム判定された投稿は高優先度審査
             elif post.is_shadow_banned:
                 should_moderate = True
                 moderation_level = "high"
-                print(f"投稿ID {post_id} はスパム判定されているため高優先度審査対象")
+                logger.info("投稿ID %s はスパム判定されているため高優先度審査対象", post_id)
             
             # 3. spam_detectorスコアに基づく細分化審査
             elif hasattr(post, 'spam_score') and post.spam_score:
                 if post.spam_score >= 3.5:  # 高スコア：高優先度審査
                     should_moderate = True
                     moderation_level = "high"
-                    print(f"投稿ID {post_id} は高スパムスコア(spam_score: {post.spam_score})のため高優先度審査対象")
+                    logger.info(
+                        "投稿ID %s は高スパムスコア(spam_score: %s)のため高優先度審査対象",
+                        post_id,
+                        post.spam_score,
+                    )
                 elif post.spam_score >= 2.5:  # 中スコア：中優先度審査
                     should_moderate = True
                     moderation_level = "medium"
-                    print(f"投稿ID {post_id} は中スパムスコア(spam_score: {post.spam_score})のため中優先度審査対象")
+                    logger.info(
+                        "投稿ID %s は中スパムスコア(spam_score: %s)のため中優先度審査対象",
+                        post_id,
+                        post.spam_score,
+                    )
                 elif post.spam_score >= 1.5:  # 低スコア：低優先度審査
                     should_moderate = True
                     moderation_level = "low"
-                    print(f"投稿ID {post_id} は低スパムスコア(spam_score: {post.spam_score})のため低優先度審査対象")
+                    logger.info(
+                        "投稿ID %s は低スパムスコア(spam_score: %s)のため低優先度審査対象",
+                        post_id,
+                        post.spam_score,
+                    )
         
         if not should_moderate:
-            print(f"投稿ID {post_id} は審査対象外のためスキップします")
+            logger.info("投稿ID %s は審査対象外のためスキップします", post_id)
             return
 
         # モデレーションレベルに応じたAI分析設定
@@ -76,7 +93,7 @@ async def _moderate_post(post_id: int, session_factory: sessionmaker) -> None:
         )
 
         if analysis.get("is_violation") and analysis.get("confidence", 0) >= confidence_threshold:
-            print(f"投稿ID {post_id} を違反と判断し、投稿を削除します...")
+            logger.info("投稿ID %s を違反と判断し、投稿を削除します...", post_id)
             try:
                 offender: User | None = post.author
 
@@ -90,7 +107,7 @@ async def _moderate_post(post_id: int, session_factory: sessionmaker) -> None:
                     )
                     db.add(violation_report)
 
-                    print(f"ユーザー {offender.id} にペナルティを適用します")
+                    logger.info("ユーザー %s にペナルティを適用します", offender.id)
                     apply_penalty(
                         db,
                         offender,
@@ -107,24 +124,24 @@ async def _moderate_post(post_id: int, session_factory: sessionmaker) -> None:
                 reports = db.query(Report).filter(Report.post_id == post_id).all()
                 for report_obj in reports:
                     db.delete(report_obj)
-                print(f"{len(reports)}件の関連通報レコードを削除しました")
+                logger.info("%s件の関連通報レコードを削除しました", len(reports))
 
                 # 投稿を削除
                 db.delete(post)
-                print(f"投稿ID {post_id} を削除しました")
+                logger.info("投稿ID %s を削除しました", post_id)
 
                 # ここまでが一連の DB 操作なので commit する
                 db.commit()
-                print(f"投稿ID {post_id} の削除が完了しました (レベル: {moderation_level})")
-            except Exception as e:
+                logger.info("投稿ID %s の削除が完了しました (レベル: %s)", post_id, moderation_level)
+            except Exception:
                 db.rollback()
-                print(f"投稿ID {post_id} の削除に失敗しました: {str(e)}")
+                logger.exception("投稿ID %s の削除に失敗しました", post_id)
         else:
             # 適切と判断された場合も分析結果を反映して commit
             db.commit()
-            print(f"投稿ID {post_id} は適切と判断されました (レベル: {moderation_level})")
-    except Exception as exc:  # noqa: BLE001
-        print(f"自動モデレーション処理でエラーが発生しました: {exc}")
+            logger.info("投稿ID %s は適切と判断されました (レベル: %s)", post_id, moderation_level)
+    except Exception:  # noqa: BLE001
+        logger.exception("自動モデレーション処理でエラーが発生しました")
         db.rollback()
     finally:
         db.close()
@@ -143,8 +160,8 @@ async def schedule_task(coro) -> None:
         # 実行中のイベントループが無い場合（同期コンテキストなど）は新規ループで実行
         try:
             asyncio.run(coro)
-        except Exception as exc:  # noqa: BLE001
-            print(f"schedule_task 実行中にエラーが発生しました: {exc}")
+        except Exception:  # noqa: BLE001
+            logger.exception("schedule_task 実行中にエラーが発生しました")
 
 
 async def schedule_post_moderation(post_id: int, db_session: Session) -> None:
@@ -159,5 +176,7 @@ async def schedule_post_moderation(post_id: int, db_session: Session) -> None:
         asyncio.create_task(_moderate_post(post_id, session_factory))
     except RuntimeError:
         # テスト環境などでイベントループが存在しない場合は同期的に実行
-        with suppress(Exception):
+        try:
             asyncio.run(_moderate_post(post_id, session_factory))
+        except Exception:
+            logger.exception("schedule_post_moderation のフォールバック実行に失敗しました")
